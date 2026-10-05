@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+data/local/
+exports/
+*.local.*
+.env
+.env.*
+.venv/
+node_modules/
+credentials*
+*.log
