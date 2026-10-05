@@ -3,7 +3,8 @@ from dataclasses import dataclass, asdict
 from copy import deepcopy
 import math
 import numpy as np
-from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment, milp, Bounds, LinearConstraint
+from scipy.sparse import coo_matrix, vstack
 from .data import validate_players, OUTFIELD
 
 ERAS=('All eras','Legends','1990s','2000s','2010s','2020s')
@@ -59,12 +60,75 @@ class Config:
     default_stamina:float=78.0
     fatigue:float=.08
     auto_subs:bool=True
+    salary_cap:float|None=None
+    opponent_difficulty:float=1.0
     def __post_init__(self):
         for key,value in asdict(self).items():
-            if key=='auto_subs':continue
-            if not isinstance(value,(int,float)) or not math.isfinite(value):raise ValueError(f'{key} must be finite.')
+            if key=='salary_cap' and value is None:continue
+            if key=='auto_subs':
+                if not isinstance(value,bool):raise ValueError('auto_subs must be true or false.')
+                continue
+            if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value):raise ValueError(f'{key} must be finite.')
         if self.temperature<=0 or self.role_scale<=0 or self.base_goals<=0:raise ValueError('Temperature, role_scale, and base_goals must be positive.')
         if not .5<=self.min_fit<=1 or min(self.chemistry_weight,self.tactical_weight,self.fatigue)<0 or not 0<=self.default_stamina<=99 or not -.5<=self.home_advantage<=.5:raise ValueError('Config value is outside its supported range.')
+        if self.salary_cap is not None and self.salary_cap<=0:raise ValueError('Salary cap must be positive.')
+        if not .5<=self.opponent_difficulty<=2:raise ValueError('Opponent difficulty must be between 0.5 and 2.')
+
+def card_tier(player):
+    return 'S' if player['overall']>=90 else 'A' if player['overall']>=85 else 'B'
+
+def card_cost(player):
+    return max(1.,(player['overall']-60)/2)
+
+def _constrained_awards(score,fit,pool,cfg,tier_limits,tier_quotas):
+    """Enforce cap/quotas and one person per slot in one binary assignment."""
+    count=len(pool);rows=score.shape[0];variables=rows*count
+    index=np.arange(variables).reshape(rows,count)
+    constraints=[coo_matrix((np.ones(variables),(np.repeat(np.arange(rows),count),index.ravel())),shape=(rows,variables)),
+                 coo_matrix((np.ones(variables),(np.tile(np.arange(count),rows),index.ravel())),shape=(count,variables))]
+    lower=[*([1]*rows),*([0]*count)];upper=[*([1]*rows),*([1]*count)]
+    if cfg.salary_cap is not None:
+        constraints.append(coo_matrix(np.tile([card_cost(p) for p in pool],rows).reshape(1,-1)));lower.append(0);upper.append(cfg.salary_cap)
+    for tier,limit in (tier_limits or {}).items():
+        constraints.append(coo_matrix(np.tile([card_tier(p)==tier for p in pool],rows).reshape(1,-1)));lower.append(0);upper.append(limit)
+    for tier,quota in (tier_quotas or {}).items():
+        constraints.append(coo_matrix(np.tile([card_tier(p)==tier for p in pool],rows).reshape(1,-1)));lower.append(quota);upper.append(quota)
+    result=milp(-score.ravel(),integrality=np.ones(variables),bounds=Bounds(np.zeros(variables),(fit>=cfg.min_fit).ravel().astype(float)),
+                constraints=LinearConstraint(vstack(constraints).tocsc(),lower,upper),options={'time_limit':10})
+    if not result.success:return None
+    chosen=np.argmax(result.x.reshape(rows,count),axis=1)
+    return chosen
+
+def era_eligibility(players, config=None):
+    """Check exact matching feasibility before an era enters random selection."""
+    cfg=config or Config(); report={}
+    for era in ERAS:
+        pool=[p for p in players if era=='All eras' or (era=='Legends' and 'icon-reconstruction' in p['lineage']) or p['era']==era]
+        groups={}
+        for p in pool:groups.setdefault(p['identity'],[]).append(p)
+        compatible=[]
+        for m in MANAGERS:
+            if era not in ['All eras','Legends'] and m['era']!=era:continue
+            for formation in m['formations']:
+                slots=[s[0] for s in FORMATIONS[formation]]+['BENCH_GK','BENCH_DEF','BENCH_MID','BENCH_ATT']
+                fits=np.array([[max(_group_fit(p,s) for p in cards) for cards in groups.values()] for s in slots])
+                if len(groups)<15:continue
+                rr,cc=linear_sum_assignment(fits>=cfg.min_fit,maximize=True)
+                if len(rr)==15 and np.all(fits[rr,cc]>=cfg.min_fit):compatible.append(dict(manager=m['name'],formation=formation))
+        report[era]=dict(eligible=bool(compatible),people=len(groups),compatible=compatible,
+                         reason='' if compatible else 'Insufficient distinct people or role coverage for an eleven and GK/defence/midfield/attack reserves.')
+    report['Classics']=dict(eligible=False,people=len({p['identity'] for p in players if p['era']=='Classics'}),compatible=[],reason='Pre-1990 subset lacks full formation coverage. Its players remain available in Legends and All eras.')
+    return report
+
+def choose_era(players,seed,weights=None,config=None):
+    """Sample an eligible single-era pool using explicit nonnegative weights."""
+    report=era_eligibility(players,config)
+    eligible=[e for e in ERAS if e!='All eras' and report[e]['eligible']]
+    weights=weights if weights is not None else {e:1.0 for e in eligible}
+    if not isinstance(weights,dict) or any(e not in eligible for e in weights):raise ValueError('Random era weights must refer to eligible single-era pools.')
+    values=np.array([weights.get(e,0) for e in eligible],dtype=float)
+    if not np.isfinite(values).all() or (values<0).any() or values.sum()<=0:raise ValueError('Random era weights must be finite, nonnegative, with a positive total.')
+    return str(np.random.default_rng(seed).choice(eligible,p=values/values.sum()))
 
 def position_fit(player,slot):
     positions=set(player['positions'])
@@ -94,14 +158,14 @@ def _group_fit(p,group):
     return max(position_fit(p,s) for s in slots)
 
 class DraftGame:
-    def __init__(self,players,era='All eras',seed=42,config=None):
+    def __init__(self,players,era='All eras',seed=42,config=None,tier_limits=None,tier_quotas=None,pool_eras=None):
         self.config=config or Config()
         validate_players(players)
         if era not in ERAS:raise ValueError(f'Choose an era from {ERAS}.')
         if isinstance(seed,bool) or not isinstance(seed,(int,np.integer)) or seed<0:raise ValueError('Seed must be a nonnegative integer.')
         self.seed=int(seed);self.era=era;self.squad=[];self.batches=[]
         rng=np.random.default_rng(self.seed)
-        pool=[deepcopy(p) for p in sorted(players,key=lambda p:p['id']) if era=='All eras' or (era=='Legends' and 'icon-reconstruction' in p['lineage']) or p['era']==era]
+        pool=[deepcopy(p) for p in sorted(players,key=lambda p:p['id']) if (p['era'] in pool_eras if pool_eras else era=='All eras' or (era=='Legends' and 'icon-reconstruction' in p['lineage']) or p['era']==era)]
         # Select one card per person before constructing the random role assignment.
         groups={}
         for p in pool:groups.setdefault(p['identity'],[]).append(p)
@@ -119,6 +183,10 @@ class DraftGame:
                 score=rating+self.config.temperature*rng.gumbel(size=fit.shape)
                 score[fit<self.config.min_fit]=-1e9
                 rr,cc=linear_sum_assignment(score,maximize=True)
+                if self.config.salary_cap is not None or tier_limits or tier_quotas:
+                    cc=_constrained_awards(score,fit,pool,self.config,tier_limits,tier_quotas)
+                    if cc is None:continue
+                    rr=np.arange(15)
                 if len(rr)==15 and np.all(fit[rr,cc]>=self.config.min_fit):
                     chosen=[pool[int(j)] for j in cc]
                     self._awards=[chosen[int(i)] for i in rng.permutation(15)]
@@ -229,9 +297,9 @@ def match_rates(home,away,config=None,home_advantage=None):
                 fresh_count=len(hs) if score is h else len(asubs)
                 factor=1-cfg.fatigue*(1+(99-score['stamina'])/40)*(1-fresh_count/10)
                 for k in ['attack','control','defence']:score[k]*=max(.65,factor)
-        log_h=(h['attack']-a['defence'])/cfg.role_scale+.25*(h['control']-a['control'])/cfg.role_scale+advantage
-        log_a=(a['attack']-h['defence'])/cfg.role_scale+.25*(a['control']-h['control'])/cfg.role_scale
-        stages.append(dict(start=start,end=end,home_xg=float(cfg.base_goals*np.exp(np.clip(log_h,-1.5,1.5))*(end-start)/90),away_xg=float(cfg.base_goals*np.exp(np.clip(log_a,-1.5,1.5))*(end-start)/90),home=hteam,away=ateam))
+        from .analytics import expected_rates
+        home_rate,away_rate=expected_rates(h,a,cfg,advantage=advantage,duration=end-start)
+        stages.append(dict(start=start,end=end,home_xg=home_rate,away_xg=away_rate*cfg.opponent_difficulty,home=hteam,away=ateam))
     return dict(home_xg=sum(s['home_xg'] for s in stages),away_xg=sum(s['away_xg'] for s in stages),stages=stages,home_subs=hs,away_subs=asubs,home_rating=h0,away_rating=a0)
 
 def simulate_match(home,away,seed=100,config=None,home_advantage=None):
