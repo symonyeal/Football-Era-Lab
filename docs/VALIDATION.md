@@ -2,6 +2,8 @@
 
 The demo was tested locally with the system Python 3.14 on Windows. The checks below were run against the delivered source and bundled player file.
 
+Tested packages: NumPy 2.4.4, pandas 3.0.3, SciPy 1.17.1, Matplotlib 3.10.9, ipywidgets 8.1.8, nbclient 0.10.4, nbformat 5.10.4, and ipykernel 7.2.0. JupyterLab 4.6.4 was installed in the same system Python, and its version command succeeded.
+
 | Check | Result |
 | --- | --- |
 | `python -m unittest discover -s tests -v` | 16 tests passed |
