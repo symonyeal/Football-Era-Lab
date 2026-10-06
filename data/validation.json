@@ -1,0 +1,368 @@
+{
+  "passed": true,
+  "counts": {
+    "combos": 561,
+    "cards": 29568,
+    "people": 16866,
+    "managers": 96
+  },
+  "coverage": {
+    "1950": {
+      "clubs": 59,
+      "cards": 1730,
+      "playable": 43,
+      "opponents": [
+        "Real Madrid",
+        "Stade de Reims",
+        "AC Milan",
+        "Manchester United",
+        "Barcelona",
+        "OGC Nice",
+        "Wolves",
+        "Fiorentina",
+        "Red Star Belgrade",
+        "Juventus",
+        "Ajax",
+        "Rangers",
+        "Atlético Madrid",
+        "Eintracht Frankfurt",
+        "Athletic Bilbao",
+        "Inter",
+        "Hibernian",
+        "Tottenham Hotspur",
+        "Arsenal"
+      ],
+      "leagues": [
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "SCO",
+        "SRB"
+      ]
+    },
+    "1960": {
+      "clubs": 73,
+      "cards": 2384,
+      "playable": 59,
+      "opponents": [
+        "Real Madrid",
+        "Benfica",
+        "Inter",
+        "AC Milan",
+        "Feyenoord",
+        "Manchester United",
+        "Ajax",
+        "Celtic",
+        "Saint-Étienne",
+        "Juventus",
+        "Liverpool",
+        "Partizan",
+        "Rapid Wien",
+        "Leeds United",
+        "CSKA Sofia",
+        "Barcelona",
+        "Standard Liège",
+        "Tottenham Hotspur",
+        "1. FC Köln"
+      ],
+      "leagues": [
+        "AUT",
+        "BEL",
+        "BUL",
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "POR",
+        "SCO",
+        "SRB"
+      ]
+    },
+    "1970": {
+      "clubs": 72,
+      "cards": 2797,
+      "playable": 67,
+      "opponents": [
+        "Ajax",
+        "Bayern Munich",
+        "Liverpool",
+        "Real Madrid",
+        "Borussia Mönchengladbach",
+        "Juventus",
+        "Saint-Étienne",
+        "Nottingham Forest",
+        "Celtic",
+        "Atlético Madrid",
+        "Újpest",
+        "Benfica",
+        "PSV Eindhoven",
+        "Dynamo Kyiv",
+        "Club Brugge",
+        "Inter",
+        "Feyenoord",
+        "Barcelona",
+        "Leeds United"
+      ],
+      "leagues": [
+        "BEL",
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "HUN",
+        "ITA",
+        "NED",
+        "POR",
+        "SCO",
+        "UKR"
+      ]
+    },
+    "1980": {
+      "clubs": 73,
+      "cards": 3566,
+      "playable": 72,
+      "opponents": [
+        "Liverpool",
+        "Bayern Munich",
+        "Real Madrid",
+        "Juventus",
+        "PSV Eindhoven",
+        "Steaua Bucharest",
+        "AC Milan",
+        "Benfica",
+        "Hamburger SV",
+        "Bordeaux",
+        "Anderlecht",
+        "CSKA Sofia",
+        "Aston Villa",
+        "Porto",
+        "Ajax",
+        "Dynamo Kyiv",
+        "IFK Göteborg",
+        "Barcelona",
+        "Roma"
+      ],
+      "leagues": [
+        "BEL",
+        "BUL",
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "POR",
+        "ROU",
+        "SWE",
+        "UKR"
+      ]
+    },
+    "1990": {
+      "clubs": 74,
+      "cards": 4935,
+      "playable": 74,
+      "opponents": [
+        "Barcelona",
+        "Manchester United",
+        "AC Milan",
+        "Real Madrid",
+        "Juventus",
+        "Bayern Munich",
+        "Porto",
+        "Ajax",
+        "Marseille",
+        "Borussia Dortmund",
+        "Monaco",
+        "Dynamo Kyiv",
+        "PSV Eindhoven",
+        "Red Star Belgrade",
+        "Spartak Moscow",
+        "Kaiserslautern",
+        "Feyenoord",
+        "Panathinaikos",
+        "Sampdoria"
+      ],
+      "leagues": [
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "GRE",
+        "ITA",
+        "NED",
+        "POR",
+        "RUS",
+        "SRB",
+        "UKR"
+      ]
+    },
+    "2000": {
+      "clubs": 70,
+      "cards": 6239,
+      "playable": 70,
+      "opponents": [
+        "Barcelona",
+        "Manchester United",
+        "Bayern Munich",
+        "AC Milan",
+        "Real Madrid",
+        "Arsenal",
+        "Chelsea",
+        "Lyon",
+        "Inter",
+        "Porto",
+        "Liverpool",
+        "Juventus",
+        "PSV Eindhoven",
+        "Valencia",
+        "Roma",
+        "Deportivo La Coruña",
+        "Bayer Leverkusen",
+        "Ajax",
+        "Benfica"
+      ],
+      "leagues": [
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "POR"
+      ]
+    },
+    "2010": {
+      "clubs": 70,
+      "cards": 5787,
+      "playable": 70,
+      "opponents": [
+        "Real Madrid",
+        "Bayern Munich",
+        "Barcelona",
+        "Juventus",
+        "Paris Saint-Germain",
+        "Manchester City",
+        "Chelsea",
+        "Atlético Madrid",
+        "Manchester United",
+        "Porto",
+        "Liverpool",
+        "Ajax",
+        "Benfica",
+        "Borussia Dortmund",
+        "Arsenal",
+        "Tottenham Hotspur",
+        "AC Milan",
+        "Roma",
+        "Lyon"
+      ],
+      "leagues": [
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "POR"
+      ]
+    },
+    "2020": {
+      "clubs": 70,
+      "cards": 2130,
+      "playable": 51,
+      "opponents": [
+        "Real Madrid",
+        "Manchester City",
+        "Paris Saint-Germain",
+        "Bayern Munich",
+        "Inter",
+        "Chelsea",
+        "Borussia Dortmund",
+        "Barcelona",
+        "Liverpool",
+        "Atlético Madrid",
+        "Benfica",
+        "Arsenal",
+        "AC Milan",
+        "Napoli",
+        "Porto",
+        "Sporting CP",
+        "Villarreal",
+        "PSV Eindhoven",
+        "Ajax"
+      ],
+      "leagues": [
+        "ENG",
+        "ESP",
+        "FRA",
+        "GER",
+        "ITA",
+        "NED",
+        "POR"
+      ]
+    }
+  },
+  "stars": {
+    "Lionel Messi": [
+      {
+        "club": "Barcelona",
+        "decade": 2010,
+        "rating": 94.0,
+        "source": "f",
+        "positions": [
+          "RW",
+          "CF",
+          "ST"
+        ]
+      }
+    ],
+    "Johan Cruyff": [
+      {
+        "club": "Ajax",
+        "decade": 1970,
+        "rating": 92.2,
+        "source": "i",
+        "positions": [
+          "CF",
+          "ST"
+        ]
+      }
+    ],
+    "Diego Maradona": [
+      {
+        "club": "Napoli",
+        "decade": 1980,
+        "rating": 88.0,
+        "source": "i",
+        "positions": [
+          "ST",
+          "CF"
+        ]
+      }
+    ],
+    "Alfredo Di Stéfano": [
+      {
+        "club": "Real Madrid",
+        "decade": 1950,
+        "rating": 92.0,
+        "source": "e",
+        "positions": [
+          "ST",
+          "CF"
+        ]
+      }
+    ]
+  },
+  "defects": [],
+  "limitations": [
+    "Dated Wikidata records form a partial historical archive, not a census of every registered player.",
+    "Membership needs 10 apportioned league appearances, or a notable player with missing appearances and at least two seasons.",
+    "Appearances and goals are apportioned across stint years, not measured separately by decade.",
+    "Estimated older ratings extrapolate a modern rating model."
+  ]
+}

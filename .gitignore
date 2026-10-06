@@ -10,3 +10,6 @@ exports/
 node_modules/
 credentials*
 *.log
+.cache/
+.inputs/
+work/

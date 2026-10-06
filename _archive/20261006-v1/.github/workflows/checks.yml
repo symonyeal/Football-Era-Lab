@@ -1,0 +1,29 @@
+name: Demo checks
+on: [push, pull_request]
+jobs:
+  game:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        analytics: [installed, offline]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - if: matrix.analytics == 'installed'
+        run: python -m pip install -r requirements-analytics.txt
+      - if: matrix.analytics == 'installed'
+        run: python -m unittest discover -s tests -v
+      - if: matrix.analytics == 'offline'
+        run: python -m unittest discover -s tests -p 'test_[!a]*.py' -v
+      - name: Execute the offline notebook
+        run: |
+          python - <<'PY'
+          import nbformat
+          from nbclient import NotebookClient
+          nb = nbformat.read('Football Era Lab.ipynb', as_version=4)
+          NotebookClient(nb, timeout=180, kernel_name='python3').execute()
+          PY

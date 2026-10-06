@@ -1,140 +1,50 @@
-# Player imports and identity review
+# Where the squads and ratings come from
 
-The shipped dataset contains 625 cards for 551 stored person identities. Its file hash is
-`4dac2fa5887eea643b77548c5a2810790068400bd82087bcdddea6e2d52dcd9c`.
-The 157 Icon/Hero cards are published game reconstructions of historical players. The other
-468 cards are edition snapshots. Detailed stamina is missing on all 157 reconstructed cards;
-the game reports its configurable stamina fallback rather than calling it a historical measurement.
-None of the bundled cards supplies a birth date, so birth-date matching cannot establish new
-cross-source identities for that dataset.
+The pipeline writes `data/game.json` for the browser and notebook, plus a readable `data/manifest.json`. Data builds happen separately from gameplay. Raw source downloads and intermediate build files stay in a persistent local work folder and are excluded from the public repository.
 
-The source URLs, publisher-declared CC0 licences, source filenames, selected editions and the
-curation rules are in [data/manifest.json](../data/manifest.json). Existing curated person aliases
-remain unchanged. This integration changes the import rules and does not rewrite the bundled
-cards or their source manifest.
+## Rebuild
 
-## Import a permitted user export
-
-Keep large downloads and restricted source files outside the public repository. On this machine,
-working source files belong in `Claude Func Folder`. Importing reads the chosen file and returns
-validated dictionaries; it does not download data or write a new dataset.
-
-```python
-from era_eleven.data import import_ea_csv, import_pes_csv, pool_report
-
-source = {
-    "source": "my-approved-export",
-    "source_url": "https://the-publisher.example/dataset",
-    "source_date": "2024-06-07",
-    "season": "2023-24",
-    "license": {"name": "Use the actual source terms",
-                "redistribution": "Record the actual permission"},
-    "era_basis": "Explain the edition or curated playing-period choice",
-}
-players = import_ea_csv(raw_path, era="2020s", edition=24,
-                        source_metadata=source)
-report = pool_report(players)
-```
-
-`raw_path` is an explicit path to the user's export. The example metadata is a template and does
-not grant redistribution permission. Missing licence information is recorded as unspecified,
-with redistribution not established. The original metadata, source filename and SHA-256 are
-retained in imported cards. A filename is stored rather than the machine's absolute source path.
-The importer makes no claim that a user file is published or an official current edition.
-
-## A card and a person have different identifiers
-
-EA imports use the explicit `player_id`; PES imports use `ID` after normalizing column names.
-The default person keys are `ea-<provider ID>` and `pes-<provider ID>`. Edition card IDs remain
-separate from those person keys. EA's `fifa_version` identifies its edition; use `edition=` for
-a PES export when the file does not have an edition column. Source IDs remain available in
-`provider_player_id` even after a reviewed cross-source alias is applied.
-
-Two rows with the same display name and different provider IDs remain different people. The
-importer rejects fractional numeric IDs instead of truncating them. A missing provider ID now
-raises an error with the row's override key. It never manufactures a person identity from a name.
-Exports relying on the former name-only fallback must supply source IDs or reviewed mappings.
-
-Use explicit aliases only after reviewing the source records:
-
-```python
-overrides = {
-    "ea-123": {"identity": "person-reviewed-123",
-               "evidence": "Record the reviewed source IDs and corroborating evidence",
-               "dob": "1990-01-01", "nation": "The source nationality"},
-    "pes-456": {"identity": "person-reviewed-123",
-                "evidence": "Record why this PES record is the same person"},
-}
-ea = import_ea_csv(ea_path, identity_overrides=overrides)
-pes = import_pes_csv(pes_path, edition="eFootball 2024",
-                     identity_overrides=overrides)
-```
-
-The example IDs and birth date are placeholders. Each override requires a nonempty identity
-and review evidence. A supplied birth date or nationality must agree with the corresponding
-known source fields. Birth dates use `YYYY-MM-DD`; ambiguous date formats are rejected.
-For a row without a provider ID, use `row:0`, `row:1`, and so on, referring to the original
-zero-based CSV data-row index before edition filtering. Review each such row separately.
-Its card ID derives from the reviewed identity rather than a display name.
-
-`identity_review_candidates(left, right)` returns possible links with exact normalized full
-name, birth date and nationality. Records lacking any of these fields yield no suggestion.
-Every suggestion requires review and leaves both inputs unchanged. Multiple matching right
-records are marked ambiguous. The helper does not assign identities, deduplicate cards or accept
-similar names as proof. The upstream fas fuzzy matcher also remains a review tool; its greedy
-matches do not implement birth-date checking or enforce one-to-one links.
-
-## Inspect the attribute mapping
-
-| Import | Default mapping | Evidence label |
-| --- | --- | --- |
-| EA export | Published attribute groups map directly; `physic` maps to physical, `power_stamina` to stamina, `mentality_vision` to vision, and `attacking_finishing` to finishing. Goalkeeper columns use the `goalkeeping_` names. | User-supplied snapshot; a custom mapping is labelled a proxy. |
-| PES export | Pace averages speed and acceleration; shooting averages finishing and kicking power; passing averages low and lofted pass. Other groups use the source columns recorded on each card. | PES group mapping proxy. These groups are not claimed equivalent to EA measurements. |
-
-`attribute_mapping` is editable. Each target attribute accepts one source column or a list:
-
-```python
-players = import_pes_csv(pes_path, edition="eFootball 2024",
-                         attribute_mapping={"passing": ["low_pass", "lofted_pass"]})
-print(players[0]["attribute_mapping"])
-print(players[0]["attribute_completeness"])
-print(players[0]["missing_source_columns"])
-print(players[0]["missing_attributes"])
-```
-
-Groups average the available mapped values, matching the existing PES rule. Their available
-and expected column counts expose partially observed groups. Entirely missing groups remain
-`None`; no ratings are filled in during import. Gameplay requires the six outfield groups or
-the five supported goalkeeper groups, plus overall, as finite values from 0 to 99. Optional
-stamina, vision and finishing may remain missing. An incomplete required group is rejected with
-the player's name and field, so a user can supply the missing evidence or revise the mapping.
-
-## Check the pool before drafting
-
-`validate_players(players)` checks card IDs, explicit person identities, supported positions
-and rating ranges. Conflicting known birth dates for one person identity are rejected rather
-than merging the records. `pool_report(players, config=...)` adds person/card counts, distinct-person
-coverage by position, attribute missingness, source licence declarations and the game engine's
-era eligibility report. A pool without a goalkeeper is reported ineligible instead of receiving
-a hidden extra card. Reports preserve the source data and do not modify the player's ratings.
-
-The engine checks the manager's compatible formation plus goalkeeper, defender, midfielder
-and attacker reserves. It groups alternative editions of one person for this eligibility check.
-This establishes available positional coverage; it does not certify a salary cap, tier quota
-or every random edition selection. The actual draft validates its chosen fifteen-person squad.
-The Classics subset remains unavailable as its own draft era under the game's current rules,
-while its cards remain available in Legends and All eras.
-
-## Reproduce the checks
+Install the pipeline packages from the repository folder:
 
 ```text
-python -m unittest discover -s tests -p test_data.py -v
+python -m pip install -r requirements-analytics.txt
 ```
 
-On 2026-10-06, the regression suite passed 18 tests. The initial run reproduced the missing-ID
-name fallback and fractional-ID truncation defects before the implementation was changed.
-The passing run covers separate same-name people, reviewed cross-provider aliases, missing-ID
-row reviews, metadata and licence retention, editable mappings, birth-date conflict rejection,
-era/goalkeeper coverage and the unchanged bundled file hash. Machine-specific raw logs and
-source audit are stored in `Claude Func Folder/football-integration/analytics` and are excluded
-from the public project.
+`FEL_CACHE` selects the persistent source and build cache. `FEL_INPUTS` selects the folder containing the permitted local `fc24.zip` and `fut23.zip` archives. On the development machine, these folders are `Claude Func Folder\football-v2\cache` and `Claude Func Folder\football-v2\inputs` in the shared project. Set these environment variables in your shell before building; do not put secrets or raw archives into git.
+
+```text
+python -m pipeline.build
+```
+
+The ordered steps are `clubs`, `universe`, `stints`, `squads`, `persons`, `model` and `export`. You can name steps to resume a cached build, for example `python -m pipeline.build model export`. Rebuild an upstream step when its source or rules change; a downstream-only run otherwise uses its existing cache. Cached pickle files are local build state; read only caches you trust.
+
+## Inclusion and identity
+
+Club selection uses top-tier domestic results and European Cup progress. The domestic sources cover England, Spain, Italy, Germany, France, Netherlands and Portugal, with different historical coverage. European entrants add clubs outside those domestic sources. A season belongs to the decade containing its start year. A 2020s card reflects the available source years, not a finished decade.
+
+Wikidata club membership statements provide dated stints and, where available, league appearances and goals. The pipeline apportions whole-stint totals across the covered years. A decade card qualifies with at least ten apportioned appearances, or through the declared notability rule when appearances are missing. The game lists all qualifying records for the club-decade. This can omit players, combine teammates from different years, and inherit errors in dates, totals or labels. "Full available squad" therefore means the complete supplied qualifying pool, not a complete historical roster.
+
+Wikidata person IDs are the identity keys. A person can have many cards but can be drafted only once. Linking FIFA records uses birth date and name evidence. Legend cards also use explicit name aliases and available nationality evidence. Check the manifest's unresolved links and the coverage report; spelling similarity alone does not establish an identity. The source-card reference `{ "k": "clubQID:decade", "p": "personQID" }` preserves which club-decade a drafted card came from.
+
+Historical position labels are mapped to modern slot codes in `pipeline/positions.py`. Broad or missing labels can produce coarse roles. Formations, manager associations, signature players, Timeless/Maestro tags and duo lists are curated in `pipeline/curated/`; tags describe game rules, not measured skills. European Cup experience inferred from club stints does not establish that a player appeared in every winning tie.
+
+## Ratings and reports
+
+| Badge | Meaning |
+| --- | --- |
+| `f` | Average of the highest three available FIFA/FC edition ratings matching the player, club and covered stint, or fewer when fewer exist. |
+| `n` | Nearby FIFA/FC edition or club extrapolation, with the pipeline's age adjustment. |
+| `i` | EA Icon/Hero reconstruction, with the pipeline's age adjustment. |
+| `e` | Estimate from the fitted model. |
+
+The fitted model's held-out report belongs to rating prediction. `data/calibration.json` records a separate real-match calibration and its baseline comparison. `data/validation.json` records pool coverage and checks. The notebook computes counts from the loaded JSON and displays these reports so documentation does not require a second copied set of totals.
+
+Recreate match calibration separately, with the source cache and ratings inputs configured:
+
+```text
+python -m pipeline.calibrate
+```
+
+This fits on matched seasons starting in 2014 through 2019 and holds out 2020 through 2023. It rates actual edition club rosters through the JavaScript engine and checks its deployed expected-goal function. It does not fit the complete stochastic season simulation or validate historical cross-era effects.
+
+Derived club rankings and decade scoring baselines use engsoccerdata, whose published licence is GPL (>= 2). Raw match files are kept outside the public bundle. Omitting raw files does not, by itself, resolve every obligation for derived or redistributed material. Review the source terms for your own redistribution. Numeric FIFA/FC datasets carry their publishers' CC0 declarations; those declarations do not establish an independent EA licence for all underlying rights. See [data attribution](../data/README.md) for source links.

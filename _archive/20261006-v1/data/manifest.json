@@ -1,0 +1,35 @@
+{
+  "retrieved": "2026-10-05",
+  "sources": {
+    "kaggle-fut-2024": {
+      "title": "FIFA 23 Ultimate Team Players Database (download currently contains FC 24)",
+      "url": "https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database",
+      "file": "eafc24_players_2024-06-07.csv",
+      "declared_license": "CC0: Public Domain",
+      "last_updated": "2024-06-07",
+      "selection": "Male base Icon and Hero cards; no promotional upgrades; localized duplicates merged; era labels curated."
+    },
+    "kaggle-ea-career": {
+      "title": "EA Sports FC 24 complete player dataset",
+      "url": "https://www.kaggle.com/datasets/stefanoleone992/ea-sports-fc-24-complete-player-dataset",
+      "file": "male_players.csv",
+      "declared_license": "CC0: Public Domain",
+      "selection": "FIFA 18 and FC 24 snapshots, top 220 overall plus top 18 for each supported position. Attributes copied without alteration."
+    }
+  },
+  "players": 625,
+  "by_era": {
+    "2010s": 239,
+    "2020s": 229,
+    "2000s": 89,
+    "1990s": 46,
+    "Classics": 22
+  },
+  "sha256": "4dac2fa5887eea643b77548c5a2810790068400bd82087bcdddea6e2d52dcd9c",
+  "notes": [
+    "The publishers declare these datasets CC0; no endorsement by EA, FIFA, Konami, or Eraball is implied.",
+    "Historical ICON ratings are game reconstructions, not contemporaneous observed statistics.",
+    "Edition ratings are not current FC 26 or FC 27 ratings.",
+    "Missing detailed ICON attributes remain null; any model fallback is reported separately."
+  ]
+}

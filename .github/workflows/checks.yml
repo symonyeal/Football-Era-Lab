@@ -1,29 +1,23 @@
-name: Demo checks
+name: V2 checks
 on: [push, pull_request]
 jobs:
-  game:
+  core:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        analytics: [installed, offline]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-      - run: python -m pip install -r requirements.txt
-      - if: matrix.analytics == 'installed'
-        run: python -m pip install -r requirements-analytics.txt
-      - if: matrix.analytics == 'installed'
-        run: python -m unittest discover -s tests -v
-      - if: matrix.analytics == 'offline'
-        run: python -m unittest discover -s tests -p 'test_[!a]*.py' -v
-      - name: Execute the offline notebook
-        run: |
-          python - <<'PY'
-          import nbformat
-          from nbclient import NotebookClient
-          nb = nbformat.read('Football Era Lab.ipynb', as_version=4)
-          NotebookClient(nb, timeout=180, kernel_name='python3').execute()
-          PY
+      - run: python -m pip install -r requirements-analytics.txt
+      - name: Check the shared JavaScript engine and draft
+        run: node --test tests/engine/*.test.mjs
+      - name: Check pipeline rules without network calls
+        run: python -m unittest discover -s tests -p test_pipeline_v2.py -v
+      - name: Check calibration against independent synthetic counts
+        run: python -m pytest tests/engine/test_calibration.py -q -p no:cacheprovider
+      - name: Execute the notebook with the JavaScript engine
+        run: python -c "import nbformat; from nbclient import NotebookClient; n=nbformat.read('Football Era Lab.ipynb',as_version=4); NotebookClient(n,timeout=180,kernel_name='python3').execute()"

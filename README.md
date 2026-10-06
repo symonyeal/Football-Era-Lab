@@ -1,71 +1,51 @@
-# Era Eleven
+# Football Era Lab
 
-Draft football across generations: five spins award three people each, then fifteen people become eleven starters and four usable substitutes under a drawn manager and formation. Play in the browser or inspect and change the same Python game in [Football Era Lab.ipynb](Football%20Era%20Lab.ipynb).
+Draft a football team across eight decades, from the 1950s to the 2020s. Choose one of five manager and formation combinations, then make five club-and-decade spins. Each spin shows every available player in that squad. Choose three people and place them among eleven starting positions and four bench places. Your finished team plays a 38-match league and a 16-club European Cup against squads from the simulation decade.
 
-![Era Eleven](docs/game-preview.png)
+## Play locally
 
-## Play
+The browser game is static and has no build step. From this repository folder:
 
-From this repository folder, using Python 3.11 or later:
+```text
+python -m http.server 8765 --bind 127.0.0.1
+```
+
+Open [127.0.0.1:8765](http://127.0.0.1:8765/). Python only serves the files. The JavaScript in `app/engine/` runs matches in the browser, with the bundled `data/game.json`; gameplay needs no Python packages, account, API key or new data downloads. A static host can serve the same files.
+
+Choose the simulation decade before the draft. Player cards keep the decade of the club squad you selected them from. Moving a player between decades changes his effective rating. Position fit, manager grades, formation shape, chemistry and bench depth also affect the team. You can swap slots before kick-off and inspect the rating breakdown.
+
+The league contains your team and nineteen ranked club squads. All fixtures are simulated, including games between other clubs. The Cup has two legs in its first three rounds and a neutral final. Tied aggregates or finals go to extra time and penalties. These are fictional competitions using historical club-decade pools, not reconstructions of a specific season's fixtures.
+
+After the season, take the same fifteen people into Era Gauntlet or a tournament circuit. The Gauntlet starts in the 1950s and advances when you beat the strongest available club of the decade. A loss keeps you in that decade for another attempt. The circuit rotates through eight decades and five competition formats over your choice of 10 to 20 events. Era adjustments are recalculated for each encounter. See [the challenge rules](docs/MODES.md).
+
+## Inspect the same engine in the notebook
+
+Use Node 20 or later and Python 3.11 or later:
 
 ```text
 python -m pip install -r requirements.txt
-python -m pip install -r requirements-analytics.txt
-python -m era_eleven.server
-```
-
-Open [127.0.0.1:8765](http://127.0.0.1:8765). Change the port with `--port 8766` if it is occupied. On the development machine, use `C:\Python314\python.exe` in place of `python`.
-
-The pinned analytics dependency is optional for the offline game. Without it, the interface labels the identical fixed-rate fallback; event/entity tools require `fas`. Once dependencies are installed, normal gameplay downloads nothing and needs no account or API key.
-
-| Mode | What you play |
-| --- | --- |
-| Open draft / Salary Cap | Five spins, compatible lineup changes, one match, repeated trials, and one whole-draft practice respin. Salary mode enforces fifteen-card quotas and a game-coin budget. |
-| Era Gauntlet | Four fourteen-match segments per era, management choices, then a best-of-seven generated boss. A surviving loss restarts that era with the same people and development. Four forward/reverse maps and accumulated boss attempts are saved. |
-| Tournament Circuit | Choose 10–20 events. League, group, knockout, home-and-away aggregate and best-of formats rotate across the supported eras. Tables, qualification, shootouts, goals, clean sheets and trophies determine the outcomes and awards. |
-| Weekly Challenge | UTC Monday challenge with a common seed, pool, tier quotas, model/rules version and generated rivals. Best points under matching conditions are retained. |
-| The League | Create a fictional football avatar. Make four d20 decisions per fixture, earn XP, train, equip kit, negotiate and change clubs, then save a twenty-level ending or retire with an SVG career card. |
-| Head to Head | Two humans, two squads and one neutral football match. Alternate locally or use synchronized private rooms on the same server. Both players vote for a rematch. |
-| Mini Games | Daily and unlimited Daily Card, Higher or Lower, 120-second club-roster recall and five-round Country Hunt. Daily progress resumes after reload; minis remain outside competitive rankings. |
-
-The clubhouse saves completed match statistics, achievements, the drafted-card album and separately earned trophy cards. Appearance, backdrops, lineup view, sorting, sound/volume, reveal speed, effects and reduced motion are functional saved settings. Help explains the rules and evidence limits. JSON recipes replay server-owned drafts; imported experiments are unranked.
-
-## Notebook
-
-```text
 python -m jupyterlab "Football Era Lab.ipynb"
 ```
 
-Run all cells, then use `NotebookGame` for the original laboratory or `NotebookModes` for saved competitions, career and local two-human controls. Seeds, datasets, configuration, role weights, random-era weights and weekly rules are editable. The default notebook service is an isolated in-memory experiment; set its SQLite path to persist it. GitHub's preview cannot operate widgets.
+On the development machine, use `C:\Python314\python.exe` in place of `python`. The notebook calls [the JavaScript engine](app/engine/index.js) through Node. Its editable settings select a seed, simulation decade, manager, formation and fifteen person IDs. You can instead preserve exact club-decade cards with fifteen source-card records. A labelled notebook demonstration makes a seeded draft and places the best starting eleven; the browser lets you choose and place every person yourself. GitHub's notebook preview cannot execute cells.
 
-The notebook also retains the 38-match season laboratory, substitutions, Monte Carlo uncertainty, sensitivity analysis, imports and optional real-event analysis. A season laboratory is separate from Era Gauntlet and the career.
+## Data and limits
 
-## Two devices and saved progress
+Squads come from dated Wikidata club stints. "Available squad" means all records that meet the pipeline's inclusion rules, not a complete census of everyone who played for a club. Apps and goals are apportioned across decades from whole-stint totals. Missing records and coarse historical position labels affect coverage. The pool covers male football and selected European clubs; the 2020s contain only the source seasons available when the data was built.
 
-```text
-python -m era_eleven.server --host 0.0.0.0 --port 8765
-```
+Each rating shows its source: a published FIFA/FC edition (`f`), a nearby edition extrapolation (`n`), an EA Icon/Hero reconstruction (`i`), or a fitted estimate (`e`). Earlier decades rely heavily on reconstructions and estimates. The rating model's held-out errors concern resemblance to FIFA ratings, not proof of historical player quality. Match calibration and design assumptions are recorded separately. See [data and attribution](data/README.md), [the data pipeline](docs/DATA_PIPELINE.md), [the model](docs/MODEL.md) and [checks and evidence](docs/VALIDATION.md).
 
-On a trusted network, both humans open the host computer's address, create/join a six-character private room, and let the host start. Online players draft simultaneously from independent pools; optional shared-exclusive pools enforce thirty distinct people. The server hides the opponent's cards until both drafts finish, owns the rosters/results and completes remaining picks at the deadline. Local play alternates handovers. Online draft entropy is private to the room, so a public input seed cannot predict the other human's cards; the saved room reproduces its own draft and reconnect state.
+V2 supplies the draft, season, Era Gauntlet and tournament circuit through the same engine. Head to Head and Weekly Challenge remain future work. The previous Python server and its peripheral modes are preserved in [the v1 archive](_archive/20261006-v1/README.md). They are outside the active v2 browser loop.
 
-SQLite state defaults to ignored `data/local/game.sqlite`; `--state` selects another file. Browser storage keeps bearer credentials for that server's profile and seats. The private profile backup moves those credentials between browsers; public squad/result exports omit them. Rankings and rooms are shared by clients of **this server**, not a hosted global service. Internet deployment needs an operator and HTTPS proxy (`--public-origin` sets its exact origin). Public account matchmaking and Eraball account sync are external services not supplied by this repository.
-
-## Data and analytics
-
-The offline [manifest](data/manifest.json) describes 625 cards representing 551 source identities. The publishers declare CC0. FC 24 ICON/HERO ratings reconstruct legends; FIFA 18 and FC 24 career ratings are edition snapshots. Curated era tags are not contemporaneous historical measurements. Classics lacks a complete independent formation and remains available through Legends and All eras. The pool is a limited male-player subset.
-
-EA/FIFA and PES/eFootball imports retain provider IDs, reviewed identity mappings, attribute mappings, missingness, edition and supplied licences. Similar names never merge people automatically. Keep permitted user exports in ignored local storage. See [DATA_PIPELINE.md](docs/DATA_PIPELINE.md) and [data attribution](data/README.md).
-
-The pinned [football_analytics_system](https://github.com/symonyeal/football_analytics_system) supplies the shared scoring and diagnostic tools through a small adapter. Role fit, tactical and chemistry effects, fatigue, substitutions and game rules remain explicit football assumptions. **Gameplay coefficients are not fitted to real drafted-squad results.** Optional StatsBomb event measurements and fitted historical team assessments are separate. The small 2022 World Cup holdout failed to beat a mean-goals baseline and is not used in gameplay.
-
-Read the [model](docs/MODEL.md), [integration audit](docs/INTEGRATION.md), [feature matrix](docs/FEATURE_MATRIX.md), [reference audit](docs/REFERENCE_AUDIT.md), [validation](docs/VALIDATION.md) and [migration/archive inventory](docs/MIGRATION.md) for the exact boundaries. Generated bosses are labelled; attributable historical club-season rosters remain missing input. The League and Country Hunt disclose their football simplifications. Full Eraball parity is not claimed for inaccessible or unplayed reference branches.
-
-## Check
+## Check and rebuild
 
 ```text
-python -m unittest discover -s tests -v
+node --test tests/engine/*.test.mjs
+python -m pip install -r requirements-analytics.txt
+python -m unittest discover -s tests -p test_pipeline_v2.py -v
+python -m pytest tests/engine/test_calibration.py -q -p no:cacheprovider
 ```
 
-Install the analytics requirements to run its adapter/event/evaluation tests. The CI also checks core gameplay and the notebook without `fas`. Validation covers actual browser workflows, independent clients, reloads, real timer expiry, the editable notebook, constrained coverage and authority rejection paths.
+The [rebuild guide](docs/DATA_PIPELINE.md) explains the licensed local inputs and persistent source cache. The game does not run the pipeline when opened.
 
-Code is MIT licensed; third-party data retains its own declarations and terms. Original branding, interface and artwork are used. No player portraits, proprietary card artwork, club badges, reference assets or raw StatsBomb events are bundled. This independent fan/research game is unaffiliated with Eraball, EA, FIFA, Konami or StatsBomb.
+The project's code is MIT licensed. Third-party data keeps its own terms, including the GPL terms of the results source used for derived rankings and scoring rates. Publisher declarations of CC0 for ratings datasets do not establish an EA licence for artwork or every underlying right. No player portraits, card artwork or club badges are bundled. This independent football game is unaffiliated with Eraball, EA, FIFA, Konami, Wikidata or the data publishers.

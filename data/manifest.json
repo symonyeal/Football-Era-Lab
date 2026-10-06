@@ -1,35 +1,130 @@
 {
-  "retrieved": "2026-10-05",
-  "sources": {
-    "kaggle-fut-2024": {
-      "title": "FIFA 23 Ultimate Team Players Database (download currently contains FC 24)",
-      "url": "https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database",
-      "file": "eafc24_players_2024-06-07.csv",
-      "declared_license": "CC0: Public Domain",
-      "last_updated": "2024-06-07",
-      "selection": "Male base Icon and Hero cards; no promotional upgrades; localized duplicates merged; era labels curated."
-    },
-    "kaggle-ea-career": {
-      "title": "EA Sports FC 24 complete player dataset",
-      "url": "https://www.kaggle.com/datasets/stefanoleone992/ea-sports-fc-24-complete-player-dataset",
-      "file": "male_players.csv",
-      "declared_license": "CC0: Public Domain",
-      "selection": "FIFA 18 and FC 24 snapshots, top 220 overall plus top 18 for each supported position. Attributes copied without alteration."
-    }
+ "meta": {
+  "v": "2026-10-06",
+  "DS": [
+   1950,
+   1960,
+   1970,
+   1980,
+   1990,
+   2000,
+   2010,
+   2020
+  ],
+  "model": {
+   "n": 3700,
+   "people": 2408,
+   "mae": 2.452363059633258,
+   "rmse": 3.162250206674221,
+   "mae_base": 5.103096528809887,
+   "rmse_base": 6.452742875322766,
+   "r2": 0.7593839859441189,
+   "evaluation": "5-fold held-out people; positional baseline fitted within each training fold",
+   "scope": "Modern FIFA club-decade ratings; historical predictions are extrapolations",
+   "legends": 151,
+   "fifa_linked": 4892,
+   "excluded_age_conflicts": 34
   },
-  "players": 625,
-  "by_era": {
-    "2010s": 239,
-    "2020s": 229,
-    "2000s": 89,
-    "1990s": 46,
-    "Classics": 22
+  "counts": {
+   "combos": 561,
+   "cards": 29534,
+   "people": 16859,
+   "managers": 96
   },
-  "sha256": "4dac2fa5887eea643b77548c5a2810790068400bd82087bcdddea6e2d52dcd9c",
-  "notes": [
-    "The publishers declare these datasets CC0; no endorsement by EA, FIFA, Konami, or Eraball is implied.",
-    "Historical ICON ratings are game reconstructions, not contemporaneous observed statistics.",
-    "Edition ratings are not current FC 26 or FC 27 ratings.",
-    "Missing detailed ICON attributes remain null; any model fallback is reported separately."
-  ]
+  "src": {
+   "fifa": 3700,
+   "fifa-near": 2577,
+   "icon": 522,
+   "estimated": 22735
+  }
+ },
+ "unresolved": {
+  "duo": [
+   [
+    "Sandro Mazzola",
+    "Luis Suárez Miramontes"
+   ],
+   [
+    "Bobby Moore",
+    "Geoff Hurst"
+   ]
+  ],
+  "sig": [
+   [
+    "Fulvio Bernardini",
+    "Julinho"
+   ],
+   [
+    "Matt Busby",
+    "Pat Crerand"
+   ],
+   [
+    "Ernst Happel",
+    "Wim van Hanegem"
+   ],
+   [
+    "Leo Beenhakker",
+    "Manolo Sanchís"
+   ],
+   [
+    "Javier Clemente",
+    "Manu Sarabia"
+   ],
+   [
+    "Valeriy Lobanovskyi",
+    "Oleg Blokhin"
+   ],
+   [
+    "Valeriy Lobanovskyi",
+    "Volodymyr Bessonov"
+   ],
+   [
+    "Pep Guardiola",
+    "Dani Alves"
+   ],
+   [
+    "Diego Simeone",
+    "Gabi"
+   ],
+   [
+    "Jorge Jesus",
+    "Nicolás Gaitán"
+   ],
+   [
+    "André Villas-Boas",
+    "João Moutinho"
+   ],
+   [
+    "Erik ten Hag",
+    "André Onana"
+   ],
+   [
+    "Xabi Alonso",
+    "Alejandro Grimaldo"
+   ]
+  ],
+  "tenure": []
+ },
+ "sources": [
+  {
+   "name": "Wikidata",
+   "use": "squads (club stints, league apps and goals), birth dates, positions, caps",
+   "licence": "CC0 1.0"
+  },
+  {
+   "name": "EA Sports FC 24 complete player dataset (Stefano Leone, Kaggle)",
+   "use": "FIFA 15 - FC 24 ratings and positions",
+   "licence": "CC0 (as declared by the publisher)"
+  },
+  {
+   "name": "FIFA 23 Ultimate Team players database (Lucas Silva, Kaggle; file of 2024-06-07 holds FC 24 cards)",
+   "use": "base Icon and Hero ratings for legends (EA reconstructions)",
+   "licence": "CC0 (as declared by the publisher)"
+  },
+  {
+   "name": "engsoccerdata (James Curley)",
+   "use": "league and European Cup results: club rankings and decade goal rates (derived aggregates only)",
+   "licence": "GPL (>= 2)"
+  }
+ ]
 }

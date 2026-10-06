@@ -1,51 +1,62 @@
-# Attributes, expected goals and uncertainty
+# What changes a team's strength
 
-## Inputs and role assignment
+The browser and notebook use `app/engine/index.js`. Python builds data and fits models; it does not run a second match simulator. Source modules carry a legend for their short variable names, and the notebook prints the active match parameters and data reports.
 
-Cards retain explicit person identity, edition, source, season, licence and lineage. ICON/HERO attributes are reconstructions; modern attributes are published snapshots; PES grouped attributes are mapping proxies. Missing attributes remain missing. The game names any stamina fallback and exposes its editable default. Similar names are not identity evidence.
+## Ratings keep their source
 
-Native position fit is 1.00, listed adjacency 0.88; broader families fall below the default 0.85 threshold. Goalkeepers cannot fill outfield roles. Six weighted outfield groups and five keeper groups define role scores. SciPy assignment maximizes starter quality while retaining four distinct reserves usable in the formation. Tier/budget variants add binary constraints. The manager draw depends on pool feasibility; the sampler is not uniform over every legal squad.
+Each person has a separate card for each qualifying club and decade. For source `f`, the pipeline averages the highest three available FIFA/FC overall ratings from editions matching the club and covered stint, using fewer if fewer exist. If that overlap is absent, it uses an EA Icon/Hero reconstruction when linked, then a nearby edition extrapolation, then a fitted estimate. The badges `f`, `i`, `n` and `e` make these differences visible. Final base ratings are bounded between 45 and 95.
 
-Separate attack, control, defence and keeper units combine role suitability with small editable chemistry/tactical proxies. Country/club continuity and formation distances describe game-design complementarity. Manager possession/pressing constants are not estimated coaching effects. Custom role weights persist through substitutions.
+The estimate uses a histogram gradient boosting model, which combines decision trees, fitted where Wikidata and FIFA overlap. Features include appearances per season, goals per appearance, international caps, Wikipedia coverage, club results, age, position group and a missing-apps indicator. Held-out player groups keep the same person out of both training and validation in a fold. The report compares prediction errors with a position-group mean baseline. Its scope is prediction of published ratings in the observed overlap. Transferring that model to the 1950s remains an assumption; source coverage and the prominence of players in Wikipedia can bias estimates.
 
-## Shared scoring path
+The age adjustment is zero from age 25 through 30. Outside that interval it deducts 0.8 points per year younger or 1.2 per year older, capped at a 12-point loss. A nearby edition can be at most two seasons from the card's covered interval and can come from another club; it is therefore labelled an extrapolation. Legend reconstructions are game ratings made long after the player's career. They are not contemporaneous measurements.
 
-For a segment's home and away units, the fixed log-rate contrasts are:
+## Position and era adjustment
+
+The position graph connects neighbouring football roles. Playing in a natural role costs nothing. One graph step costs 10%, two steps cost 22%, and a larger distance costs 35%. A goalkeeper playing outfield, or an outfielder playing in goal, loses 75%. Bench slots carry no position penalty. See `app/engine/pos.js` for the graph and labels.
+
+Era multipliers are asymmetric. At increasing decade distance, an older card moved forward uses `[1, .97, .94, .91, .88, .85, .82, .79]`; a newer card moved backward uses `[1, .985, .97, .955, .94, .925, .91, .895]`. Timeless tier 1 retains a quarter of the ordinary loss; tier 2 retains half. These are declared game design parameters, not measured effects of time travel.
+
+For a starter, the engine begins with:
 
 ```text
-home = (home.attack − away.defence)/role_scale
-       + 0.25 × (home.control − away.control)/role_scale + home_advantage
-away = (away.attack − home.defence)/role_scale
-       + 0.25 × (away.control − home.control)/role_scale
-rate = base_goals × exp(clip(contrast, −1.5, 1.5)) × segment_minutes/90
+adjusted rating = base rating * (1 - position loss) * era multiplier + chemistry points
 ```
 
-The adapter maps these contrasts into the pinned `fas.performance.team_scoring.TeamScoringModel`, whose `expected_goals` method supplies the rates. The upstream call actually affects simulation. Its parameters are fixed, with `rho=0`; gameplay does not fit historical results. The labelled offline fallback preserves the arithmetic and operation order.
+Starting duo partners gain three chemistry points per distinct linked partner. Nearby players from the same club and decade gain one point per link, up to two such points. The total chemistry bonus is capped at five points per starter. Slot coordinates define nearby links. These links approximate familiarity; a decade card does not establish that two players shared a season. Tags such as Talisman, Rock and Maestro change the matching team line, with caps. Timeless and famous partnerships are curated game design.
 
-Segments cover minutes 0–60 and 60–90. At sixty, compatible fresh substitutes can replace starters; a player taken off cannot return. Fatigue uses stamina and fresh-substitute count, with its declared lower bound. Opponent difficulty multiplies the actual opposing side's rate at either venue. Peer fixtures use no user-opponent boost. Development changes fatigue/difficulty settings, not published attributes.
+## Formation and manager
 
-The showcase samples Poisson shots and Bernoulli goals; goal events equal the reported score. Shot xG is the sampled chance sum; expected goals are the model's pre-simulation rates. Separate seeded shootouts settle decisive drawn ties and do not change match goals. Career decisions add/prevent explicitly labelled chances around the shared surrounding simulation; their interactive effects have no fitted xG estimate.
+Each outfield slot has weights for attack, midfield and defence. The engine takes a weighted average for each line and adds a formation manpower adjustment relative to a reference 4-4-2. A keeper contributes separately to the defence an opposing attack faces. This lets a formation move strength between lines while position penalties discourage arbitrary placement.
 
-Repeated trials and analytic matchup probabilities use the same fatigue/substitution-adjusted rates. Approximate sampling intervals quantify Monte Carlo error, not rating or model uncertainty. Analytic scores 0–16 are renormalized and omitted tail mass is reported. Historical-era normalization and drafted-squad calibration remain unmeasured.
+For each outfield line, before manager and tag effects:
 
-| Output | Affects gameplay? | Evidence |
-| --- | --- | --- |
-| fas fixed expected-goal rates | Yes | Adapter patch-sensitivity and binary rate tests. |
-| Role fit, weights, tactical/chemistry settings, fatigue, difficulty | Yes | Declared game coefficients and constraints. |
-| fas entity mapping and cosine attribute similarity | No | Descriptive provenance/attribute diagnostics. |
-| fas xT, passing networks, progression, event NMF roles | No | Supplied real events; same-match fits are descriptive. |
-| Historical fitted team Poisson assessment | No | Separate earlier training/later evaluation, compared with baseline. |
+```text
+line strength = sum(slot weight * adjusted rating) / sum(slot weights)
+                + 6 * log(sum(slot weights) / reference weight)
+```
 
-## Real-event tools and fitting
+The reference attack, midfield and defence weights are 3.24, 2.86 and 3.90. The defence an opposing attack faces combines 70% of the outfield defence with 30% of the keeper rating. The slot weights, reference values and formation adjustment are game design constants in `app/engine/rate.js`.
 
-Measured events use numeric provider identities, canonical actions and explicit attribution. The adapter preserves possessions/periods and excludes shootouts from match-play analysis. Passing receivers use the next same-team action heuristic; incomplete possession evidence is disclosed. Latent NMF roles are event profiles, not eligibility for named formation slots.
+Manager attack and defence grades scale the corresponding lines. A signature player anywhere in the fifteen-person squad upgrades both grades one step. The notebook shows the effective grades and whether the upgrade was triggered. Manager honours, formation associations and signature lists are curated; grades are not an estimate of a causal coaching effect.
 
-The active local event module retains explicit assisted-shot xA and turnover absorption in its xT estimator. Upstream xT excludes failed moves from its transition denominator. On the narrow tested example they return 0.5 and 1.0 respectively, so upstream is an additional option, not an exact replacement. Simulated shot logs lack spatial actions and cannot yield measured networks or xT.
+The displayed overall rating combines 85% of the starters' mean adjusted rating and 15% of the bench mean, then applies the average manager-grade bonus. Match results use the attack, midfield, defence and keeper strengths directly; overall is a convenient summary. The assignment helper `best` finds the strongest slot assignment on position-adjusted and era-adjusted base ratings, then selects the remaining bench. It does not optimise chemistry or season win probability. Browser choices stay under the player's control.
 
-The separate [2022 World Cup assessment](evaluation.json) fitted 48 group matches before 2022-12-03 and held out 16 knockout matches. Mean Poisson negative log likelihood was 3.876149 for fas versus 3.231891 for the training-mean baseline; outcome Brier 0.628856 versus 0.627384; home-win calibration error 0.314364 versus 0.219779. Lower is better: the fit did not beat the baseline. This small tournament/team-ID assessment does not validate cross-era cards; record scores can include extra time and upstream does not expose optimizer convergence. It is excluded from gameplay.
+## Matches and season
 
-Data: [StatsBomb Open Data](https://github.com/statsbomb/open-data), under its separate data agreement. Raw event/results files remain outside the public repository.
+Each team's goals are drawn from a Poisson distribution. The full-match goal rate before phase-specific fatigue, availability and knockout adjustments is:
 
-![StatsBomb](https://raw.githubusercontent.com/statsbomb/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png)
+```text
+goals expected = decade rate * exp(
+    beta * ((attack - opponent keeper-weighted defence) / 10
+            + midfield weight * (midfield - opponent midfield) / 10)
+    + home advantage
+)
+```
 
-See [INTEGRATION.md](INTEGRATION.md) for module-by-module audit, entity mapping, optimizer incompatibilities and supported event/evaluation inputs.
+Matches include random starter absences, bench cover, fatigue and two substitution windows at minutes 60 and 75, with up to three substitutions in total under the default rules. If no real reserve can cover an absence, a labelled academy filler can appear. Knockout experience adds a small boost in Cup games. Extra time and a simulated penalty shootout resolve tied Cup contests.
+
+The selected match parameter values and their provenance are shown in `data/calibration.json` and the notebook. Calibration uses matching club-season FIFA edition rosters, the engine's best XI in 4-3-3, a neutral manager and no curated tags. Seasons starting in 2014 through 2019 fit the goal-rate parameters; seasons starting in 2020 through 2023 form the holdout. Unmatched clubs and fixtures are excluded from both the model and its training-mean home/away baseline. This is a check of expected goal rates against real results, without the game's random absence and fatigue draws.
+
+The deployed neutral scoring level for both the 2010s and 2020s is frozen from training. Earlier decade rates scale that fitted level by measured historical scoring ratios; the separately measured 2020s scoring level is reported but is not used to tune the holdout. Read the report's actual coverage, errors and baseline comparison before interpreting the fit. Historical club-decade squads and mixed-era drafts are outside this holdout. Formation, chemistry, tags, absence rates, substitutions and cross-era effects remain modelling choices even when the goal-rate fit improves.
+
+The league simulates every fixture and awards three points for a win and one for a draw in every decade. The Cup uses the same format in every decade, with no away-goals rule. Simulated goals, assists, appearances and keeper clean sheets are game events, not historical facts. Player of the season uses the declared score `4 * goals + 3 * assists + 3 * clean sheets + 0.1 * appearances`; it is a game award, not a fitted measure of overall performance. This simplified model does not measure pressing, individual defensive actions, tactics during a match or a player's true ability across eras.
