@@ -3,24 +3,25 @@ from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime,timezone
 import secrets
-from .engine import Config, DraftGame, swap_player, simulate_match
+from .engine import Config, DraftGame, swap_player, simulate_match, card_cost, card_tier
 from .service import integer
 from .modes import stable_seed
 from .render import result_html
 
 
 def _prepare(service, room):
+    cfg=Config(**room.get('config',{}));rules=room.get('draft_rules',{})
     if room.get('pool_policy','independent')=='independent':
-        room['seeds']=[room['seed']+room['round']*10000,room['seed']+room['round']*10000+1]
-        room['awards']=[[p['id'] for p in DraftGame(service.players,room['era'],seed,Config())._awards] for seed in room['seeds']]
+        room['seeds']=[room['seed']+room['round']*10000,room['seed']+room['round']*10000+1] if room['local'] else [stable_seed(f"{room['entropy']}:{room['seed']}:{room['round']}:{seat}") for seat in range(2)]
+        room['awards']=[[p['id'] for p in DraftGame(service.players,room['era'],seed,cfg,**rules)._awards] for seed in room['seeds']]
         return
     # Jointly feasible disjoint squads from one pool. No roster is accepted from a client.
     for attempt in range(50):
-        base=room['seed']+room['round']*10000+attempt*100
+        base=room['seed']+room['round']*10000+attempt*100 if room['local'] else stable_seed(f"{room['entropy']}:{room['seed']}:{room['round']}:{attempt}")
         try:
-            first=DraftGame(service.players,room['era'],base,Config())
+            first=DraftGame(service.players,room['era'],base,cfg,**rules)
             excluded={p['identity'] for p in first._awards}
-            second=DraftGame([p for p in service.players if p['identity'] not in excluded],room['era'],base+1,Config())
+            second=DraftGame([p for p in service.players if p['identity'] not in excluded],room['era'],base+1,cfg,**rules)
             room['seeds']=[base,base+1]
             room['awards']=[[p['id'] for p in g._awards] for g in [first,second]]
             return
@@ -31,8 +32,8 @@ def _prepare(service, room):
 def _run(service,room,seat):
     return dict(token=f'{room["room"]}:{room["round"]}:{seat}',profile=room['profiles'][seat],
                 mode='head-to-head',era=room['era'],requested_era=room['era'],seed=room['seeds'][seat],
-                config=asdict(Config()),spins=room['spins'][seat],swaps=room['swaps'][seat],
-                version=room['version'],revision=room['revision'],campaign={})
+                config=room.get('config',asdict(Config())),spins=room['spins'][seat],swaps=room['swaps'][seat],
+                version=room['version'],revision=room['revision'],campaign={},variant=room.get('variant','original'),draft_rules=room.get('draft_rules',{}))
 
 
 def _team(service,room,seat):
@@ -42,7 +43,7 @@ def _team(service,room,seat):
     if seat==1 and room.get('pool_policy')=='shared-exclusive':
         ids=set(room['awards'][0]);people={p['identity'] for p in players if p['id'] in ids}
         players=[p for p in players if p['identity'] not in people]
-    g=DraftGame(players,room['era'],room['seeds'][seat],Config())
+    g=DraftGame(players,room['era'],room['seeds'][seat],Config(**room.get('config',{})),**room.get('draft_rules',{}))
     for _ in range(room['spins'][seat]):g.spin()
     team=g.lineup() if g.complete else None
     if team:
@@ -57,6 +58,7 @@ def _view(service,room,seat):
         g,t=_team(service,room,i)
         visible=i==seat or reveal or room['local']
         seats.append(dict(seat=i,joined=room['profiles'][i] is not None,ready=room['ready'][i],count=len(g.squad),spins=len(g.batches),
+                          salary=dict(cap=g.config.salary_cap,spent=sum(card_cost(p) for p in g.squad),tiers={tier:sum(card_tier(p)==tier for p in g.squad) for tier in ['S','A','B']}) if visible and room.get('variant')=='salary-cap' else None,
                           manager=g.manager if visible else None,formation=g.formation if visible else None,
                           squad=[dict(id=p['id'],identity=p['identity'],name=p['name'],overall=p['overall'],positions=p['positions'],era=p['era']) for p in g.squad] if visible else [],
                           cards=[card_html(p) for p in (g.batches[-1] if g.batches else [])] if visible else [],
@@ -67,7 +69,7 @@ def _view(service,room,seat):
     return dict(room=room['room'],seat=seat,local=room['local'],revision=room['revision'],turn=room['turn'] if room['local'] else None,
                 phase=phase,round=room['round'],era=room['era'],seats=seats,result=room['result'],result_html=result_html(room['result']) if room['result'] else '',
                 rematch_votes=room['rematch_votes'],deadline=room.get('deadline'),time_limit=room['time_limit'],version=room['version'],
-                pool_policy=room.get('pool_policy','independent'),
+                pool_policy=room.get('pool_policy','independent'),variant=room.get('variant','original'),
                 label='Private room on this server. Two humans; simultaneous timed drafts online, alternating handovers locally. Each squad has fifteen distinct people. A direct neutral football match decides the result.')
 
 
@@ -83,14 +85,11 @@ def _play(service,room):
 
 def room_call(service,path,body):
     allowed={'profile','room','credential','action_id','revision'}
-    allowed|={'era','seed','local','time_limit','variant','pool_policy'} if path=='room/create' else {'slot','bench_id'} if path=='room/swap' else set()
+    allowed|={'era','seed','local','time_limit','variant','pool_policy','salary_cap'} if path=='room/create' else {'slot','bench_id'} if path=='room/swap' else set()
     if set(body)-allowed:raise ValueError('Only server-owned draft actions are accepted; client rosters and results are rejected.')
     if path=='room/create':
         p=service._profile(body.get('profile'),create=True)
         era=body.get('era','2020s')
-        if era=='Randomize Era':
-            from .engine import choose_era
-            era=choose_era(service.players,integer(body.get('seed',42)))
         code=secrets.token_hex(3).upper()
         while any(r['room']==code for r in service.store.all('room')):code=secrets.token_hex(3).upper()
         local=body.get('local',False)
@@ -100,9 +99,15 @@ def room_call(service,path,body):
         guest=service._profile(create=True)['profile'] if local else None
         policy=body.get('pool_policy','independent')
         if policy not in ['independent','shared-exclusive']:raise ValueError('Choose independent or shared-exclusive draft pools.')
+        variant=body.get('variant','original')
+        if variant not in ['original','salary-cap']:raise ValueError('Unsupported draft variant.')
+        cfg=Config(salary_cap=body.get('salary_cap',200)) if variant=='salary-cap' else Config()
+        if era=='Randomize Era':
+            from .engine import choose_era
+            era=choose_era(service.players,integer(body.get('seed',42)),config=cfg,draft_rules={'tier_quotas':{'S':2,'A':4,'B':9}} if variant=='salary-cap' else {})
         room=dict(room=code,local=local,profiles=[p['profile'],guest],credentials=[secrets.token_urlsafe(24),secrets.token_urlsafe(24)],
                   era=era,seed=integer(body.get('seed',42)),time_limit=timing,round=0,revision=0,turn=0,spins=[0,0],swaps=[[],[]],
-                  ready=[False,False],rematch_votes=[False,False],result=None,version=service.version,actions={},started=local,pool_policy=policy)
+                  ready=[False,False],rematch_votes=[False,False],result=None,version=service.version,actions={},started=local,entropy=secrets.token_urlsafe(24),pool_policy=policy,variant=variant,config=asdict(cfg),draft_rules={'tier_quotas':{'S':2,'A':4,'B':9}} if variant=='salary-cap' else {})
         _prepare(service,room);service.store.put('room',code,room)
         view=_view(service,room,0);view['credential']=room['credentials'][0]
         if local:view['local_credentials']=room['credentials']
@@ -123,14 +128,18 @@ def room_call(service,path,body):
     if credential not in room['credentials']:raise ValueError('This credential does not own a seat in this room.')
     seat=room['credentials'].index(credential)
     if room['profiles'][seat] is None:raise ValueError('Join this room before playing.')
+    timed_out=False
     if room.get('deadline') and datetime.now(timezone.utc).timestamp()>=room['deadline'] and not room['result']:
         for i in range(2):
             room['spins'][i]=5;room['ready'][i]=True
-            game,_=_team(service,room,i);service._collect(room['profiles'][i],game)
+            game,_=_team(service,room,i);service._record_draft(room['profiles'][i],game,f"room:{room['room']}:{room['round']}:{i}")
         room['revision']+=1;_play(service,room);service.store.put('room',room['room'],room)
+        timed_out=True
     if path=='room/state':return _view(service,room,seat)
     prior,digest=service._dedup(room,body,path)
     if prior is not None:return prior
+    if timed_out and path in ['room/start','room/spin','room/swap','room/ready']:
+        return service._save_action('room',room,body,digest,_view(service,room,seat))
     if 'revision' in body and body['revision']!=room['revision']:raise ValueError('Room changed. Reconnect before acting.')
     if path=='room/start':
         if seat!=0 or not all(room['profiles']):raise ValueError('The host starts after both humans have joined.')
@@ -142,7 +151,7 @@ def room_call(service,path,body):
         if room['local'] and seat!=room['turn']:raise ValueError('Pass the device to the other human.')
         room['spins'][seat]+=1
         if room['local']:room['turn']=1-seat
-        g,_=_team(service,room,seat);service._collect(room['profiles'][seat],g)
+        g,_=_team(service,room,seat);service._record_draft(room['profiles'][seat],g,f"room:{room['room']}:{room['round']}:{seat}")
     elif path=='room/swap':
         if room['ready'][seat] or room['result']:raise ValueError('The submitted lineup is locked.')
         _,team=_team(service,room,seat)

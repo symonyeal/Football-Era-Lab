@@ -1,0 +1,8 @@
+{
+  "schedule": "UTC Monday to next Monday",
+  "matches": 10,
+  "era_weights": {"Legends": 1, "1990s": 1, "2000s": 1, "2010s": 1, "2020s": 1},
+  "config": {"chemistry_weight": 4.0, "tactical_weight": 5.0, "opponent_difficulty": 1.5},
+  "draft_rules": {"tier_quotas": {"S": 2, "A": 4, "B": 9}},
+  "notes": "Football tier adaptation for fifteen players: S >= 90, A 87-89, B < 87. All contestants use the same seeded draft and ten generated rivals. Historical basketball tier quotas and bonuses are not copied. Edition ratings and model assumptions are not fitted historical performance."
+}

@@ -37,6 +37,31 @@ class GameTests(unittest.TestCase):
                 self.assertTrue(all(s['fit']>=.85 for s in team['starters']))
                 self.assertIn(team['formation'],g.manager['formations'])
 
+    def test_reserves_cover_actual_formation_roles_as_four_distinct_people(self):
+        from itertools import permutations
+        from era_eleven.engine import position_fit, DEF, MID, ATT
+        for era,seed in [('2010s',0),('All eras',7),('2020s',67),('2020s',97)]:
+            g=DraftGame(self.players,era=era,seed=seed)
+            for _ in range(5):g.spin()
+            team=g.lineup();roles={s['slot'] for s in team['starters']}
+            groups=[{'GK'},DEF,MID,ATT]
+            legal=lambda p,group:any(position_fit(p,s)>=g.config.min_fit for s in roles&group)
+            self.assertTrue(any(all(legal(p,group) for p,group in zip(order,groups)) for order in permutations(team['bench'])),(era,seed,[p['name'] for p in team['bench']]))
+
+    def test_difficulty_follows_opponent_at_either_venue(self):
+        from dataclasses import replace
+        from era_eleven.engine import match_rates
+        g=DraftGame(self.players,seed=42)
+        for _ in range(5):g.spin()
+        team=g.lineup();normal=match_rates(team,team,home_advantage=0)
+        difficult=replace(g.config,opponent_difficulty=2)
+        away=match_rates(team,team,difficult,home_advantage=0,opponent_side='away')
+        home=match_rates(team,team,difficult,home_advantage=0,opponent_side='home')
+        self.assertEqual(away['home_xg'],normal['home_xg'])
+        self.assertEqual(home['away_xg'],normal['away_xg'])
+        self.assertEqual(away['away_xg'],2*normal['away_xg'])
+        self.assertEqual(home['home_xg'],2*normal['home_xg'])
+
     def test_seed_replays_manager_and_draft(self):
         a=DraftGame(self.players,seed=71)
         b=DraftGame(list(reversed(self.players)),seed=71)

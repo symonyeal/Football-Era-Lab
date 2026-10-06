@@ -6,6 +6,7 @@ card. Progression and d20 modifiers are game rules, not measured player facts.
 """
 from copy import deepcopy
 import hashlib
+from html import escape
 import json
 import random
 import secrets
@@ -14,7 +15,7 @@ from .engine import Config, position_fit, role_score, rate_team, simulate_match
 from .modes import generated_team, schedule, stable_seed, standings
 
 
-CAREER_VERSION = 'career-1'
+CAREER_VERSION = 'career-2'
 POSITIONS = ('ST', 'CM', 'CB', 'GK')
 PLAYS = ('shoot', 'pass', 'dribble', 'tackle')
 SKILLS = (*PLAYS, 'conditioning')
@@ -24,15 +25,17 @@ ATTRIBUTES = {'shoot': 'shooting', 'pass': 'passing', 'dribble': 'dribbling',
               'tackle': 'defending', 'conditioning': 'physical'}
 KIT = {'boots': 24, 'shin-pads': 20, 'recovery': 8}
 MINUTES = (12, 35, 62, 84)
-NAMES = ['Your Eleven'] + [f'Generated Club {i}' for i in range(1, 8)]
-BOOKS = ('First contract', 'Finding space', 'A place in the side', 'Reading play',
-         'Leading the press', 'A complete player', 'Club captain', 'Career complete')
+NAMES = [f'Generated Club {i}' for i in range(8)]
+BOOKS = ('First contract', 'Finding space', 'Reading the game', 'Making chances',
+         'Defending the lead', 'Setting the tempo', 'Leading by example', 'Final push')
 ADAPTATION = (
     'Football adaptation of the reference single-player d20 career: four decisions '
     'per match, eight generated clubs, fourteen home-and-away rounds per season, '
     'then further seasons until level 20. The shared football simulator supplies '
     'surrounding play. D20 actions add chances or prevent existing goals; training, '
-    'habits, playbooks, kit, trust, fatigue and injuries affect play. No historical '
+    'habits, playbooks, kit, trust, fatigue and injuries affect play. Costed agent '
+    'negotiations can transfer the avatar between the eight generated clubs. '
+    'Retirement is available between matches, with a saved career card. No historical '
     'league table, fitted career model, purchases or real-money rewards are implied.'
 )
 RULES = (
@@ -40,7 +43,7 @@ RULES = (
     'opponent defence/control. A natural 1 fails and a natural 20 succeeds. Shoot '
     'then contests the keeper save; pass can create a teammate chance; dribble '
     'prepares the next action; tackle contests a defensive save and can prevent '
-    'one existing opposition goal. Successful actions drain opponent Control. '
+    'one existing opposition goal in its upcoming stretch. Successful actions drain opponent Control. '
     'At zero Control, the next successful shoot/pass gains a chance and Control '
     'resets. Momentum helps the next action. Repeating a play attracts a -2 '
     'modifier after its second use. Every play costs Legs; a failed physical save '
@@ -48,11 +51,26 @@ RULES = (
     '8 + 4 per existing rank, with five ranks per skill and three sessions between '
     'matches. Boots cost 24, shin pads 20, recovery supplies 8. Rest costs 6 and '
     'heals fatigue and injury. Coach/teammate/agent conversations cost 6/4/5 and '
-    'are each available once between fixtures. Playbook changes cost zero. '
+    'are each available once between fixtures. Transfer negotiations cost 15 '
+    'and use d20 against 12, once between fixtures, keeping avatar progression. '
+    'Playbook changes and retirement cost zero. '
     'Every completed match grants 18 XP, +3 per successful action, +4 per added '
     'goal, +8 for a win or +4 for a draw. Every 40 XP adds a level, capped at 20. '
     'Credits: 24 per match, +8 win/+4 draw, +2 per successful action. Office '
-    'actions give no XP. Participation alone reaches level 20 within 43 fixtures.'
+    'actions give no XP. Participation alone reaches level 20 within 43 fixtures. '
+    'Attribute modifier is floor((attribute-60)/8), plus skill rank, selected habit '
+    '(+1 for its action), coach trust (+0 to +3), playbook (+2 to pass/possession, '
+    'shoot or dribble/counter, tackle/press), boots (+1 shoot/dribble), shin pads '
+    '(+1 tackle and physical save), teammate agreement (+2 pass next match), '
+    'Momentum (+1 per four, maximum +3), prior dribble (+2 next action), minus '
+    '2 each for Legs below 30, injury, and a play already used twice. A keeper '
+    'uses reflexes/positioning for tackle and takes -3 on shoot/dribble. Press '
+    'costs two extra Legs per action. Each training rank adds 2 to its avatar '
+    'attribute; conditioning adds 4 maximum Legs. Eight Legs recover before '
+    'each fixture, and twenty between seasons. Momentum rises 4 on success '
+    'and falls 3 on failure; successful actions drain 3–8 plus skill rank Control. '
+    'A failed physical reply save costs 5 extra Legs. Chapters mark earned '
+    'level milestones; they do not reproduce the reference quest graph.'
 )
 
 
@@ -69,11 +87,64 @@ def _max_legs(career):
     return 80 + 4 * career['skills']['conditioning']
 
 
+def _earn(career, key, name, description):
+    if any(a['id'] == key for a in career['earned_awards']):
+        return
+    award = dict(id=key, name=name, description=description, level=career['level'],
+                 season=career['season'], round=career['round'])
+    career['earned_awards'].append(award)
+    _log(career, f'Milestone: {name}. {description}')
+
+
+def _summary(career):
+    return dict(name=career['name'], position=career['position'], club=NAMES[career['club']],
+                level=career['level'], xp=career['xp'], season=career['season'],
+                ending=career['ending'], complete=career['complete'],
+                stat_scope='Individual goals, assists and preventions count controlled d20 decisions; team totals also include surrounding simulation.',
+                **deepcopy(career['career_stats']))
+
+
+def _share_svg(career):
+    stats = career['career_stats']
+    lines = [career['name'], f"{career['position']} · {NAMES[career['club']]} · {career['era']}",
+             f"Level {career['level']}/20 · {career['xp']} XP · {career['ending'].title()}",
+             f"{stats['matches']} matches · {stats['wins']}W {stats['draws']}D {stats['losses']}L",
+             f"Team goals {stats['goals_for']}:{stats['goals_against']} · {stats['seasons_completed']} full seasons",
+             f"D20 goals {stats['player_goals']} · assists {stats['assists']} · goals prevented {stats['prevented_goals']}",
+             f"{len(career['earned_awards'])} milestones · {stats['transfers']} transfers",
+             'Simulated career · generated clubs · uncalibrated d20 rules']
+    title_size = max(16, min(28, 650 // len(career['name'])))
+    text = ''.join(f'<text x="40" y="{100+i*40}" fill="{"#f4d47b" if i==0 else "#f4f5e8"}" '
+                   f'font-family="Arial, sans-serif" font-size="{title_size if i==0 else 17}">{escape(line)}</text>'
+                   for i, line in enumerate(lines))
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440">'
+            '<title>Saved football career</title><rect width="760" height="440" rx="20" fill="#102f27"/>'
+            '<rect x="18" y="18" width="724" height="404" rx="12" fill="none" stroke="#d3b968"/>'
+            '<text x="40" y="50" fill="#d3b968" font-family="Arial, sans-serif" font-size="14">ERA ELEVEN CAREER</text>'
+            + text + '</svg>')
+
+
+def _transfer_slot(career, club):
+    source = career['avatar_source']
+    candidates = [i for i, s in enumerate(career['teams'][club]['starters'])
+                  if position_fit(source, s['slot']) >= Config().min_fit]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda i: position_fit({'positions': [career['position']]},
+                                                       career['teams'][club]['starters'][i]['slot']))
+
+
+def _retire(career):
+    career.update(complete=True, phase='complete', ending='retired')
+    _earn(career, 'retired', 'Retired', f"Career ended after {career['career_stats']['matches']} actual simulated fixtures at level {career['level']}.")
+
+
 def _avatar_team(career):
     """Progress only the fictional avatar; preserve the source card unchanged."""
-    team = deepcopy(career['teams'][0])
+    team = deepcopy(career['teams'][career['club']])
     slot = team['starters'][career['slot_index']]
-    player = slot['player']
+    player = deepcopy(career['avatar_source'])
+    slot['player'] = player
     player['name'] = career['name']
     player['id'] = 'career-avatar-' + str(career['seed'])
     player['identity'] = player['id']
@@ -130,6 +201,11 @@ def _options(career):
                          enabled=office and useful and career['credits'] >= cost))
     talk.extend(dict(value=key, label=f'{key.title()} playbook', cost=0,
                      enabled=office and career['playbook'] != key) for key in PLAYBOOKS)
+    talk.extend(dict(value=f'transfer-{i}', label=f'Agent: transfer to {NAMES[i]} (d20 versus 12)', cost=15,
+                     enabled=office and career['credits'] >= 15 and 'transfer' not in career['office_used']
+                     and _transfer_slot(career, i) is not None)
+                for i in range(8) if i != career['club'])
+    talk.append(dict(value='retire', label='Retire and save this career record', cost=0, enabled=office))
     choices = [dict(value=key, label={'shoot': 'Shoot: beat a d20 keeper save; 7 Legs',
                                      'pass': 'Pass: create a teammate chance; 4 Legs',
                                      'dribble': 'Dribble: prepare the next play; 8 Legs',
@@ -142,11 +218,19 @@ def _state(career):
     fields = ('career_token', 'name', 'position', 'era', 'level', 'xp', 'credits',
               'legs', 'control', 'momentum', 'stretch', 'phase', 'season', 'round',
               'log', 'skills', 'habits', 'inventory', 'complete', 'result',
-              'playbook', 'basis', 'injury', 'trust', 'revision')
+              'playbook', 'basis', 'injury', 'trust', 'revision', 'club', 'ending', 'earned_awards')
     state = {key: deepcopy(career[key]) for key in fields}
-    state.update(max_legs=_max_legs(career), standings=standings(career['fixtures'], NAMES),
+    table = standings(career['fixtures'], NAMES)
+    for row in table:
+        row['is_your_club'] = row['team'] == career['club']
+    teammates = _avatar_team(career)
+    state.update(max_legs=_max_legs(career), standings=table,
                  adaptation=ADAPTATION, rules=RULES, version=career['version'],
                  book=BOOKS[min(7, (career['level'] - 1) * 8 // 20)],
+                 book_scope='Level-based milestones; no quest graph', club_name=NAMES[career['club']],
+                 teammates=[dict(id=s['player']['id'], name=s['player']['name'], slot=s['slot'])
+                            for i, s in enumerate(teammates['starters']) if i != career['slot_index']],
+                 summary=_summary(career), share_svg=_share_svg(career),
                  rounds_per_season=14, season_history=deepcopy(career['season_history']),
                  opponent_kind='Generated club from era-eligible source cards',
                  **_options(career))
@@ -187,11 +271,11 @@ def _create(service, body, profile):
     if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**63:
         raise ValueError('Seed must be an integer from 0 to 9223372036854775807.')
     era = body.get('era', '2020s')
-    if era not in service.eligibility or not service.eligibility[era]['eligible']:
+    if not isinstance(era, str) or era not in service.eligibility or not service.eligibility[era]['eligible']:
         raise ValueError('Choose an era with complete football squad coverage.')
     habit = body.get('habit', 'teamwork')
     playbook = body.get('playbook', 'possession')
-    if habit not in HABITS or playbook not in PLAYBOOKS:
+    if not isinstance(habit, str) or habit not in HABITS or playbook not in PLAYBOOKS:
         raise ValueError('Unsupported habit or playbook.')
     teams = [generated_team(service.players, era, stable_seed(f'{seed}:career-club:{i}'), Config()) for i in range(8)]
     # Source attributes and actual starting role remain disclosed. A source card
@@ -211,8 +295,13 @@ def _create(service, body, profile):
                              positions=source['positions'], role=teams[0]['starters'][index]['slot'],
                              lineage=source['lineage'], label='Source attributes for a fictional avatar; progression is simulated'),
                   fixtures=[], season_history=[], log=[], actions={}, revision=0,
-                  complete=False, result=None, match=None, points=0)
-    _log(career, f"Signed for Your Eleven as {position}. Starting role: {career['basis']['role']}. All rival clubs are generated.")
+                  complete=False, result=None, match=None, points=0, club=0, ending='active',
+                  avatar_source=deepcopy(source), earned_awards=[],
+                  career_stats=dict(matches=0, wins=0, draws=0, losses=0, goals_for=0, goals_against=0,
+                                    player_goals=0, assists=0, prevented_goals=0, successful_actions=0,
+                                    transfers=0, seasons_completed=0))
+    _log(career, f"Signed for Generated Club 0 as {position}. Starting role: {career['basis']['role']}. All rival clubs are generated.")
+    _earn(career, 'chapter-0', BOOKS[0], 'Signed the first contract at level 1; a football milestone chapter.')
     response = _state(career)
     service.store.put('career', token, career)
     if request_key:
@@ -233,20 +322,21 @@ def _start(career):
         career['legs'] = min(_max_legs(career), career['legs'] + 15)
         _log(career, 'Recovery supply used: +15 Legs, capped at your maximum.')
     career['legs'] = min(_max_legs(career), career['legs'] + 8)
-    pair = next(p for p in schedule()[career['round']] if 0 in p)
+    club = career['club']
+    pair = next(p for p in schedule()[career['round']] if club in p)
     h, a = pair
-    opponent = a if h == 0 else h
+    opponent = a if h == club else h
     team = _avatar_team(career)
     rival = career['teams'][opponent]
     # Avatar perspective throughout the career UI. Home advantage changes sign
     # for away games; standings are converted back to the scheduled venue.
     baseline = simulate_match(team, rival, seed=_seed(career, 'surrounding'),
-                              home_advantage=.12 if h == 0 else -.12)
+                              home_advantage=.12 if h == club else -.12)
     career['match'] = dict(home=h, away=a, opponent=opponent, surrounding=baseline,
                            team=team, rating=rate_team(rival), actions=[],
-                           interactive_goals=0, prevented_goals=0, setup=0)
+                           interactive_goals=0, prevented_goals=0, prevented_indices=[], setup=0)
     career.update(phase='match', stretch=0, control=24, momentum=0)
-    _log(career, f"Round {career['round'] + 1}: Your Eleven v Generated Club {opponent}. Four interactive stretches.")
+    _log(career, f"Round {career['round'] + 1}: {NAMES[club]} v Generated Club {opponent}. Four interactive stretches.")
 
 
 def _modifier(career, choice, player):
@@ -291,6 +381,7 @@ def _action(career, choice):
     career['legs'] = max(0, career['legs'] - cost)
     goal = False
     prevented = False
+    prevented_minute = None
     save_roll = None
     save_total = None
     damage = 0
@@ -313,8 +404,15 @@ def _action(career, choice):
             save_roll = rng.randint(1, 20)
             save_total = save_roll + modifier
             opponent_attack = 12 + int((match['rating']['attack'] - 75) // 12)
-            remaining = match['surrounding']['away_goals'] - match['prevented_goals']
-            prevented = remaining > 0 and (save_roll == 20 or save_roll != 1 and save_total >= opponent_attack)
+            begin = MINUTES[career['stretch']]
+            end = MINUTES[career['stretch']+1] if career['stretch'] < 3 else 91
+            candidate = next((i for i, e in enumerate(match['surrounding']['events'])
+                              if e['side'] == 'away' and e['type'] == 'Goal'
+                              and begin <= e['minute'] < end and i not in match['prevented_indices']), None)
+            prevented = candidate is not None and (save_roll == 20 or save_roll != 1 and save_total >= opponent_attack)
+            if prevented:
+                match['prevented_indices'].append(candidate)
+                prevented_minute = match['surrounding']['events'][candidate]['minute']
         if career['control'] == 0 and choice in ('shoot', 'pass'):
             goal = True
             career['control'] = 24
@@ -334,7 +432,7 @@ def _action(career, choice):
     record = dict(choice=choice, minute=MINUTES[career['stretch']], roll=roll,
                   modifier=modifier, total=roll + modifier, difficulty=difficulty,
                   success=success, save_roll=save_roll, save_total=save_total,
-                  control_damage=damage, goal=goal, prevented_goal=prevented,
+                  control_damage=damage, goal=goal, prevented_goal=prevented, prevented_minute=prevented_minute,
                   legs_cost=cost, legs=career['legs'], control=career['control'],
                   momentum=career['momentum'], injury=career['injury'])
     record['message'] = (f"{record['minute']}': {choice.title()} d20 {roll} + {modifier} versus {difficulty}: "
@@ -353,16 +451,13 @@ def _resolve(service, career):
                   away_goals=result['away_goals'] - match['prevented_goals'],
                   interactive_goals=match['interactive_goals'], prevented_goals=match['prevented_goals'],
                   career_actions=deepcopy(match['actions']),
-                  venue='home' if match['home'] == 0 else 'away',
+                  venue='home' if match['home'] == career['club'] else 'away', team_name=NAMES[career['club']],
                   opponent=f"Generated Club {match['opponent']}",
                   label='Simulated career match: shared-engine surrounding play plus four d20 decisions; uncalibrated game rules')
     # Retain prevented attempts as saved shots; add interactive chances to the
     # match event ledger. Original xG belongs to surrounding play only.
-    remaining = match['prevented_goals']
-    for event in result['events']:
-        if remaining and event['side'] == 'away' and event['type'] == 'Goal':
-            event.update(type='Shot', career_prevented=True)
-            remaining -= 1
+    for index in match['prevented_indices']:
+        result['events'][index].update(type='Shot', career_prevented=True)
     for action in match['actions']:
         if action['goal']:
             result['events'].append(dict(minute=action['minute'], side='home', type='Goal',
@@ -373,9 +468,9 @@ def _resolve(service, career):
     result.update(goals_for=result['home_goals'], goals_against=result['away_goals'],
                   xg_scope='Shared-engine surrounding play only; interactive decisions have no fitted xG estimate')
     h, a = match['home'], match['away']
-    user_home = h == 0
+    user_home = h == career['club']
     for home, away in schedule()[career['round']]:
-        if 0 in (home, away):
+        if career['club'] in (home, away):
             hg, ag = (result['home_goals'], result['away_goals']) if user_home else (result['away_goals'], result['home_goals'])
         else:
             other = simulate_match(career['teams'][home], career['teams'][away],
@@ -390,27 +485,53 @@ def _resolve(service, career):
     credits = 24 + 2 * successes + (8 if win else 4 if draw else 0)
     career['xp'] += xp
     career['credits'] += credits
+    old_level = career['level']
     career['level'] = min(20, 1 + career['xp'] // 40)
     career['points'] += 3 if win else 1 if draw else 0
     career['round'] += 1
     career['injury'] = max(0, career['injury'] - 1)
     career['complete'] = career['level'] == 20
     career['phase'] = 'complete' if career['complete'] else 'office'
+    career['ending'] = 'level-20' if career['complete'] else 'active'
     career['result'] = result
     career['buffs'] = {}
     career['office_used'] = []
     career['training_count'] = 0
     career['match'] = None
+    stats = career['career_stats']
+    stats['matches'] += 1
+    stats['wins' if win else 'draws' if draw else 'losses'] += 1
+    stats['goals_for'] += result['home_goals']
+    stats['goals_against'] += result['away_goals']
+    stats['player_goals'] += sum(a['goal'] and a['choice'] == 'shoot' for a in match['actions'])
+    stats['assists'] += sum(a['goal'] and a['choice'] == 'pass' for a in match['actions'])
+    stats['prevented_goals'] += match['prevented_goals']
+    stats['successful_actions'] += successes
     _log(career, f"Full time {result['home_goals']}–{result['away_goals']}. +{xp} XP, +{credits} credits. Level {career['level']}.")
+    _earn(career, 'first-fixture', 'First full fixture', 'Completed four interactive stretches and the surrounding match simulation.')
+    for value, key, name in [(stats['player_goals'], 'first-goal', 'First player goal'),
+                              (stats['assists'], 'first-assist', 'First assist'),
+                              (stats['prevented_goals'], 'first-save', 'First goal prevented')]:
+        if value:
+            _earn(career, key, name, 'Earned from an actual successful d20 action in a resolved fixture.')
+    for level in range(old_level + 1, career['level'] + 1):
+        _earn(career, f'level-{level}', f'Level {level} promotion', f'Reached at least {(level-1)*40} XP from actual matches and action outcomes.')
+        chapter = min(7, (level - 1) * 8 // 20)
+        _earn(career, f'chapter-{chapter}', BOOKS[chapter], f'Entered the level-based football chapter at level {level}; no reference quest-completion claim.')
+    if stats['matches'] >= 10:
+        _earn(career, 'ten-starts', 'Ten starts', 'Completed ten actual simulated career fixtures.')
     service._award(dict(token=career['career_token'], profile=career['profile'], mode='career',
                         era=career['era'], score=career['points']), result,
                    key=f"career:{career['career_token']}:{career['season']}:{career['round']}", mode='career')
     if career['round'] == 14:
+        stats['seasons_completed'] += 1
+        _earn(career, f'season-{career["season"]}', f'Season {career["season"]} complete', 'All eight generated clubs completed fourteen home-and-away fixtures.')
         profile = service._profile(career['profile'])
         if 'league' not in profile['earned']:
             profile['earned'].append('league')
             service.store.put('profile', profile['profile'], profile)
     if career['complete']:
+        _earn(career, 'career-complete', 'Level 20 career', f"Completed at level 20 after {stats['matches']} actual simulated fixtures.")
         _log(career, 'Level 20 reached. Career complete; your final season table and match record are saved.')
 
 
@@ -431,16 +552,26 @@ def _office(career, route, choice):
     elif choice in PLAYBOOKS:
         career['playbook'] = choice
         _log(career, f"Changed to the {choice} playbook; tactical action modifiers and shared-engine manager proxies change.")
+    elif choice == 'retire':
+        _retire(career)
     elif choice == 'rest':
         career.update(legs=_max_legs(career), injury=0)
         _log(career, 'Rested for 6 credits: Legs restored and injury healed.')
     else:
-        career['office_used'].append(choice)
+        transfer = choice.startswith('transfer-')
+        career['office_used'].append('transfer' if transfer else choice)
         roll = random.Random(_seed(career, f'talk:{choice}')).randint(1, 20)
         modifier = career['skills']['pass'] + int('teamwork' in career['habits']) + career['trust']
         success = roll == 20 or roll != 1 and roll + modifier >= 12
         if success:
-            if choice == 'coach':
+            if transfer:
+                club = int(choice.split('-')[1])
+                career['club'] = club
+                career['slot_index'] = _transfer_slot(career, club)
+                career['basis']['role'] = career['teams'][club]['starters'][career['slot_index']]['slot']
+                career['career_stats']['transfers'] += 1
+                _earn(career, f'transfer-{career["career_stats"]["transfers"]}', 'New club contract', f'Transferred to {NAMES[club]}; future fixtures use its generated teammates.')
+            elif choice == 'coach':
                 career['trust'] = min(3, career['trust'] + 1)
             elif choice == 'teammate':
                 career['buffs']['teammate'] = 2
@@ -455,9 +586,12 @@ def career_call(service, path, body):
     """Called inside GameService's lock and SQLite transaction."""
     path = path.strip('/')
     route = path.removeprefix('league/')
-    if route not in ('create', 'state', 'list', 'next', 'action', 'train', 'buy', 'talk'):
+    if route not in ('create', 'state', 'list', 'next', 'action', 'train', 'buy', 'talk', 'retire', 'share'):
         raise ValueError('Unknown career endpoint.')
-    profile = service._profile(body.get('profile'))
+    credential = body.get('profile')
+    if not isinstance(credential, str) or not 1 <= len(credential) <= 100:
+        raise ValueError('A profile credential is required.')
+    profile = service._profile(credential)
     if route == 'create':
         return _create(service, body, profile)
     if route == 'list':
@@ -469,6 +603,10 @@ def career_call(service, path, body):
     if route in ('action', 'train', 'buy', 'talk'):
         allowed += ('choice',)
     _check_fields(body, allowed)
+    if 'revision' in body and (isinstance(body['revision'], bool)
+                               or not isinstance(body['revision'], int)
+                               or body['revision'] < 0):
+        raise ValueError('Revision must be a nonnegative integer.')
     token = body.get('career_token')
     if not isinstance(token, str) or not 1 <= len(token) <= 100:
         raise ValueError('A saved career token is required.')
@@ -479,6 +617,8 @@ def career_call(service, path, body):
         raise ValueError('This career uses a different data, model or rules version. Use its original release or start a new career.')
     if route == 'state':
         return _state(career)
+    if route == 'share':
+        return dict(summary=_summary(career), svg=_share_svg(career), scope=ADAPTATION)
     prior, digest = service._dedup(career, body, path)
     if prior is not None:
         return prior
@@ -496,6 +636,10 @@ def career_call(service, path, body):
         _action(career, body['choice'])
         if career['stretch'] == 4:
             _resolve(service, career)
+    elif route == 'retire':
+        if career['phase'] != 'office':
+            raise ValueError('Retire between matches, after completing the four decisions.')
+        _retire(career)
     else:
         if career['phase'] != 'office':
             raise ValueError('Training, shopping and conversations are available between matches.')

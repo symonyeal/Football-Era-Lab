@@ -13,8 +13,8 @@ from .modes import RULES_VERSION, stable_seed, generated_team, campaign_progress
 from .persistence import Store
 from .render import card_html, team_html, result_html
 
-SETTINGS=dict(era_fx=True,reduce_motion=False,sound=False,theme='stadium',speed='normal',auto_subs=True)
-ACHIEVEMENTS=[('first-draft','First fifteen','Complete a five-spin draft'),('first-win','First victory','Win a recorded match'),('collector','The collector','Collect fifty distinct cards'),('era-tour','Era traveller','Complete drafts in five different pools'),('gauntlet','Through the ages','Complete the Era Gauntlet'),('league','Full season','Complete fourteen League rounds'),('two-humans','Derby day','Finish a match against another human')]
+SETTINGS=dict(era_fx=True,reduce_motion=False,sound=False,theme='stadium',speed='normal',auto_subs=True,appearance='dark',backdrop='stadium',volume=.5,roster_sort='rating',screen_fx=True,lineup_view='pitch')
+ACHIEVEMENTS=[('first-draft','First fifteen','Complete a five-spin draft'),('first-win','First victory','Win a recorded match'),('collector','The collector','Collect fifty distinct cards'),('era-tour','Era traveller','Complete drafts in five different pools'),('gauntlet','Through the ages','Complete the Era Gauntlet'),('league','Full season','Complete fourteen League rounds'),('two-humans','Derby day','Finish a match against another human'),('mini-player','Extra time','Finish a mini game'),('mini-perfect','Perfect comparisons','Win all fifteen Higher or Lower comparisons'),('circuit','Tournament traveller','Finish a tournament circuit')]
 
 
 def integer(value, name='Seed', maximum=2**63-1):
@@ -24,20 +24,21 @@ def integer(value, name='Seed', maximum=2**63-1):
 
 
 class GameService:
-    def __init__(self, players=None, state_path=None, today=None):
+    def __init__(self, players=None, state_path=None, today=None, challenge_rules=None):
         self.players=players or load_players()
         self.store=Store(state_path or ROOT/'data'/'local'/'game.sqlite')
         self.lock=RLock();self.today=today;self.draft_cache=OrderedDict()
         raw=json.dumps(self.players,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()
         self.data_hash=hashlib.sha256(raw).hexdigest()
+        self.challenge_rules=deepcopy(challenge_rules) if challenge_rules is not None else json.loads((ROOT/'data'/'challenge_rules.json').read_text(encoding='utf-8'))
         from .analytics import backend_status
         self.backend=backend_status()
-        fingerprint=hashlib.sha256(json.dumps(dict(data=self.data_hash,rules=RULES_VERSION,model=self.backend['model_version'],pin=self.backend['dependency_pin'],backend=self.backend['backend'],verified=self.backend['scoring_module_matches_audit']),sort_keys=True).encode()).hexdigest()[:20]
+        fingerprint=hashlib.sha256(json.dumps(dict(data=self.data_hash,rules=RULES_VERSION,challenge=self.challenge_rules,model=self.backend['model_version'],pin=self.backend['dependency_pin'],backend=self.backend['backend'],verified=self.backend['scoring_module_matches_audit']),sort_keys=True).encode()).hexdigest()[:20]
         self.version=f'{RULES_VERSION}:{fingerprint}'
         self.eligibility=era_eligibility(self.players)
 
     def call(self, path, body=None):
-        body=body or {}
+        body={} if body is None else body
         if not isinstance(body,dict):raise ValueError('Send a JSON object.')
         with self.lock,self.store.connection:
             return deepcopy(self._call(path,body))
@@ -51,7 +52,7 @@ class GameService:
 
     def _progress(self, p):
         ids=set(p['collection']);cards=[dict(id=x['id'],name=x['name'],era=x['era'],overall=x['overall'],positions=x['positions'],lineage=x['lineage']) for x in self.players if x['id'] in ids]
-        return dict(profile=p['profile'],display_name=p['display_name'],settings=p['settings'],stats=p['stats'],collection=cards,
+        return dict(profile=p['profile'],display_name=p['display_name'],settings={**SETTINGS,**p['settings']},stats=p['stats'],collection=cards,trophy_cards=p.get('trophy_cards',[]),
                     achievements=[dict(id=i,name=n,description=d,earned=i in p['earned']) for i,n,d in ACHIEVEMENTS],leaderboard=self.leaderboard(),scope='This server only; profile credentials are stored in this browser. Export them to move devices.')
 
     def leaderboard(self, mode=None, week=None):
@@ -64,23 +65,56 @@ class GameService:
         if len(p['collection'])>=50 and 'collector' not in p['earned']:p['earned'].append('collector')
         self.store.put('profile',profile,p)
 
+    def _record_draft(self,profile,game,key):
+        self._collect(profile,game)
+        if not game.complete:return
+        p=self._profile(profile);records=p.setdefault('draft_records',[])
+        if key in records:return
+        records.append(key);p['stats']['drafts']+=1
+        p['eras']=sorted(set(p['eras'])|{game.era})
+        if 'first-draft' not in p['earned']:p['earned'].append('first-draft')
+        if len(p['eras'])>=5 and 'era-tour' not in p['earned']:p['earned'].append('era-tour')
+        self.store.put('profile',profile,p)
+
     def _award(self, run, result, key=None, mode=None, profile=None):
         credential=profile or run['profile'];p=self._profile(credential)
         record=key or run['token']
         if record in p['recorded']:return
         p['recorded'].append(record);stats=p['stats'];stats['runs']+=1
-        h,a=result['home_goals'],result['away_goals'];outcome='wins' if h>a else 'draws' if h==a else 'losses'
-        stats[outcome]+=1;stats['goals_for']+=h;stats['goals_against']+=a
-        if h>a and 'first-win' not in p['earned']:p['earned'].append('first-win')
-        earned={'gauntlet':'gauntlet','league':'league','head-to-head':'two-humans'}.get(mode or run['mode'])
+        h,a=result['home_goals'],result['away_goals']
+        played=[result]
+        if run['mode'] in ['circuit','gauntlet']:
+            played=[match for event in run['campaign'].get('history',[]) for match in event['matches']]
+        elif run['mode']=='league' and run.get('campaign',{}).get('fixtures'):
+            played=[dict(home_goals=m['home_goals'] if m['home']==0 else m['away_goals'],away_goals=m['away_goals'] if m['home']==0 else m['home_goals']) for m in run['campaign']['fixtures'] if 0 in [m['home'],m['away']]]
+        elif run['mode']=='weekly':played=[dict(home_goals=m['goals_for'],away_goals=m['goals_against']) for m in result['challenge']['matches']]
+        stats['matches']=stats.get('matches',0)+len(played)
+        for match in played:
+            gf,ga=match['home_goals'],match['away_goals'];outcome='wins' if gf>ga else 'draws' if gf==ga else 'losses'
+            stats[outcome]+=1;stats['goals_for']+=gf;stats['goals_against']+=ga
+        if any(m['home_goals']>m['away_goals'] for m in played) and 'first-win' not in p['earned']:p['earned'].append('first-win')
+        earned={'gauntlet':'gauntlet','league':'league','head-to-head':'two-humans','circuit':'circuit'}.get(mode or run['mode'])
         if earned and earned not in p['earned'] and ((mode or run['mode'])!='gauntlet' or run['campaign'].get('status')=='champion'):p['earned'].append(earned)
         score=run.get('score',3 if h>a else 1 if h==a else 0)
-        score_key=f'{credential}:{mode or run["mode"]}:{run.get("week","")}'
-        candidate=dict(display_name=p['display_name'],mode=mode or run['mode'],score=score,week=run.get('week'),version=self.version,era=run['era'])
+        ranked_mode=mode or ('salary-cap' if run.get('variant')=='salary-cap' and run['mode']=='solo' else run['mode'])
+        conditions=dict(config=run.get('config'),variant=run.get('variant','original'),era=run['era'],draft_rules=run.get('draft_rules',{}),map=run.get('gauntlet_map') if run['mode']=='gauntlet' else None,roster_cap=run.get('roster_cap',True) if run['mode']=='gauntlet' else None,tournaments=run.get('tournaments'))
+        comparison=hashlib.sha256(json.dumps(conditions,sort_keys=True).encode()).hexdigest()[:12]
+        score_key=f'{credential}:{ranked_mode}:{run.get("week","")}:{comparison}'
+        candidate=dict(display_name=p['display_name'],mode=ranked_mode,score=score,week=run.get('week'),version=self.version,era=run['era'],comparison=comparison,conditions=conditions)
         try:previous=self.store.get('score',score_key)
         except ValueError:previous=None
         if previous is None or previous['version']!=self.version or score>previous['score']:self.store.put('score',score_key,candidate)
         self.store.put('profile',credential,p)
+
+    def _trophies(self,run,team,result):
+        champion=result.get('champion') or result.get('boss') and result.get('series_won')
+        if not champion:return
+        p=self._profile(run['profile']);cards=p.setdefault('trophy_cards',[])
+        era=result.get('opponent','').split(' generated')[0] if result.get('boss') else result.get('awards',[{}])[0].get('era',run['era'])
+        for slot in team['starters']:
+            player=slot['player'];key=f'{player["id"]}:{run["mode"]}:{era}'
+            if not any(card['key']==key for card in cards):cards.append(dict(key=key,id=player['id'],name=player['name'],overall=player['overall'],era=era,reason='Boss series victory' if result.get('boss') else result.get('tournament','Tournament victory'),evidence='earned from simulated competition results'))
+        self.store.put('profile',p['profile'],p)
 
     def _game(self, run):
         if run['version']!=self.version:raise ValueError('This run uses a different data, model or rules version. Use its original release or start a new run.')
@@ -93,7 +127,9 @@ class GameService:
         for old,new in run.get('transfers',[]):
             target=next((i for i,p in enumerate(g.squad) if p['id']==old),None)
             if target is None:raise ValueError('Transfer no longer belongs to this squad.')
-            g.squad[target]=deepcopy(next(p for p in self.players if p['id']==new))
+            incoming=next((p for p in self.players if p['id']==new),None)
+            if incoming is None:raise ValueError('Transferred card is missing from this dataset.')
+            g.squad[target]=deepcopy(incoming)
         team=g.lineup(run.get('formation')) if g.complete else None
         if team:
             for slot,bench_id in run.get('swaps',[]):team=swap_player(team,slot,bench_id)
@@ -115,26 +151,33 @@ class GameService:
     def weekly(self):
         day=self.today or datetime.now(timezone.utc).date(); monday=day-timedelta(days=day.weekday())
         week=monday.isoformat(); seed=stable_seed(f'{self.version}:weekly:{week}')
-        era=choose_era(self.players,seed)
-        return dict(week=week,seed=seed,era=era,config=asdict(Config()),version=self.version,matches=10,starts_utc=week,ends_utc=(monday+timedelta(days=7)).isoformat(),label='Same ten generated rivals, seed, data and settings for every player. Highest season points wins; no global ranking service.')
+        cfg=Config(**self.challenge_rules.get('config',{}))
+        era=choose_era(self.players,seed,self.challenge_rules.get('era_weights'),cfg,self.challenge_rules.get('draft_rules',{}))
+        matches=integer(self.challenge_rules.get('matches',10),'Challenge matches',20)
+        if matches<1:raise ValueError('A challenge requires at least one match.')
+        return dict(week=week,seed=seed,era=era,config=asdict(cfg),draft_rules=self.challenge_rules.get('draft_rules',{}),version=self.version,matches=matches,starts_utc=week,ends_utc=(monday+timedelta(days=7)).isoformat(),label='Same generated rivals, seed, data, tier quotas and settings for every player. Doubled tactical/chemistry weights and 1.5 opponent difficulty are declared game rules. Highest points wins on this server.')
 
     def _new(self, body):
         p=self._profile(body.get('profile'),create=True)
         mode=body.get('mode','solo')
         if mode not in ['solo','gauntlet','league','weekly','circuit']:raise ValueError('Unsupported game mode.')
+        if body.get('variant','original') not in ['original','salary-cap']:raise ValueError('Unsupported draft variant.')
+        if not isinstance(body.get('roster_cap',True),bool):raise ValueError('Roster cap must be true or false.')
         options=dict(body.get('config',{}))
         if body.get('variant')=='salary-cap':options['salary_cap']=body.get('salary_cap',200)
         cfg=Config(**options);seed=integer(body.get('seed',42));requested=body.get('era','All eras')
-        era=choose_era(self.players,seed,body.get('random_era_weights'),cfg) if requested=='Randomize Era' else requested
+        random_rules={'tier_quotas':{'S':2,'A':4,'B':9}} if body.get('variant')=='salary-cap' else {}
+        era=choose_era(self.players,seed,body.get('random_era_weights'),cfg,random_rules) if requested=='Randomize Era' else requested
         extra={}
         if mode=='circuit':
             total=integer(body.get('tournaments',15),'Tournaments',20)
             if total<10:raise ValueError('A circuit contains ten to twenty tournaments.')
             extra['tournaments']=total
         if mode=='weekly':
-            challenge=self.weekly();seed=challenge['seed'];era=challenge['era'];cfg=Config();requested=era;extra['week']=challenge['week']
+            challenge=self.weekly();seed=challenge['seed'];era=challenge['era'];cfg=Config(**challenge['config']);requested=era;extra.update(week=challenge['week'],challenge_matches=challenge['matches'])
         rules={}
         if body.get('variant')=='salary-cap':rules={'tier_quotas':{'S':2,'A':4,'B':9}}
+        if mode=='weekly':rules=challenge['draft_rules']
         if mode=='gauntlet':
             rules={'tier_limits':{'S':1,'A':4} if body.get('roster_cap',True) else {'S':1},'pool_eras':['Classics','1990s','2000s']};era='Legends'
             from .modes import GAUNTLET_MAPS
@@ -173,8 +216,11 @@ class GameService:
             p=self._profile(body.get('profile'));changes=body.get('settings',{})
             if not isinstance(changes,dict) or set(changes)-set(SETTINGS):raise ValueError('Unknown settings.')
             for key,value in changes.items():
-                if key in ['theme','speed']:
-                    if value not in (['stadium','night'] if key=='theme' else ['instant','normal']):raise ValueError('Unsupported setting value.')
+                selections=dict(theme=['stadium','night'],speed=['instant','normal'],appearance=['dark','light'],backdrop=['stadium','stars','grid','plain'],roster_sort=['rating','name','position'],lineup_view=['pitch','rows'])
+                if key in selections:
+                    if value not in selections[key]:raise ValueError('Unsupported setting value.')
+                elif key=='volume':
+                    if isinstance(value,bool) or not isinstance(value,(int,float)) or not 0<=value<=1:raise ValueError('Volume must be between zero and one.')
                 elif not isinstance(value,bool):raise ValueError('Switch settings must be true or false.')
             p['settings'].update(changes)
             if 'display_name' in body:
@@ -220,13 +266,7 @@ class GameService:
             run.pop('formation',None);run['revision']+=1
             return self._save_action('run',run,body,digest,self._state(run))
         if path=='spin':
-            g.spin();run['spins']+=1;self._collect(run['profile'],g)
-            if g.complete:
-                p=self._profile(run['profile']);p['stats']['drafts']+=1
-                p['eras']=sorted(set(p['eras'])|{g.era})
-                if 'first-draft' not in p['earned']:p['earned'].append('first-draft')
-                if len(p['eras'])>=5 and 'era-tour' not in p['earned']:p['earned'].append('era-tour')
-                self.store.put('profile',p['profile'],p)
+            g.spin();run['spins']+=1;self._record_draft(run['profile'],g,f"{run['token']}:{run['seed']}")
             run['revision']+=1
             return self._save_action('run',run,body,digest,self._state(run))
         if not g.complete:raise ValueError('Complete five spins first.')
@@ -253,6 +293,7 @@ class GameService:
             if cost:
                 if c.get('patience',8)<=cost:raise ValueError('Keep at least one Owner Patience after spending.')
                 c['patience']-=cost;c['rest_streak']=0
+            if action=='freeagency':self._collect(run['profile'],self._game(run)[0])
             c['needs_management']=False;run['revision']+=1
             return self._save_action('run',run,body,digest,self._state(run))
         if path in ['swap','formation']:
@@ -270,7 +311,7 @@ class GameService:
             if run['mode'] in ['league','gauntlet','circuit']:raise ValueError('Advance this campaign through its scheduled fixtures.')
             if run.get('result'):return dict(result=run['result'],html=result_html(run['result']),opponent=run['result'].get('opponent','Seeded rival'),progress=campaign_progress(run))
             if run['mode']=='weekly':
-                season=simulate_season(team,[generated_team(self.players,g.era,stable_seed(f'{self.version}:{run["week"]}:rival:{i}'),Config()) for i in range(10)],seed=stable_seed(f'{self.version}:{run["week"]}:matches'))
+                season=simulate_season(team,[generated_team(self.players,g.era,stable_seed(f'{self.version}:{run["week"]}:rival:{i}'),Config()) for i in range(run['challenge_matches'])],seed=stable_seed(f'{self.version}:{run["week"]}:matches'),config=g.config)
                 result=simulate_match(team,rival,seed=stable_seed(f'{self.version}:{run["week"]}:showcase'),home_advantage=0)
                 result['challenge']=season;run['score']=season['points']
             else:result=simulate_match(team,rival,seed=integer(body.get('seed',2026)))
@@ -283,6 +324,7 @@ class GameService:
                 result=advance(run,team,self.players)
             else:result=advance_campaign(run,team,self.players)
             run['result']=result;run['revision']+=1
+            self._trophies(run,team,result)
             progress=campaign_progress(run)
             if progress['complete'] and not run.get('unranked'):self._award(run,result)
             response=dict(state=self._state(run),result=result,html=result_html(result),progress=progress)

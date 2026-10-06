@@ -5,7 +5,7 @@ from .engine import DraftGame, Config, simulate_match, rate_team
 
 CAMPAIGN_ERAS=('Legends','1990s','2000s','2010s','2020s')
 GAUNTLET_MAPS={'three':('Legends','1990s','2010s'),'reverse-three':('2010s','1990s','Legends'),'full':CAMPAIGN_ERAS,'reverse-full':tuple(reversed(CAMPAIGN_ERAS))}
-RULES_VERSION='football-2'
+RULES_VERSION='football-4'
 
 
 def stable_seed(text):
@@ -56,7 +56,7 @@ def campaign_progress(run):
                     segment=step,boss=step==4,patience=campaign.get('patience',8),patience_max=20,
                     score=campaign.get('score',0),complete=campaign.get('complete',False),
                     status=campaign.get('status','playing'),history=campaign.get('history',[]),
-                    needs_management=campaign.get('needs_management',False),badges=campaign.get('badges',0),rest_streak=campaign.get('rest_streak',0),
+                    needs_management=campaign.get('needs_management',False),badges=campaign.get('badges',0),era_upgrades=campaign.get('era_upgrades',0),rest_streak=campaign.get('rest_streak',0),boss_attempt=campaign.get('attempt',0)+1,boss_attempts=campaign.get('boss_attempts',{}),
                     actions=[dict(id='rest',label='Rest · patience +2, then +1, then 0'),dict(id='develop',label='Develop pressing badge · 1 patience'),dict(id='best-era',label='Develop era adaptation · 1 patience'),dict(id='freeagency',label='Replace a substitute · B 1 / A 2 / S 3 patience')] if campaign.get('needs_management') and not campaign.get('complete') else [],
                     opponent_kind='generated era-eligible squad',
                     label='Four fourteen-match segments per act, then a best-of-seven generated boss. Patience starts 8/20; 9+ wins adds 1, 7–8 is safe, fewer costs 1. Lost boss costs 4, then 6, and restarts the act; zero ends the run. Football maps compress unsupported basketball decades. Historical boss rosters are unavailable.')
@@ -81,13 +81,14 @@ def advance_campaign(run, team, players):
         rd=c.get('round',0);fixtures=c.setdefault('fixtures',[]);user_result=None
         teams=[team]+[generated_team(players,run['era'],run['seed']+70000+i,cfg) for i in range(1,8)]
         for h,a in schedule()[rd]:
-            r=simulate_match(teams[h],teams[a],seed=stable_seed(f"{run['seed']}:league:{rd}:{h}:{a}"))
+            r=simulate_match(teams[h],teams[a],seed=stable_seed(f"{run['seed']}:league:{rd}:{h}:{a}"),opponent_side='home' if a==0 else 'away' if h==0 else None)
             fixtures.append(dict(round=rd+1,home=h,away=a,home_goals=r['home_goals'],away_goals=r['away_goals']))
             if 0 in [h,a]:
                 user_result=deepcopy(r)
                 if a==0:
                     for suffix in ['goals','xg','shots','possession']:
                         user_result['home_'+suffix],user_result['away_'+suffix]=r['away_'+suffix],r['home_'+suffix]
+                    user_result['expected_home_goals'],user_result['expected_away_goals']=r['expected_away_goals'],r['expected_home_goals']
                     for e in user_result['events']:e['side']='away' if e['side']=='home' else 'home'
                 user_result['opponent']=f'Generated Club {a or h}';user_result['venue']='home' if h==0 else 'away'
         c['round']=rd+1;c['complete']=c['round']==14
@@ -121,6 +122,7 @@ def advance_campaign(run, team, players):
     c['score']=c['raw_score']*(1.5 if run.get('roster_cap',True) else 1)
     c.setdefault('history',[]).append(dict(era=era,boss=boss,won=won,wins=wins,matches=[r for r,_ in results]))
     if boss:
+        attempts=c.setdefault('boss_attempts',{});attempts[era]=attempts.get(era,0)+1
         if won:c.update(stage=stage+1,step=0,attempt=0)
         else:
             losses=c.get('boss_losses',0);c.update(patience=c.get('patience',8)-(4 if losses==0 else 6),attempt=attempt+1,step=0,boss_losses=losses+1)

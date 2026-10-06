@@ -97,6 +97,32 @@ class ModeTests(unittest.TestCase):
         self.assertEqual(sum(x['goals_for'] for x in table), sum(x['goals_against'] for x in table))
         self.assertTrue(all(x['points'] == 3*x['won']+x['drawn'] for x in table))
 
+    def test_lost_boss_restarts_each_supported_era_and_preserves_development(self):
+        from copy import deepcopy
+        from unittest.mock import patch
+        from era_eleven.modes import GAUNTLET_MAPS
+        a=self.finish(self.new('gauntlet',gauntlet_map='full'))
+        run=self.s.store.get('run',a['token']);team=self.s._game(run)[1]
+        from era_eleven.engine import simulate_match
+        fixture=simulate_match(team,team,seed=1)
+        fixture.update(home_goals=0,away_goals=1,events=[],seed=1)
+        for stage,era in enumerate(GAUNTLET_MAPS['full']):
+            run=self.s.store.get('run',a['token'])
+            run['campaign']=dict(stage=stage,step=4,attempt=0,patience=20,badges=2,era_upgrades=1,boss_losses=0,history=[])
+            self.s.store.put('run',run['token'],run)
+            with patch('era_eleven.modes.generated_team',return_value=team),patch('era_eleven.modes.simulate_match',side_effect=lambda *args,**kwargs:deepcopy(fixture)):
+                out=self.s.call('advance',dict(token=a['token'],action_id=f'loss-{era}'))
+                saved=self.s.store.get('run',a['token'])
+                self.assertFalse(out['result']['series_won'])
+                self.assertEqual(saved['campaign']['stage'],stage)
+                self.assertEqual(saved['campaign']['step'],0)
+                self.assertEqual(saved['campaign']['attempt'],1)
+                self.assertEqual(saved['campaign']['patience'],16)
+                self.assertEqual(saved['campaign']['badges'],2)
+                self.assertEqual(saved['campaign']['era_upgrades'],1)
+                self.assertEqual(saved['campaign']['boss_attempts'][era],1)
+                self.assertEqual(self.s.call('state',dict(token=a['token']))['squad'],a['squad'])
+
 
 class RoomTests(unittest.TestCase):
     setUp = ModeTests.setUp
@@ -115,6 +141,9 @@ class RoomTests(unittest.TestCase):
             view = self.s.call('room/spin', request)
             self.assertEqual(view['revision'], self.s.call('room/spin', request)['revision'])
         self.assertEqual([x['count'] for x in view['seats']], [15, 15])
+        progress=self.s.call('progress',dict(profile=self.profile))
+        self.assertEqual(progress['stats']['drafts'],1)
+        self.assertTrue(next(x['earned'] for x in progress['achievements'] if x['id']=='first-draft'))
         self.assertEqual(len({p['identity'] for x in view['seats'] for p in x['squad']}), 30)
         for seat in range(2):
             view = self.s.call('room/ready', dict(room=host['room'], credential=creds[seat], action_id=f'ready-{seat}'))
@@ -129,3 +158,38 @@ class RoomTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.s.call('room/spin', dict(room=b['room'], credential=a['credential'], action_id='intrusion'))
         self.assertEqual(self.s.call('room/state', dict(room=b['room'], credential=b['credential']))['seats'][0]['count'], 0)
+
+    def test_salary_room_shows_own_budget_without_exposing_the_opponent(self):
+        host = self.s.call('room/create', dict(profile=self.profile, era='2020s', seed=42, variant='salary-cap'))
+        other = self.s.call('profile', {})['profile']
+        guest = self.s.call('room/join', dict(profile=other, room=host['room']))
+        self.s.call('room/start', dict(room=host['room'], credential=host['credential']))
+        view = self.s.call('room/state', dict(room=host['room'], credential=host['credential']))
+        self.assertEqual(view['seats'][0]['salary']['cap'], 200)
+        self.assertIsNone(view['seats'][1]['salary'])
+        for _ in range(5):
+            view = self.s.call('room/spin', dict(room=host['room'], credential=host['credential']))
+        self.assertEqual(view['seats'][0]['salary']['tiers'], {'S': 2, 'A': 4, 'B': 9})
+        self.assertLessEqual(view['seats'][0]['salary']['spent'], 200)
+        self.assertEqual(view['seats'][1]['squad'], [])
+        for _ in range(5):
+            view = self.s.call('room/spin', dict(room=host['room'], credential=guest['credential']))
+        self.assertEqual(view['seats'][0]['salary']['tiers'], {'S': 2, 'A': 4, 'B': 9})
+        self.assertEqual(view['seats'][1]['salary']['tiers'], {'S': 2, 'A': 4, 'B': 9})
+
+    def test_ready_after_timeout_commits_auto_drafts_and_result_once(self):
+        host=self.s.call('room/create',dict(profile=self.profile,era='2020s',seed=21))
+        other=self.s.call('profile')['profile']
+        guest=self.s.call('room/join',dict(profile=other,room=host['room']))
+        self.s.call('room/start',dict(room=host['room'],credential=host['credential']))
+        saved=self.s.store.get('room',host['room']);saved['deadline']=1
+        self.s.store.put('room',host['room'],saved)
+        request=dict(room=host['room'],credential=guest['credential'],action_id='late-ready')
+        out=self.s.call('room/ready',request)
+        self.assertEqual(out['phase'],'finished')
+        self.assertEqual(out,self.s.call('room/ready',request))
+        self.assertEqual(out['result'],self.s.call('room/state',dict(room=host['room'],credential=host['credential']))['result'])
+        for profile in [self.profile,other]:
+            progress=self.s.call('progress',dict(profile=profile))
+            self.assertEqual(progress['stats']['drafts'],1)
+            self.assertEqual(progress['stats']['matches'],1)

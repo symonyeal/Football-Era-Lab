@@ -1,50 +1,51 @@
-# The model you can change
+# Attributes, expected goals and uncertainty
 
-## Draft
+## Inputs and role assignment
 
-The game filters the era pool, groups cards by person, and chooses one available card for each person. It considers manager/formation combinations in seeded random order and uses the first feasible one. The eleven formation roles and four reserve groups must all have distinct eligible people. This can make the manager draw depend on which roles exist in the selected pool.
+Cards retain explicit person identity, edition, source, season, licence and lineage. ICON/HERO attributes are reconstructions; modern attributes are published snapshots; PES grouped attributes are mapping proxies. Missing attributes remain missing. The game names any stamina fallback and exposes its editable default. Similar names are not identity evidence.
 
-For each role/person edge, its random selection score is `overall + temperature * Gumbel(0,1)`. Edges below `min_fit` are forbidden. SciPy's rectangular assignment solver maximizes the score and selects fifteen people. A seeded shuffle orders the awards into five batches of three. This is a randomized feasible assignment, not a uniform draw from every possible squad.
+Native position fit is 1.00, listed adjacency 0.88; broader families fall below the default 0.85 threshold. Goalkeepers cannot fill outfield roles. Six weighted outfield groups and five keeper groups define role scores. SciPy assignment maximizes starter quality while retaining four distinct reserves usable in the formation. Tier/budget variants add binary constraints. The manager draw depends on pool feasibility; the sampler is not uniform over every legal squad.
 
-## Starting eleven
+Separate attack, control, defence and keeper units combine role suitability with small editable chemistry/tactical proxies. Country/club continuity and formation distances describe game-design complementarity. Manager possession/pressing constants are not estimated coaching effects. Custom role weights persist through substitutions.
 
-Native position fit is 1.00; a listed adjacent role is 0.88. Wider positional families receive lower fit and are rejected under the default threshold of 0.85. Goalkeepers have zero fit in outfield positions and vice versa. The adjacent-role graph and attribute weights are editable in `era_eleven/engine.py`.
+## Shared scoring path
 
-Each outfield role score is the weighted mean of six published attribute groups, multiplied by position fit. Keeper scores combine diving, handling, kicking, reflexes, and positioning. The starting assignment maximizes the sum of role scores within the drawn formation. Four people remain on the bench.
-
-Custom role weights are retained with the team and used when swapping substitutes. The optimizer is an exact linear assignment solver for the supplied scores, following the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html). The score definition is a game-design rule.
-
-## Team units
-
-The model computes separate attacking, midfield-control, defensive, and goalkeeper attributes. It blends nearby creator/finisher complementarity with small country and club continuity terms. The distance weights come from formation-slot locations. They are proxies for combinations, not learned effects of real players sharing a pitch. Manager possession and pressing settings are also design assumptions.
-
-Missing historical-card stamina uses the configurable value `default_stamina`, initially 78. The source card remains unchanged, and the rating result lists each affected player. Stamina influences the fatigue scenario; it does not change published ratings.
-
-## Goal rates
-
-Let `A`, `C`, and `D` denote the adjusted attack, control, and defence scores. Let `k` be `role_scale`, `b` be `base_goals`, and `h` be home advantage. The rate structure is:
+For a segment's home and away units, the fixed log-rate contrasts are:
 
 ```text
-home goals = b * exp((A_home - D_away)/k + 0.25*(C_home - C_away)/k + h)
-away goals = b * exp((A_away - D_home)/k + 0.25*(C_away - C_home)/k)
+home = (home.attack − away.defence)/role_scale
+       + 0.25 × (home.control − away.control)/role_scale + home_advantage
+away = (away.attack − home.defence)/role_scale
+       + 0.25 × (away.control − home.control)/role_scale
+rate = base_goals × exp(clip(contrast, −1.5, 1.5)) × segment_minutes/90
 ```
 
-The exponent is clipped to the interval `[-1.5, 1.5]`. Rates are computed for the first sixty minutes and the final thirty, weighted by segment duration. At minute 60, up to three compatible fresh substitutes replace incumbents if their role score exceeds the fatigued incumbent score. Players taken off cannot return. A fatigue factor applies to the final segment.
+The adapter maps these contrasts into the pinned `fas.performance.team_scoring.TeamScoringModel`, whose `expected_goals` method supplies the rates. The upstream call actually affects simulation. Its parameters are fixed, with `rho=0`; gameplay does not fit historical results. The labelled offline fallback preserves the arithmetic and operation order.
 
-This is the standard independent-Poisson structure documented in [penaltyblog](https://penaltyblog.readthedocs.io/en/latest/models/overview.html). The attribute-to-rate mapping, clipping, and fatigue rule are demo restrictions and additions. They have not been fitted or validated on real results. Dixon-Coles low-score dependence, disciplinary events, injuries, extra time, and penalties are not implemented in the game match engine.
+Segments cover minutes 0–60 and 60–90. At sixty, compatible fresh substitutes can replace starters; a player taken off cannot return. Fatigue uses stamina and fresh-substitute count, with its declared lower bound. Opponent difficulty multiplies the actual opposing side's rate at either venue. Peer fixtures use no user-opponent boost. Development changes fatigue/difficulty settings, not published attributes.
 
-## Displayed matches and repeated trials
+The showcase samples Poisson shots and Bernoulli goals; goal events equal the reported score. Shot xG is the sampled chance sum; expected goals are the model's pre-simulation rates. Separate seeded shootouts settle decisive drawn ties and do not change match goals. Career decisions add/prevent explicitly labelled chances around the shared surrounding simulation; their interactive effects have no fitted xG estimate.
 
-For a segment goal rate `lambda`, the showcase game draws a Poisson number of shots with mean `lambda / 0.12`. Each shot's goal probability is drawn from a beta distribution with mean 0.12; an independent Bernoulli trial marks the shot as a goal. Poisson marking therefore gives the same Poisson goal marginal used by the repeated-trial mode. Player attribution favours shooting ratings, without changing the team's expected goal rate.
+Repeated trials and analytic matchup probabilities use the same fatigue/substitution-adjusted rates. Approximate sampling intervals quantify Monte Carlo error, not rating or model uncertainty. Analytic scores 0–16 are renormalized and omitted tail mass is reported. Historical-era normalization and drafted-squad calibration remain unmeasured.
 
-The displayed shot xG is the sum of the sampled probabilities. It differs from the pre-match rate and should not be substituted for it in a model comparison. Possession is a logistic transform of the control-score difference, labelled as a proxy. The score equals its goal-event count.
+| Output | Affects gameplay? | Evidence |
+| --- | --- | --- |
+| fas fixed expected-goal rates | Yes | Adapter patch-sensitivity and binary rate tests. |
+| Role fit, weights, tactical/chemistry settings, fatigue, difficulty | Yes | Declared game coefficients and constraints. |
+| fas entity mapping and cosine attribute similarity | No | Descriptive provenance/attribute diagnostics. |
+| fas xT, passing networks, progression, event NMF roles | No | Supplied real events; same-match fits are descriptive. |
+| Historical fitted team Poisson assessment | No | Separate earlier training/later evaluation, compared with baseline. |
 
-Repeated trials draw independent Poisson scores at the same integrated rates. They report wins, draws, losses, sample means, and approximate 95% binomial sampling intervals. These intervals omit model uncertainty. The gauntlet repeats the showcase engine against seeded generated squads, counting wins as three points and draws as one. Its unbeaten run includes draws.
+## Real-event tools and fitting
 
-## Real-event laboratory
+Measured events use numeric provider identities, canonical actions and explicit attribution. The adapter preserves possessions/periods and excludes shootouts from match-play analysis. Passing receivers use the next same-team action heuristic; incomplete possession evidence is disclosed. Latent NMF roles are event profiles, not eligibility for named formation slots.
 
-`events.py` consumes local [StatsBomb event files](https://github.com/statsbomb/open-data), under the provider's separate agreement. It excludes shootouts, aggregates measured shot xG, subtracts penalty xG for npxG, and links assisting passes to recorded shots for xA. Scheduled minutes use starting lineups and substitutions, with extra time included and stoppage excluded.
+The active local event module retains explicit assisted-shot xA and turnover absorption in its xT estimator. Upstream xT excludes failed moves from its transition denominator. On the narrow tested example they return 0.5 and 1.0 respectively, so upstream is an additional option, not an exact replacement. Simulated shot logs lack spatial actions and cannot yield measured networks or xT.
 
-The expected-threat calculation solves [Karun Singh's fixed point](https://karun.in/blog/expected-threat.html), `V = shoot * goal + move * T @ V`. Failed moves absorb possession; transition rows therefore need not sum to one. The single-final example uses empirical goal frequencies, no smoothing, and zero values for unobserved cells. Those restrictions are stated with each result. The field is a demonstration, separate from the game's rate model.
+The separate [2022 World Cup assessment](evaluation.json) fitted 48 group matches before 2022-12-03 and held out 16 knockout matches. Mean Poisson negative log likelihood was 3.876149 for fas versus 3.231891 for the training-mean baseline; outcome Brier 0.628856 versus 0.627384; home-win calibration error 0.314364 versus 0.219779. Lower is better: the fit did not beat the baseline. This small tournament/team-ID assessment does not validate cross-era cards; record scores can include extra time and upstream does not expose optimizer convergence. It is excluded from gameplay.
 
-No fitted adjusted plus-minus, VAEP, or hypergraph coefficients are claimed. Those layers require a larger, resolved lineup/event history and held-out validation before they can replace the current demo settings.
+Data: [StatsBomb Open Data](https://github.com/statsbomb/open-data), under its separate data agreement. Raw event/results files remain outside the public repository.
+
+![StatsBomb](https://raw.githubusercontent.com/statsbomb/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png)
+
+See [INTEGRATION.md](INTEGRATION.md) for module-by-module audit, entity mapping, optimizer incompatibilities and supported event/evaluation inputs.

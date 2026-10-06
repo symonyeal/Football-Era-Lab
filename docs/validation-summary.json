@@ -1,0 +1,123 @@
+{
+  "date": "2026-10-06",
+  "python": "3.14",
+  "rules": "football-4",
+  "source_commit": "93623e0ec3ae79cc8ccc76191ad1756aa2a16eb1",
+  "fas_commit": "a83c577a1d6b81da3a25a41f03c8e4096ecc4764",
+  "backend_tests": 92,
+  "offline_tests": 73,
+  "browser": {
+    "acceptance": {
+      "checks": 30,
+      "passed": true,
+      "checks_detail": [
+        "Keyboard starts the draft",
+        "Five UI spins award fifteen people and an eleven plus four",
+        "A compatible reserve goalkeeper swaps without adding a person",
+        "Classic match renders the server result",
+        "Draft survives browser reload",
+        "Help dialog opens by control and closes by keyboard",
+        "Exported run imports through server replay",
+        "Settings persist after reload",
+        "Clubhouse displays earned progress and searchable collection",
+        "Randomize Era records one eligible era",
+        "weekly starts through UI and records a progression result",
+        "gauntlet starts through UI and records a progression result",
+        "Gauntlet boss result advances or restarts the same era with its patience cost",
+        "Ten-event circuit finishes all five formats and displays match histories and earned awards",
+        "The League resolves four user-selected career stretches",
+        "Career save and decision history survive reload",
+        "Career card exports actual recorded game statistics",
+        "Daily Card accepts actual card guesses, returns clues, saves, and terminates",
+        "Higher or Lower hides queried ratings and resolves fifteen correct public-data comparisons",
+        "Roster Roulette scores attributed snapshot names and completes the roster",
+        "Country Hunt accepts multiple countries through five escalating rounds",
+        "Mobile layout has no horizontal document overflow",
+        "Two independent room clients draft fifteen and reconnect",
+        "Both humans ready receive the same authoritative room result",
+        "Completed human squads reveal the opposing eleven",
+        "Room result exports without private credentials",
+        "A second room remains isolated",
+        "Rematch requires both human votes and resets the room",
+        "Local two-human path alternates ten spins and both ready confirmations",
+        "No browser JavaScript exceptions"
+      ]
+    },
+    "acceptance-controls": {
+      "checks": 12,
+      "passed": true,
+      "checks_detail": [
+        "Invalid seed has a visible error and creates no draft",
+        "Salary Cap enforces two S, four A, nine B and the visible game-coin budget",
+        "Invalid goalkeeper swap is rejected without changing the lineup",
+        "One complete practice retry resets awards and still requires five spins",
+        "Invalid replay is rejected and the current draft remains accessible",
+        "Career office controls resolve a server-priced decision",
+        "Mobile career page and scrollable standings stay within the viewport",
+        "Career retirement records actual progress and removes match controls",
+        "Mobile collection and ranking tables stay within the viewport",
+        "Real room deadline completes both remaining drafts and records one shared match",
+        "Real 120-second Roster Roulette deadline finalizes and survives reload",
+        "Additional controls produce no browser JavaScript errors"
+      ]
+    },
+    "presentation-review": {
+      "checks": 8,
+      "passed": true,
+      "checks_detail": [
+        "Every main navigation page and the help completion control work",
+        "All 12 presentation preferences save and restore their actual values",
+        "Saved substitution preference reaches the engine and volume scales the real reveal audio graph",
+        "Result sharing falls back to selectable text and excludes private access",
+        "Profile backup restores the authoritative collection and correct saved career in another browser",
+        "Switching back to the previous profile preserves its earlier draft access",
+        "Original dark desktop gameplay and menu previews captured from the live UI",
+        "Presentation and profile controls produce no browser JavaScript exceptions"
+      ]
+    },
+    "management-review": {
+      "checks": 4,
+      "passed": true,
+      "checks_detail": [
+        "Pressing development spends patience and displays its saved badge",
+        "Era adaptation spends patience and displays its saved upgrade",
+        "One-for-one signing and both development choices survive reload",
+        "Local two-human salary draft displays budgets, enforces both quotas, and plays a shared match"
+      ]
+    }
+  },
+  "notebooks": {
+    "notebook-verification.json": {
+      "cells": 37,
+      "code_cells": 18,
+      "errors": [],
+      "seconds": 16.218,
+      "fresh_kernel": true,
+      "optional_downloads": false,
+      "backend_path": "default"
+    },
+    "notebook-offline-verification.json": {
+      "cells": 38,
+      "code_cells": 19,
+      "errors": [],
+      "seconds": 33.258,
+      "fresh_kernel": true,
+      "optional_downloads": false,
+      "backend_path": "offline"
+    },
+    "notebook-real-verification.json": {
+      "cells": 37,
+      "code_cells": 18,
+      "errors": [],
+      "seconds": 20.392,
+      "fresh_kernel": true,
+      "optional_downloads": true,
+      "backend_path": "real"
+    }
+  },
+  "baseline": {
+    "exact": 28,
+    "cases": 60,
+    "known_difference_detected": true
+  }
+}

@@ -227,7 +227,7 @@ def simulated_match_record(result, home, away):
 def canonical_actions(events, *, match_id=None):
     """Convert canonical or StatsBomb events with strict input validation."""
     from fas.data.schema import COLUMNS, validate_actions
-    from fas.data.statsbomb import events_to_actions
+    from fas.data.statsbomb import events_to_actions, _TYPE_MAP
     frame = pd.DataFrame(events).copy()
     if not set(COLUMNS) <= set(frame):
         if match_id is None:
@@ -251,21 +251,19 @@ def canonical_actions(events, *, match_id=None):
         for column in ('minute', 'second'):
             if column not in frame:
                 frame[column] = 0
-        raw = frame
+        raw = frame.copy()
+        raw['provider_row']=np.arange(len(raw))
+        if 'id' in raw and raw['id'].dropna().astype(str).duplicated().any():
+            raise ValueError('Repeated provider event IDs cannot be counted twice.')
+        retained=raw[raw['type'].isin(_TYPE_MAP)].reset_index(drop=True)
         frame = events_to_actions(raw, match_id=int(match_id))
-        if 'possession' in raw:
-            # Stable event keys retain possession IDs without assuming every
-            # unsupported provider event survived upstream conversion.
-            raw = raw[raw['type'].isin(['Pass', 'Carry', 'Shot', 'Dribble', 'Pressure', 'Tackle',
-                                     'Interception', 'Clearance', 'Block', 'Ball Recovery',
-                                     'Foul Committed', 'Goal Keeper'])].copy()
-            raw['timestamp_ms'] = ((pd.to_numeric(raw['minute'])*60+pd.to_numeric(raw['second']))*1000).astype('int64')
-            if 'period' not in raw:
-                raw['period'] = 1
-            keys = ['period', 'timestamp_ms', 'player_id', 'team_id']
-            if raw.duplicated(keys).any():
-                raise ValueError('Provider events need unambiguous event keys to preserve possession IDs.')
-            frame = frame.merge(raw[keys+['possession']], on=keys, how='left', validate='one_to_one')
+        # The audited converter retains filtered row indices when dropping
+        # missing actors/locations. Clock and actor are not event identities:
+        # a pass and carry can legitimately occur in the same recorded second.
+        if not frame.index.is_unique or not frame.index.isin(retained.index).all():
+            raise ValueError('Installed converter row alignment differs from the audited dependency.')
+        for source,target in [('provider_row','provider_row'),('id','provider_event_id'),('index','provider_index'),('possession','possession')]:
+            if source in retained:frame[target]=retained.loc[frame.index,source]
     if frame.empty:
         raise ValueError('No supported on-ball events remain after conversion.')
     if frame[list(COLUMNS)].isna().any()[['match_id', 'period', 'timestamp_ms', 'player_id', 'team_id',

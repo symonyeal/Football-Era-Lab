@@ -118,6 +118,49 @@ class EntityTests(unittest.TestCase):
 
 
 class EventTests(unittest.TestCase):
+    def same_clock_provider_events(self):
+        common = dict(period=1, minute=1, second=0, player={'id': 12}, team={'id': 1})
+        return [
+            dict(common, id='00000000-0000-0000-0000-000000000001', index=10,
+                 timestamp='00:01:00.100', type={'name': 'Pass'}, location=[20, 40],
+                 **{'pass': {'end_location': [80, 40]}}, possession=7),
+            dict(common, id='00000000-0000-0000-0000-000000000002', index=11,
+                 timestamp='00:01:00.100', type={'name': 'Ball Receipt*'},
+                 location=[80, 40], possession=7),
+            dict(common, id='00000000-0000-0000-0000-000000000003', index=12,
+                 timestamp='00:01:00.200', type={'name': 'Pressure'},
+                 location=None, possession=99),
+            dict(common, id='00000000-0000-0000-0000-000000000004', index=13,
+                 timestamp='00:01:00.900', type={'name': 'Carry'}, location=[80, 40],
+                 carry={'end_location': [110, 40]}, possession=8),
+        ]
+
+    def test_provider_uuid_rows_preserve_same_clock_actions_and_possessions(self):
+        out = an.canonical_actions(self.same_clock_provider_events(), match_id=7)
+        self.assertEqual(out['action_type'].tolist(), ['pass', 'carry'])
+        self.assertEqual(out['possession'].tolist(), [7, 8])
+        self.assertEqual(out['provider_event_id'].tolist(), [
+            '00000000-0000-0000-0000-000000000001',
+            '00000000-0000-0000-0000-000000000004'])
+        self.assertEqual(out['provider_index'].tolist(), [10, 13])
+        self.assertEqual(out['provider_row'].tolist(), [0, 3])
+        self.assertEqual(out['x_start'].tolist(), [20, 80])
+
+    def test_provider_rows_without_uuid_preserve_same_clock_order(self):
+        raw = self.same_clock_provider_events()
+        for row in raw:
+            row.pop('id')
+            row.pop('index')
+        out = an.canonical_actions(pd.DataFrame(raw, index=[91, 17, 33, 6]), match_id=7)
+        self.assertEqual(out['action_type'].tolist(), ['pass', 'carry'])
+        self.assertEqual(out['possession'].tolist(), [7, 8])
+        self.assertEqual(out['provider_row'].tolist(), [0, 3])
+
+    def test_repeated_provider_uuid_is_rejected_instead_of_counted_twice(self):
+        row = self.same_clock_provider_events()[0]
+        with self.assertRaisesRegex(ValueError, 'Repeated provider event IDs'):
+            an.canonical_actions([row, deepcopy(row)], match_id=7)
+
     def test_goal_conversion_preserves_nested_outcome(self):
         raw = [dict(type={'name': 'Shot'}, location=[110, 40], minute=1, second=0,
                     player={'id': 12}, team={'id': 1}, shot={'outcome': {'name': 'Goal'}, 'end_location': [120, 40]})]

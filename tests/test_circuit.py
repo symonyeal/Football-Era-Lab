@@ -4,6 +4,20 @@ from era_eleven.data import load_players
 
 
 class CircuitTests(unittest.TestCase):
+    def test_league_sprint_has_full_four_club_table(self):
+        s=GameService(state_path=':memory:')
+        try:
+            state=s.call('new',dict(mode='circuit',seed=9,tournaments=10))
+            for _ in range(5):state=s.call('spin',dict(token=state['token']))
+            out=s.call('advance',dict(token=state['token']))
+            table=out['progress']['history'][0]['standings']
+            self.assertEqual(len(table),4)
+            self.assertEqual([r['played'] for r in table],[6,6,6,6])
+            self.assertEqual(sum(r['won'] for r in table),sum(r['lost'] for r in table))
+            self.assertEqual(sum(r['goals_for'] for r in table),sum(r['goals_against'] for r in table))
+            self.assertTrue(all(r['points']==3*r['won']+r['drawn'] for r in table))
+        finally:s.store.close()
+
     def test_ten_tournaments_earn_results_and_awards_without_changing_fifteen_people(self):
         s=GameService(load_players(),':memory:')
         try:

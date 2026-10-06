@@ -110,9 +110,15 @@ likelihood and supplies a correction parameter rather than estimating it in that
 The upstream return object does not expose optimizer convergence. The evaluation helper tests
 the supplied historical teams and cannot validate arbitrary cross-era drafted squads.
 
-No observed match corpus was supplied with the shipped card pool. The unit fixtures are synthetic
-and test execution and split isolation. They establish neither a trained gameplay model nor
-historical calibration. Public event sources and attribution rules remain in the data documents.
+The shipped cards lack observed match/stint evidence linking those attributes to drafted-squad
+performance. Unit fixtures test execution and split isolation, not historical calibration.
+A separate StatsBomb World Cup 2022 assessment trained on 48 group matches and evaluated 16 later
+knockout matches. The fitted team-ID model did not beat the training-mean baseline; it does not
+affect gameplay. See [MODEL.md](MODEL.md) and [evaluation metadata](evaluation.json).
+
+The optional notebook also executes on the actual World Cup final event export. Genuine provider
+event IDs and retained converter row indices preserve simultaneous same-clock actions and their
+possessions; repeated provider IDs are rejected. Raw data stays outside the public repository.
 
 ## Upstream audit and retained capabilities
 
@@ -166,6 +172,5 @@ outcomes, possession/period isolation, prediction normalization and training/eva
 The machine's work folder stores the installation hashes, solver defect probe and raw test logs;
 these machine-specific artifacts are excluded from the public project.
 The installation check compared all 79 upstream Python files with the installed files and found
-no hash differences. The final adapter suite passed 16 tests, including 2,187 binary rate
-comparisons. The installed upstream selection passed 19 tests. A measured warm run of 1,000
-rate calls took 0.130 seconds on this machine; this is not a benchmark of the full application.
+no hash differences. The final adapter suite passed 19 tests, including 2,187 binary rate
+comparisons. The installed upstream selection passed 19 tests. Full application performance has not been benchmarked.

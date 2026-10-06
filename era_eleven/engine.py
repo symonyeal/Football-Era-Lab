@@ -75,7 +75,7 @@ class Config:
         if not .5<=self.opponent_difficulty<=2:raise ValueError('Opponent difficulty must be between 0.5 and 2.')
 
 def card_tier(player):
-    return 'S' if player['overall']>=90 else 'A' if player['overall']>=85 else 'B'
+    return 'S' if player['overall']>=90 else 'A' if player['overall']>=87 else 'B'
 
 def card_cost(player):
     return max(1.,(player['overall']-60)/2)
@@ -111,7 +111,7 @@ def era_eligibility(players, config=None):
             if era not in ['All eras','Legends'] and m['era']!=era:continue
             for formation in m['formations']:
                 slots=[s[0] for s in FORMATIONS[formation]]+['BENCH_GK','BENCH_DEF','BENCH_MID','BENCH_ATT']
-                fits=np.array([[max(_group_fit(p,s) for p in cards) for cards in groups.values()] for s in slots])
+                fits=np.array([[max(_reserve_fit(p,s,formation) if s.startswith('BENCH_') else position_fit(p,s) for p in cards) for cards in groups.values()] for s in slots])
                 if len(groups)<15:continue
                 rr,cc=linear_sum_assignment(fits>=cfg.min_fit,maximize=True)
                 if len(rr)==15 and np.all(fits[rr,cc]>=cfg.min_fit):compatible.append(dict(manager=m['name'],formation=formation))
@@ -120,7 +120,7 @@ def era_eligibility(players, config=None):
     report['Classics']=dict(eligible=False,people=len({p['identity'] for p in players if p['era']=='Classics'}),compatible=[],reason='Pre-1990 subset lacks full formation coverage. Its players remain available in Legends and All eras.')
     return report
 
-def choose_era(players,seed,weights=None,config=None):
+def choose_era(players,seed,weights=None,config=None,draft_rules=None):
     """Sample an eligible single-era pool using explicit nonnegative weights."""
     report=era_eligibility(players,config)
     eligible=[e for e in ERAS if e!='All eras' and report[e]['eligible']]
@@ -128,6 +128,13 @@ def choose_era(players,seed,weights=None,config=None):
     if not isinstance(weights,dict) or any(e not in eligible for e in weights):raise ValueError('Random era weights must refer to eligible single-era pools.')
     values=np.array([weights.get(e,0) for e in eligible],dtype=float)
     if not np.isfinite(values).all() or (values<0).any() or values.sum()<=0:raise ValueError('Random era weights must be finite, nonnegative, with a positive total.')
+    # A role report can use alternative cards of the same person. Check the
+    # actual seeded edition draw and any salary/tier rules before selecting it.
+    for i,era in enumerate(eligible):
+        if values[i]>0:
+            try:DraftGame(players,era,seed,config,**(draft_rules or {}))
+            except ValueError:values[i]=0
+    if values.sum()<=0:raise ValueError('No weighted era can supply a legal squad under these draft settings.')
     return str(np.random.default_rng(seed).choice(eligible,p=values/values.sum()))
 
 def position_fit(player,slot):
@@ -157,9 +164,26 @@ def _group_fit(p,group):
     slots={'BENCH_GK':['GK'],'BENCH_DEF':sorted(DEF),'BENCH_MID':sorted(MID),'BENCH_ATT':sorted(ATT)}.get(group,[group])
     return max(position_fit(p,s) for s in slots)
 
+RESERVE_GROUPS=('BENCH_GK','BENCH_DEF','BENCH_MID','BENCH_ATT')
+
+def _reserve_fit(player,group,formation):
+    roles={'BENCH_GK':{'GK'},'BENCH_DEF':DEF,'BENCH_MID':MID,'BENCH_ATT':ATT}[group]
+    present={s[0] for s in FORMATIONS[formation]}
+    return max((position_fit(player,s) for s in roles&present),default=0.)
+
+def _reserves_legal(bench,formation,min_fit):
+    fits=np.array([[_reserve_fit(p,group,formation) for p in bench] for group in RESERVE_GROUPS])
+    rr,cc=linear_sum_assignment(fits>=min_fit,maximize=True)
+    return len(rr)==4 and bool(np.all(fits[rr,cc]>=min_fit))
+
 class DraftGame:
     def __init__(self,players,era='All eras',seed=42,config=None,tier_limits=None,tier_quotas=None,pool_eras=None):
         self.config=config or Config()
+        for name,rules in [('tier_limits',tier_limits),('tier_quotas',tier_quotas)]:
+            if rules is not None and (not isinstance(rules,dict) or set(rules)-{'S','A','B'} or any(isinstance(v,bool) or not isinstance(v,int) or not 0<=v<=15 for v in rules.values())):
+                raise ValueError(f'{name} must map S, A or B to integer counts from 0 to 15.')
+        if pool_eras is not None and (not isinstance(pool_eras,list) or not pool_eras or any(e not in ['Classics','1990s','2000s','2010s','2020s'] for e in pool_eras)):
+            raise ValueError('pool_eras must list supported card eras.')
         validate_players(players)
         if era not in ERAS:raise ValueError(f'Choose an era from {ERAS}.')
         if isinstance(seed,bool) or not isinstance(seed,(int,np.integer)) or seed<0:raise ValueError('Seed must be a nonnegative integer.')
@@ -189,6 +213,20 @@ class DraftGame:
                     rr=np.arange(15)
                 if len(rr)==15 and np.all(fit[rr,cc]>=self.config.min_fit):
                     chosen=[pool[int(j)] for j in cc]
+                    try:
+                        assign_lineup(chosen,str(formation),m,self.config)
+                    except ValueError:
+                        # Preserve the original draw wherever its fifteen people
+                        # can support legal reserves; repair only the failed draw.
+                        fit[-4:]=[[_reserve_fit(p,group,str(formation)) for p in pool] for group in RESERVE_GROUPS]
+                        score[fit<self.config.min_fit]=-1e9
+                        if self.config.salary_cap is not None or tier_limits or tier_quotas:
+                            cc=_constrained_awards(score,fit,pool,self.config,tier_limits,tier_quotas)
+                            if cc is None:continue
+                            rr=np.arange(15)
+                        else:rr,cc=linear_sum_assignment(score,maximize=True)
+                        if len(rr)!=15 or not np.all(fit[rr,cc]>=self.config.min_fit):continue
+                        chosen=[pool[int(j)] for j in cc]
                     self._awards=[chosen[int(i)] for i in rng.permutation(15)]
                     self.manager=m;self.formation=str(formation);return
         raise ValueError('This pool cannot cover a manager formation and four reserve groups. Add the missing roles or choose All eras.')
@@ -218,6 +256,12 @@ def assign_lineup(squad,formation='4-3-3',manager=None,config=None,weights=None)
     rr,cc=linear_sum_assignment(matrix,maximize=True)
     if len(rr)!=11 or (matrix[rr,cc]<0).any():raise ValueError('The squad cannot fill this formation at the configured minimum role fit.')
     used=set(int(j) for j in cc)
+    if not _reserves_legal([p for j,p in enumerate(ps) if j not in used],formation,cfg.min_fit):
+        reserves=np.array([[0. if _reserve_fit(p,group,formation)>=cfg.min_fit else -1e9 for p in ps] for group in RESERVE_GROUPS])
+        full=np.vstack([matrix,reserves])
+        rr,cc=linear_sum_assignment(full,maximize=True)
+        if len(rr)!=15 or (full[rr,cc]<0).any():raise ValueError('The squad cannot fill this formation with usable GK, defence, midfield and attack reserves.')
+        rr,cc=rr[:11],cc[:11];used=set(int(j) for j in cc)
     starters=[dict(slot=slots[int(i)][0],x=slots[int(i)][1],y=slots[int(i)][2],player=deepcopy(ps[int(j)]),fit=position_fit(ps[int(j)],slots[int(i)][0]),role_score=float(matrix[int(i),int(j)])) for i,j in zip(rr,cc)]
     return dict(formation=formation,manager=deepcopy(manager or MANAGERS[0]),starters=starters,bench=[deepcopy(p) for j,p in enumerate(ps) if j not in used],config=asdict(cfg),role_weights=deepcopy(weights or ROLE_WEIGHTS))
 
@@ -283,8 +327,9 @@ def _half_team(team,cfg):
                 subs.append(dict(minute=60,out=previous,player=fresh['name'],type='Substitution'))
     return out,subs
 
-def match_rates(home,away,config=None,home_advantage=None):
+def match_rates(home,away,config=None,home_advantage=None,opponent_side='away'):
     cfg=config or Config(**home.get('config',{}))
+    if opponent_side not in ['home','away',None]:raise ValueError('Opponent side must be home, away or None.')
     advantage=cfg.home_advantage if home_advantage is None else float(home_advantage)
     if not math.isfinite(advantage) or not -.5<=advantage<=.5:raise ValueError('Home advantage must be between -0.5 and 0.5.')
     h0=rate_team(home,cfg);a0=rate_team(away,cfg)
@@ -299,11 +344,11 @@ def match_rates(home,away,config=None,home_advantage=None):
                 for k in ['attack','control','defence']:score[k]*=max(.65,factor)
         from .analytics import expected_rates
         home_rate,away_rate=expected_rates(h,a,cfg,advantage=advantage,duration=end-start)
-        stages.append(dict(start=start,end=end,home_xg=home_rate,away_xg=away_rate*cfg.opponent_difficulty,home=hteam,away=ateam))
+        stages.append(dict(start=start,end=end,home_xg=home_rate*(cfg.opponent_difficulty if opponent_side=='home' else 1),away_xg=away_rate*(cfg.opponent_difficulty if opponent_side=='away' else 1),home=hteam,away=ateam))
     return dict(home_xg=sum(s['home_xg'] for s in stages),away_xg=sum(s['away_xg'] for s in stages),stages=stages,home_subs=hs,away_subs=asubs,home_rating=h0,away_rating=a0)
 
-def simulate_match(home,away,seed=100,config=None,home_advantage=None):
-    rates=match_rates(home,away,config,home_advantage)
+def simulate_match(home,away,seed=100,config=None,home_advantage=None,opponent_side='away'):
+    rates=match_rates(home,away,config,home_advantage,opponent_side)
     rng=np.random.default_rng(seed);events=[];realized_xg={'home':0.,'away':0.};goals={'home':0,'away':0};shots={'home':0,'away':0}
     for side,key in [('home','home_subs'),('away','away_subs')]:
         events.extend([dict(s,side=side) for s in rates[key]])

@@ -1,80 +1,71 @@
 # Era Eleven
 
-Draft football across generations: five spins award three players each, then fifteen players become eleven starters and four substitutes under a drawn manager and formation. Play a match, test the same squads thousands of times, or run a 38-match gauntlet.
+Draft football across generations: five spins award three people each, then fifteen people become eleven starters and four usable substitutes under a drawn manager and formation. Play in the browser or inspect and change the same Python game in [Football Era Lab.ipynb](Football%20Era%20Lab.ipynb).
 
-The main demo is **[Football Era Lab.ipynb](Football%20Era%20Lab.ipynb)**. It gives you an interactive game and editable Python cells for checking ratings, changing role weights, swapping substitutes, and testing model assumptions. The browser interface uses the same engine.
+![Era Eleven](docs/game-preview.png)
 
-![Era Eleven draft screen](docs/game-preview.png)
+## Play
 
-## Run the notebook
-
-Python 3.11 or later is recommended. This project was tested with Python 3.14. From the repository folder:
+From this repository folder, using Python 3.11 or later:
 
 ```text
 python -m pip install -r requirements.txt
-python -m jupyterlab "Football Era Lab.ipynb"
-```
-
-Choose **Run All**, then use the draft buttons. VS Code with the Jupyter extension also works. GitHub shows the saved notebook outputs; its preview cannot run interactive controls.
-
-## Play in your browser
-
-```text
+python -m pip install -r requirements-analytics.txt
 python -m era_eleven.server
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The server binds to your computer's loopback address and needs no account or API key. Change the port with `--port 8766` if necessary.
+Open [127.0.0.1:8765](http://127.0.0.1:8765). Change the port with `--port 8766` if it is occupied. On the development machine, use `C:\Python314\python.exe` in place of `python`.
 
-1. Choose All eras, Legends, 1990s, 2000s, 2010s, or 2020s.
-2. Draw a manager and a compatible formation together.
-3. Spin five times. Each spin adds all three revealed cards.
-4. Inspect the eleven and four substitutes. Swap a compatible substitute if you prefer.
-5. Play a match, repeat 2,000 trials, or try the gauntlet. Save your squad and result as JSON.
+The pinned analytics dependency is optional for the offline game. Without it, the interface labels the identical fixed-rate fallback; event/entity tools require `fas`. Once dependencies are installed, normal gameplay downloads nothing and needs no account or API key.
 
-Seeds reproduce the manager, formation, draft, and matches. A new seed gives a new draw. The sampler selects one card per person and reserves enough roles for a feasible eleven and reserve groups. It does not wait until the last spin to fix a broken squad.
+| Mode | What you play |
+| --- | --- |
+| Open draft / Salary Cap | Five spins, compatible lineup changes, one match, repeated trials, and one whole-draft practice respin. Salary mode enforces fifteen-card quotas and a game-coin budget. |
+| Era Gauntlet | Four fourteen-match segments per era, management choices, then a best-of-seven generated boss. A surviving loss restarts that era with the same people and development. Four forward/reverse maps and accumulated boss attempts are saved. |
+| Tournament Circuit | Choose 10–20 events. League, group, knockout, home-and-away aggregate and best-of formats rotate across the supported eras. Tables, qualification, shootouts, goals, clean sheets and trophies determine the outcomes and awards. |
+| Weekly Challenge | UTC Monday challenge with a common seed, pool, tier quotas, model/rules version and generated rivals. Best points under matching conditions are retained. |
+| The League | Create a fictional football avatar. Make four d20 decisions per fixture, earn XP, train, equip kit, negotiate and change clubs, then save a twenty-level ending or retire with an SVG career card. |
+| Head to Head | Two humans, two squads and one neutral football match. Alternate locally or use synchronized private rooms on the same server. Both players vote for a rematch. |
+| Mini Games | Daily and unlimited Daily Card, Higher or Lower, 120-second club-roster recall and five-round Country Hunt. Daily progress resumes after reload; minis remain outside competitive rankings. |
 
-## Data you can inspect
+The clubhouse saves completed match statistics, achievements, the drafted-card album and separately earned trophy cards. Appearance, backdrops, lineup view, sorting, sound/volume, reveal speed, effects and reduced motion are functional saved settings. Help explains the rules and evidence limits. JSON recipes replay server-owned drafts; imported experiments are unranked.
 
-The offline pool contains **625 player cards** from two community datasets whose publishers declare CC0:
+## Notebook
 
-| Pool | Attributes | Historical meaning |
-| --- | --- | --- |
-| Legends, 1990s, 2000s | FC 24 base ICON and HERO cards | Game reconstructions, with curated broad career-era tags |
-| 2010s | FIFA 18 career snapshot | Published edition ratings from 2017 |
-| 2020s | FC 24 career snapshot | Published edition ratings from 2023 |
+```text
+python -m jupyterlab "Football Era Lab.ipynb"
+```
 
-Earlier classics, including Pelé, Cruyff, and Yashin, join the Legends pool. The limited pre-1990 subset cannot cover a complete formation independently. This initial subset uses male-player data. It does not claim to contain all historical players or the latest FC ratings.
+Run all cells, then use `NotebookGame` for the original laboratory or `NotebookModes` for saved competitions, career and local two-human controls. Seeds, datasets, configuration, role weights, random-era weights and weekly rules are editable. The default notebook service is an isolated in-memory experiment; set its SQLite path to persist it. GitHub's preview cannot operate widgets.
 
-The [manifest](data/manifest.json) records the sources, retrieved date, subset choices, and player-file SHA-256. The Ultimate Team dataset's page title says FIFA 23, but the downloaded file is an FC 24 snapshot dated 7 June 2024. Missing detailed historical-card attributes remain missing. If the match model uses its stamina fallback, the notebook names every affected player.
+The notebook also retains the 38-match season laboratory, substitutions, Monte Carlo uncertainty, sensitivity analysis, imports and optional real-event analysis. A season laboratory is separate from Era Gauntlet and the career.
 
-EA/FIFA and PES/eFootball CSV adapters are in [data.py](era_eleven/data.py). PES groups are explicitly labelled aggregation proxies, with the field mapping retained. Place your exports in `data/local/`, which Git ignores. Imported EA and PES scales still require calibration before a serious comparison.
+## Two devices and saved progress
 
-## What the analytics mean
+```text
+python -m era_eleven.server --host 0.0.0.0 --port 8765
+```
 
-The engine assigns players to formation slots with SciPy's exact linear assignment solver. Attack, control, defence, and goalkeeper scores use different role/attribute weights. Tactical fit and nearby player complementarity add small heuristic effects. Country and club continuity contribute to the chemistry proxy.
+On a trusted network, both humans open the host computer's address, create/join a six-character private room, and let the host start. Online players draft simultaneously from independent pools; optional shared-exclusive pools enforce thirty distinct people. The server hides the opponent's cards until both drafts finish, owns the rosters/results and completes remaining picks at the deadline. Local play alternates handovers. Online draft entropy is private to the room, so a public input seed cannot predict the other human's cards; the saved room reproduces its own draft and reconnect state.
 
-Goals use a standard independent Poisson structure with log-linear attack, defence, and home effects. The showcase match samples shots and goal outcomes, so its score reconciles exactly with its goal events. Suitable fresh substitutes can change the lineup at minute 60. Repeated trials and the showcase match use the same expected rates.
+SQLite state defaults to ignored `data/local/game.sqlite`; `--state` selects another file. Browser storage keeps bearer credentials for that server's profile and seats. The private profile backup moves those credentials between browsers; public squad/result exports omit them. Rankings and rooms are shared by clients of **this server**, not a hosted global service. Internet deployment needs an operator and HTTPS proxy (`--public-origin` sets its exact origin). Public account matchmaking and Eraball account sync are external services not supplied by this repository.
 
-**The player-to-goal coefficients and chemistry weights are game settings, not fitted estimates.** Cross-era calibration, historical predictive accuracy, and fitted adjusted plus-minus have not been established. The notebook includes sensitivity analysis and separates Monte Carlo sampling error from unmeasured model uncertainty. Gauntlet opponents are generated drafts, not historical club-season teams.
+## Data and analytics
 
-An optional notebook section fetches the 2022 World Cup final from StatsBomb Open Data. It computes measured xG, non-penalty xG, shot-linked xA, pass completion, pressures, forward moves, and an illustrative expected-threat grid. These quantities are kept separate from the game's simulated statistics. Raw events stay in an ignored local cache under StatsBomb's separate data agreement. The [worked real-match example](docs/REAL_MATCH.md) documents the measured scope and limitations.
+The offline [manifest](data/manifest.json) describes 625 cards representing 551 source identities. The publishers declare CC0. FC 24 ICON/HERO ratings reconstruct legends; FIFA 18 and FC 24 career ratings are edition snapshots. Curated era tags are not contemporaneous historical measurements. Classics lacks a complete independent formation and remains available through Legends and All eras. The pool is a limited male-player subset.
 
-## Check the demo
+EA/FIFA and PES/eFootball imports retain provider IDs, reviewed identity mappings, attribute mappings, missingness, edition and supplied licences. Similar names never merge people automatically. Keep permitted user exports in ignored local storage. See [DATA_PIPELINE.md](docs/DATA_PIPELINE.md) and [data attribution](data/README.md).
+
+The pinned [football_analytics_system](https://github.com/symonyeal/football_analytics_system) supplies the shared scoring and diagnostic tools through a small adapter. Role fit, tactical and chemistry effects, fatigue, substitutions and game rules remain explicit football assumptions. **Gameplay coefficients are not fitted to real drafted-squad results.** Optional StatsBomb event measurements and fitted historical team assessments are separate. The small 2022 World Cup holdout failed to beat a mean-goals baseline and is not used in gameplay.
+
+Read the [model](docs/MODEL.md), [integration audit](docs/INTEGRATION.md), [feature matrix](docs/FEATURE_MATRIX.md), [reference audit](docs/REFERENCE_AUDIT.md), [validation](docs/VALIDATION.md) and [migration/archive inventory](docs/MIGRATION.md) for the exact boundaries. Generated bosses are labelled; attributable historical club-season rosters remain missing input. The League and Country Hunt disclose their football simplifications. Full Eraball parity is not claimed for inaccessible or unplayed reference branches.
+
+## Check
 
 ```text
 python -m unittest discover -s tests -v
 ```
 
-Tests cover draft counts, identity uniqueness, era/role feasibility, deterministic replay, substitutions, invalid inputs, goal/event reconciliation, equal-team symmetry, imported attribute mappings, and event analytics. The notebook was executed from a fresh kernel, including its widget callbacks. The local browser was checked through five spins, match and repeated-trial controls, the gauntlet, and a mobile viewport. Details are in [VALIDATION.md](docs/VALIDATION.md).
+Install the analytics requirements to run its adapter/event/evaluation tests. The CI also checks core gameplay and the notebook without `fas`. Validation covers actual browser workflows, independent clients, reloads, real timer expiry, the editable notebook, constrained coverage and authority rejection paths.
 
-## Sources and permissions
-
-- [Eraball](https://eraball.com/) inspired the visible era/draft/lineup/simulation loop. This project uses original code and artwork.
-- [Stefano Leone's EA Sports FC 24 dataset](https://www.kaggle.com/datasets/stefanoleone992/ea-sports-fc-24-complete-player-dataset) supplies career snapshots.
-- [Lucas Silva's Ultimate Team database](https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database) supplies base historical cards.
-- [SciPy linear_sum_assignment](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html) documents the assignment algorithm.
-- [penaltyblog's model documentation](https://penaltyblog.readthedocs.io/en/latest/models/overview.html) describes the standard Poisson score model.
-- [Karun Singh's expected-threat article](https://karun.in/blog/expected-threat.html) supplies the xT fixed point; this implementation makes failed-move absorption explicit.
-- [StatsBomb Open Data](https://github.com/statsbomb/open-data) supplies optional real events, subject to its [data agreement](https://github.com/statsbomb/open-data/blob/master/LICENSE.pdf).
-
-Code is MIT licensed. The dataset publishers' CC0 declarations are recorded separately; the MIT licence does not relicense third-party data or trademarks. No player portraits, game card artwork, club badges, proprietary EA/PES engine code, or raw StatsBomb events are bundled. This is an independent fan and research demo, with no affiliation to Eraball, EA, FIFA, Konami, or StatsBomb.
+Code is MIT licensed; third-party data retains its own declarations and terms. Original branding, interface and artwork are used. No player portraits, proprietary card artwork, club badges, reference assets or raw StatsBomb events are bundled. This independent fan/research game is unaffiliated with Eraball, EA, FIFA, Konami or StatsBomb.
