@@ -1,5 +1,7 @@
 """Exercise durable game rules through the same service used by HTTP."""
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import patch
 from era_eleven.data import load_players
 try:
     from era_eleven.service import GameService
@@ -125,7 +127,13 @@ class ModeTests(unittest.TestCase):
 
 
 class RoomTests(unittest.TestCase):
-    setUp = ModeTests.setUp
+    def setUp(self):
+        ModeTests.setUp(self)
+        # Real deadlines are covered by browser checks; unit actions need a stable clock.
+        clock = patch('era_eleven.rooms.datetime')
+        clock.start().now.return_value = datetime(2026, 10, 6, tzinfo=timezone.utc)
+        self.addCleanup(clock.stop)
+
     tearDown = ModeTests.tearDown
     def test_two_humans_shared_pool_turns_reconnect_and_authoritative_result(self):
         host = self.s.call('room/create', dict(profile=self.profile, era='2020s', seed=12, pool_policy='shared-exclusive'))

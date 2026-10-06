@@ -119,5 +119,30 @@
     "exact": 28,
     "cases": 60,
     "known_difference_detected": true
+  },
+  "post_archive": {
+    "completed_at": "2026-10-06T20:45:45.731636+00:00",
+    "backend_tests": 92,
+    "subtests": 10,
+    "offline_tests": 73,
+    "fresh_offline_notebook": {
+      "cells": 38,
+      "code_cells": 19,
+      "errors": [],
+      "seconds": 13.781,
+      "fresh_kernel": true,
+      "optional_downloads": false,
+      "backend_path": "offline"
+    },
+    "archived_files": 6,
+    "archive_hashes_match": true,
+    "release_files": 67,
+    "active_local_links": 27,
+    "private_values_checked": 241,
+    "release_failures": [],
+    "gameplay_commit": "0e9a5e4bc916d53d78ee96850a255b01e282b5a0",
+    "test_clock": "Room unit fixtures use a fixed UTC clock; actual browser expiry checks use real 60/120-second timers.",
+    "archived_working_files": 22,
+    "working_archive_hashes_match": true
   }
 }

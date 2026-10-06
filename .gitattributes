@@ -2,3 +2,6 @@
 *.png binary
 *.jpg binary
 *.ipynb text eol=lf
+
+# Preserve historical archive bytes across platforms and checkout settings.
+_archive/**/originals/** -text

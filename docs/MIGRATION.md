@@ -17,7 +17,9 @@ The game baseline is `6eb513c00e4368ce6787294fd9b29bbee14945de`. The user's late
 | Other football prototypes/research, including Invincible | No demonstrated complete replacement | Out of scope and preserved. No entire repository or unrelated project is archived. |
 | fas research/entity/optimizer modules | Installed upstream remains the analytics foundation | Preserve upstream. Stubs and incompatible solvers are documented, not claimed as game implementations. |
 
-The originals are preserved byte-for-byte in the maintainer work folder before replacement. Following main publication, `_archive/20261006-football-integration/manifest.json` will record each original/replacement path, original SHA-256, reason, source commit, validation evidence and restoration instructions, with its README giving the restoration procedure. Archived documents contain historical claims and are not runtime dependencies.
+The archive [manifest](../_archive/20261006-football-integration/manifest.json) records each original/replacement path, original SHA-256, reason, source commit, validation evidence and restoration instructions. The [archive README](../_archive/20261006-football-integration/README.md) gives the restoration procedure. Archived documents contain historical claims and are not runtime dependencies.
+
+The six historical files live under the archive's `originals/` directory; its guide occupies a separate path. Git attributes prevent archive line-ending conversion, preserving the recorded bytes across checkouts. A separate dated private archive holds 22 completed authoring drafts, duplicated machine-specific checks, failed notebook snapshots and retired task review databases. Its maintainer manifest preserves hashes and restoration paths; private review state remains outside public Git. The active browser runner uses the portable repository checks.
 
 ## Compatibility boundaries
 
