@@ -1,76 +1,114 @@
 # Football Era Lab
 
-Draft a football team from eight decades, then play the strongest club squads of your chosen decade. Choose one of five manager and formation combinations, spin five club-decade squads, and place three players from each among eleven starting positions and four bench places. Every spin shows the entire available squad. Position fit, players' strengths, era, club links and the manager change how your team performs.
+Football Era Lab is a draft game about building a team across generations. Maradona's Napoli card can play alongside Messi's Barcelona card, but you still have to find a goalkeeper, fill the manager's formation and leave four useful substitutes on the bench. The team then plays a season against the leading club squads of your chosen decade.
 
-[Play Football Era Lab](https://symonyeal.github.io/Football-Era-Lab/)
+[Play in your browser](https://symonyeal.github.io/Football-Era-Lab/). The game uses bundled data and needs no account, API key, package installation or separate source downloads.
 
-The game runs in your browser. It needs no account, API key, package installation or data downloads. The bundled pool contains 28,773 cards for 16,470 people at 505 club-decades, with 96 managers. Each card identifies its rating source. EA FIFA/FC and Championship Manager data supply positions, ratings and attributes where available; real goals, assists, xG and xA influence who scores and assists. The 1950s to 1970s still rely almost entirely on labelled estimates.
+![The final squad draw: an Ajax roster on the left and a mixed-era team in Pep Guardiola's formation on the right.](docs/images/football-era-lab.png)
 
-## Build your team and keep playing
+## Five clubs supply your fifteen players
 
-Choose the simulation decade, or randomize it. Keep a manager and formation from five options, with two re-spins before choosing. Then spin a squad, select a player and click an empty pitch or bench slot to place him. Pick three people per squad for five squads; one squad re-spin is available during the draft, before picking from that spin. A person can appear at several clubs or decades but can be drafted only once. You can swap any two slots before kick-off and inspect every rating adjustment.
+Start by choosing where the season takes place: one of eight decades from the 1950s to the 2020s. This sets the opposition and the conditions your players will face. It leaves the draft open to every era.
 
-Your team plays a 38-match league against nineteen club squads from the simulation decade and a 16-club European Cup. The league simulates all 380 fixtures, including games between the other clubs. Cup ties have two legs through the semi-finals and a neutral final, with extra time and penalties and no away-goals rule. The squads combine qualifying club records over a decade; these competitions are fictional, using one modern format in every era.
+The first draw gives you five manager and formation combinations. You can re-spin twice before keeping one. The formation fixes the eleven starting positions you must fill; the manager also has attacking and defensive grades, and selecting one of his signature players improves those grades.
 
-After the season, keep the drafted squad in these modes:
+Then you draw five club squads and choose three players from each. A squad belongs to a club and a decade, such as Napoli in the 1980s. Every available player from that squad appears in the roster. Click a player, then an empty place on the pitch or bench. You have one squad re-spin for the whole draft, usable before making a pick from that draw.
 
-| Mode | What happens |
+This makes each selection depend on what the team still needs. Three outstanding forwards from the first club may leave you looking for defenders later. A reserve goalkeeper costs a place that could have gone to another attacker, but gives you cover when the starter misses a match. The draws favour strong club squads and eras close to the season you chose, while keeping every decade available.
+
+A footballer may have several cards at different clubs or ages. Those cards are versions of the same person, so choosing one rules out the others during the draft. Once all fifteen places are filled, you can swap any two players and inspect the rating breakdown before kick-off.
+
+## The card belongs to a player, a club and a decade
+
+The club and decade matter because the game uses the version of a player recorded there. An overall rating gives a starting point; the position you assign him changes the contribution he can make.
+
+The bundled Maradona card for Napoli in the 1980s has an overall rating of 91.2, an attacking-midfield rating of 91 and a right-back rating of 71. Putting him at right back therefore gives you 71 before time and teammate adjustments. His name and overall rating do not erase that positional cost. The browser shows the loss before you place him.
+
+Where available, these position ratings come from EA FIFA/FC data or Championship Manager attributes converted to the same rating scale. Cards also show six attributes, such as pace, shooting and passing, so you can see their strengths and weaknesses. Older cards without those measurements use a simpler penalty based on the distance from their listed positions. Every card carries a source label.
+
+Taking a player out of his own era applies another adjustment. Older players lose 3% per decade when moved forward in time; newer players lose 1.5% per decade when moved back. Timeless tags reduce that loss. These are declared game rules, intended to make the choice of era affect the draft. They do not measure how a real footballer would adapt to another generation.
+
+Teammate links can recover some points. Players from the same club and decade earn a bonus when placed near each other, and listed football partnerships earn a larger bonus when both start. The formation distributes the resulting ratings between attack, midfield and defence. Moving a player can therefore affect his own rating, his links and the balance of the team. The [model document](docs/MODEL.md) gives the complete calculation and its limits.
+
+## A season tests the whole squad
+
+Your team joins nineteen club squads from the chosen decade in a twenty-club league. Those opponents are selected from domestic and European results, then field their best elevens under the game's rating rules. Everyone plays home and away. Your team has 38 league matches, and the game also simulates the other clubs' fixtures to produce the full 380-match table.
+
+Alongside the league is a sixteen-club European Cup: your team and the fifteen highest-rated opponents in that field. Ties have two legs through the semi-finals and a neutral final. There is no away-goals rule; extra time and penalties decide level ties. The same competition formats apply to every decade, so these are fictional seasons rather than reconstructions of historical tournaments.
+
+The match model compares each side's attack, midfield, defence and goalkeeper to calculate an expected goal total. It then draws a score around that expectation. A stronger team is favoured, but can lose an individual match. Players can miss matches, starters tire, and the engine makes substitutions when a reserve offers more than a tired starter. This gives the four bench places a job beyond raising the headline squad rating.
+
+The model's goal calculations were fitted to real club results from 2014 to 2019 and checked on separate seasons from 2020 to 2023. That check concerns modern club teams. The era adjustments, manager grades and teammate bonuses remain game rules, and the fit does not establish that a mixed-era eleven has a historically correct strength.
+
+Recorded goals, assists and expected goals also help choose who receives a simulated goal or assist. Expected goals, or xG, describe the chances a player had; expected assists, or xA, describe the chances his passes created. The game uses those records where they exist and falls back to other scoring records or position-based estimates. The scorer, assist and clean-sheet awards in your results come from the matches that were simulated. [Validation](docs/VALIDATION.md) explains what was tested and what the measurements can support.
+
+## The Gauntlet develops the team you drafted
+
+After the season, the Era Gauntlet takes your fifteen through all eight decades, starting in the 1950s. Each decade has two six-match segments, followed by a single knockout match against its highest-rated club in the selected opposition field.
+
+The board starts with 8 patience, with a maximum of 20. Good segments can earn more; poor segments and lost boss matches cost it. You can retry a lost boss while patience remains. The run ends when patience reaches zero or you beat the final boss of the 2020s.
+
+After each completed segment you choose a reward. A boost upgrades an existing player to that same person's highest-rated card in the archive. A free-agent offer lets you sign one player and release another. Development adds a playing tag, such as Talisman, Maestro or Rock. Rest recovers patience, although repeated rests pay less. Upgrades and signings spend patience, so a stronger squad can leave you with less room to survive the next loss.
+
+This follows the reward and board-patience loop of Eraball, adapted to six-match football segments. The full reward costs, squad limits and patience rules are in [MODEL.md](docs/MODEL.md#era-gauntlet).
+
+## Take the same squad into other competitions
+
+The tournament circuit plays 10 to 20 events across the decades. It rotates through an eight-club league, a European Cup, an eight-club knockout, groups followed by knockout, and a Super Cup. The squad is reassessed for the era of each event. Completion shows your titles and the circuit's leading scorer, assist provider, goalkeeper and player.
+
+Head to Head lets you exchange team codes with a friend. A code contains the exact cards, manager, formation, placement and decade. The game plays two legs, with each team at home in its own era; a level aggregate goes to extra time and penalties in the second leg. It runs locally from the codes you paste.
+
+The Weekly Challenge gives everyone the same draft seed and season decade for the week, from Monday to Sunday in UTC. A seed is the number that fixes the random draws. Everyone can receive the same opportunities and make different choices. There is no online leaderboard, and codes or shared results are not authenticated competitive records.
+
+Progress stays in the browser you used. Download a replay to preserve your choices and resume them elsewhere, or download a result image to share. A seed alone recreates the draws with the same data and engine; it does not record which players you chose or where you placed them.
+
+## The historical archive is uneven
+
+The supplied archive has 28,773 cards for 16,470 people, covering 505 club-and-decade squads and 96 managers. EA and Championship Manager provide much of the later-era rating evidence. The 1950s, 1960s and 1970s remain almost entirely estimated. Earlier community databases are a pending source of evidence, not part of this release.
+
+Wikidata supplies club membership and dated spells at a club. A decade squad can therefore contain players who never shared one season. It can also miss players or inherit incorrect dates. Whole-spell appearances and goals are divided over the covered years rather than observed separately for each decade. The 2020s include only the years available in the sources.
+
+An EA or CM rating is that game's assessment. An estimated historical card is a model's prediction from later game ratings and recorded player facts. Neither establishes an objective ranking across football history. Source badges and the [coverage table](docs/DATA.md#coverage-by-decade) let you see where the evidence changes.
+
+## Inspect the choices in the notebook
+
+The [Jupyter notebook](Football%20Era%20Lab.ipynb) runs the same JavaScript rating and season functions as the browser. Python displays the data and results. Its saved outputs include the source coverage, a real card's position ratings, the chosen squad, rating adjustments, team strengths, fixtures, Cup ties and player awards.
+
+You can supply your own fifteen players, choose a manager and formation, change the season decade, or compare the same lineup with different placements. The default demonstration draws five club squads and automatically picks three players from each. In the browser, every selection and placement is yours. The notebook also prints the data hash and both random seeds, then checks that unchanged settings produce the same result.
+
+The [notebook settings reference](docs/MODEL.md#notebook-settings) explains how to retain exact browser cards and placement. Exporting a notebook result is optional and happens only when you set `export_path`.
+
+## Project files and running your own copy
+
+| File or folder | What to use it for |
 | --- | --- |
-| Era Gauntlet | Play two six-match segments and a boss in each decade, from the 1950s to the 2020s. Board patience determines how long the run lasts. Between segments, choose a boost to a player's prime card, a free agent, a badge or rest. A lost boss can be retried while patience remains. |
-| Tournament circuit | Choose 10 to 20 events rotating through an eight-club league, European Cup, eight-club knockout, groups plus knockout, and Super Cup across decades. Titles and awards follow simulated match events. |
-| Head to Head | Send a team code to a friend, or paste theirs. Play two legs, each team at home in its own decade. A level aggregate goes to extra time and penalties. |
-| Weekly Challenge | Everyone gets the same seed and simulation decade for the ISO week, Monday to Sunday in UTC. Choices remain yours; the challenge has no online leaderboard. |
+| [index.html](index.html), [app/](app/main.js) | The static browser game and its interface. |
+| [app/engine/](app/engine/index.js) | The shared rating, match, season and tournament calculations. |
+| [Football Era Lab.ipynb](Football%20Era%20Lab.ipynb), [notebooks/engine_bridge.mjs](notebooks/engine_bridge.mjs) | Editable squad experiments and the connection to the JavaScript engine. |
+| [data/game.json](data/game.json) | The bundled cards, people, clubs, managers and match settings. |
+| [docs/DATA.md](docs/DATA.md) | Squad inclusion, source labels, coverage, attribution and rebuilding. |
+| [docs/MODEL.md](docs/MODEL.md) | Rating calculations, match rules, mode rules and notebook settings. |
+| [docs/VALIDATION.md](docs/VALIDATION.md) | Test commands, match-fit results, draft balance and the limits of those checks. |
+| [pipeline/](pipeline/build.py), [tests/](tests/engine/game-data.test.mjs) | Python data preparation and the automated checks. |
 
-Progress is saved in this browser. Download a replay to preserve all draft choices, import it to resume, or download a result image to share. A seed recreates the draws with unchanged data and engine; it does not capture your picks. Head to Head codes preserve exact cards and placement. Neither codes nor weekly results are authenticated competitive records.
-
-## Run locally
-
-The static game has no build step. From this repository folder:
+To run the game locally, serve this repository folder and open [127.0.0.1:8765](http://127.0.0.1:8765/):
 
 ```text
 python -m http.server 8765 --bind 127.0.0.1
 ```
 
-Open [127.0.0.1:8765](http://127.0.0.1:8765/). Python serves files; the JavaScript in [app/engine](app/engine/index.js) runs matches. A static host can serve the same `index.html`, `app/` and `data/game.json`. For GitHub Pages, select **Deploy from a branch**, **main**, **/ (root)** in the repository's Settings → Pages.
+There is no frontend build step. A static host needs `index.html`, `app/` and `data/game.json`. GitHub Pages serves this repository from `main` at `/ (root)` using **Deploy from a branch** in Settings → Pages.
 
-## Experiment in the notebook
-
-Use Node 20 or later and Python 3.11 or later:
+For the notebook, install Node 20 or later and Python 3.11 or later, then run:
 
 ```text
 python -m pip install -r requirements.txt
 python -m jupyterlab "Football Era Lab.ipynb"
 ```
 
-On the development machine, use `C:\Python314\python.exe` in place of `python`. The [notebook](Football%20Era%20Lab.ipynb) includes executed outputs for GitHub's preview. Run all cells in JupyterLab to change them. Its Node bridge calls the same JavaScript rating, assignment and season functions as the browser; Python reads data and displays the response. Set `NODE` in the setup cell if Node is not on PATH.
+Set `NODE` in the notebook's setup cell if Node is not on PATH. On the Windows development machine, use `C:\Python314\python.exe` instead of `python`.
 
-| Setting | Meaning |
-| --- | --- |
-| `seed` | Integer from 0 to 4294967295 for the draft and season. |
-| `decade` | Simulation decade start, 1950 to 2020 in steps of ten. |
-| `manager` | Name from the printed catalogue, or `None` for the seeded demonstration choice. |
-| `formation` | Catalogue name, or `None` to use that manager option's formation. |
-| `person_ids` | Fifteen distinct Wikidata person IDs; an empty list requests a seeded draft demonstration. |
-| `source_cards` | Fifteen exact `{k, p}` records; takes precedence over `person_ids`. |
-| `placement` | `best` assigns the eleven starters; `ordered` keeps eleven formation slots followed by four substitutes. |
-
-With IDs alone, the bridge prefers a card from the simulation decade, then the highest base rating, then the source-card key to break ties. Use `source_cards` and `placement='ordered'` to retain a browser lineup's exact cards and placement. For example, `{'k': 'Q2641:1980', 'p': 'Q17515'}` identifies Maradona's Napoli card. Notebook manager and formation choices are editable experiments. The automatic demonstration uses five actual squad draws, chooses three players from each and finds a starting eleven; browser picks remain manual.
-
-The notebook displays rating sources, each starter's position loss, era multiplier and links, effective manager grades, line strengths, match parameters, tables, fixtures, Cup ties, player totals and awards. It reports the data hash and both draft and season seeds, checks deterministic replay, and writes no export unless you set `export_path` to a persistent file.
-
-## Read the data and model
-
-The documentation has three parts:
-
-- [Data, sources and rebuilding](docs/DATA.md): inclusion rules, source badges, historical coverage, attribution and local input files.
-- [Model and mode rules](docs/MODEL.md): how ratings become line strengths, matches, scoring events and Gauntlet rewards.
-- [Checks and measured results](docs/VALIDATION.md): test commands, match calibration, draft balance and the limits of each check.
-
-Ratings express a game's assessment of a player. Estimates for earlier decades extrapolate from rated cards of 1989 to 2025. The match model was fitted on modern club seasons; mixed-era drafts, historical squads, chemistry, manager grades and era penalties are outside that validation. The supplied squads can omit players or combine people who never shared a season. Appearances and goals from Wikidata are apportioned whole-stint totals. The 2020s include only available source years.
-
-The earlier Python game, its notebook, career, rooms, mini-games and reports remain in the [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1). Its saves and competitive profiles use a different scheme and have no automatic migration. That version's tests and commands apply to its implementation.
-
-## Check the game
+To check an edited copy:
 
 ```text
 node --test tests/engine/*.test.mjs
@@ -79,6 +117,8 @@ python -m unittest discover -s tests -p test_pipeline.py -v
 python -m pytest tests/test_calibration.py -q -p no:cacheprovider
 ```
 
-The GitHub workflow also executes the notebook. Browser acceptance and balance measurement commands are in [VALIDATION.md](docs/VALIDATION.md). Data rebuilding is separate from gameplay.
+GitHub's workflow also executes the notebook. Browser checks and balance commands are in [VALIDATION.md](docs/VALIDATION.md); rebuilding data is a separate task described in [DATA.md](docs/DATA.md).
 
-Code is MIT licensed. Source data keeps its own terms, documented in [DATA.md](docs/DATA.md) and `data/manifest.json`. Raw ratings archives, Championship Manager databases and GPL results files remain local. Publisher licence declarations do not establish rights to every underlying game asset. No portraits, card artwork or club badges are bundled. This independent project is unaffiliated with Eraball, EA, FIFA, Konami, Wikidata or the data publishers.
+The [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1) preserves the earlier Python game, notebook, career, rooms, mini-games and reports. Its saves and competitive profiles have a different format and no automatic migration. Its test commands apply to that version.
+
+The [code licence](LICENSE) is MIT. Source data retains its own terms; [DATA.md](docs/DATA.md#source-attribution-and-terms) and [data/manifest.json](data/manifest.json) record them. Raw rating archives, CM databases and GPL results files remain local. Publisher declarations do not establish rights to every underlying game asset. No player portraits, card artwork or club badges are bundled. This independent project is unaffiliated with Eraball, EA, FIFA, Konami, Wikidata or the data publishers.

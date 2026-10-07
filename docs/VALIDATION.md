@@ -1,10 +1,16 @@
-# Checks and measured results
+# What the checks and results establish
 
-The release checks below were run on 2026-10-07 against the bundled data and current shared engine. They test implementation behavior and quantify specific models. Historical completeness and true player quality remain outside these checks.
+The checks answer several different questions: whether the game follows its rules, whether its goal model improves on a simple average, and how difficult it is under one automatic drafting policy. Passing the first set does not prove that the historical ratings are correct. The measured results below refer to the 2026-10-07 data bundle and shared engine.
 
-## Run the automated checks
+## The rules are checked automatically
 
-From the repository root, with Node 20 or later and the Python analytics dependencies installed:
+The release passed 53 Node tests, 14 Python pipeline tests and 4 calibration tests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet rewards, same-person boosts, boss retries and valid or malformed saved runs.
+
+Checks on the supplied data require the strongest rated squad to lead each selected opposition field. They also require the coverage report, manifest counts and embedded calibration settings to describe the exact bundle. A stale data hash fails that check.
+
+The pipeline tests exercise source selection, age adjustments, CM record layouts, attribute and position rules, allocation of club spells, statistic date boundaries and legend identity. They use small fixtures rather than downloading sources. The calibration tests use independently generated goal counts to check parameter recovery, probability calculations, rejected inputs and the training-only average used for comparison.
+
+Run these commands from the repository root with Node 20 or later and the Python analytics dependencies installed:
 
 ```text
 node --test tests/engine/*.test.mjs
@@ -12,46 +18,58 @@ python -m unittest discover -s tests -p test_pipeline.py -v
 python -m pytest tests/test_calibration.py -q -p no:cacheprovider
 ```
 
-All 53 Node tests, 14 pipeline tests and 4 calibration tests passed. The JavaScript suite covers draft limits, distinct identities, slot assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions, goal/stat reconciliation, deterministic replay, the tournament circuit, weekly seeds, team codes and Gauntlet rewards, boosts and boss retries. It also checks Gauntlet save validation and restoration, that the strongest rated squad leads each opponent field, and that coverage, manifest and embedded calibration parameters describe the exact shipped bundle. The latter check rejects a coverage report with a stale data hash.
+GitHub's `Game checks` workflow also executes the notebook through Node. Gameplay has no frontend build or npm dependency installation. The notebook completed seven code cells without error outputs and checked repeatability for its selected settings and current data. That establishes the same result for those inputs, not a historically valid outcome. Windows can emit a Jupyter/ZeroMQ selector-thread warning during this successful execution.
 
-Pipeline tests check source selection, age adjustment, CM record layouts, attribute/position rules, stint allocation, stats boundaries and legend identity without source downloads. Calibration tests use independently generated counts to check parameter recovery, likelihood calculations, invalid inputs and the training-only baseline. GitHub's `Game checks` workflow runs these checks and executes the active notebook through Node. There is no frontend build or npm dependency installation for gameplay.
+The data validator reported zero failures for its structural rules. The export has at least fifteen cards and a goalkeeper in every eligible club-and-decade squad, no person with Wikidata's cached explicit female label, and eight winger spot checks in wide positions. Those checks cannot identify every wrong or missing source record.
 
-The notebook was executed with seven code cells and no error outputs. It checks deterministic replay for its selected settings and current data. That check establishes replay for those inputs, not the validity of historical outcomes. Windows execution can emit the Jupyter/ZeroMQ selector-thread warning; it completed successfully. Local data validation reports zero defects, no exported people carrying Wikidata's explicit female label, fifteen or more cards and a keeper in every club-decade, and eight winger spot checks in wide slots. Missing or wrong upstream metadata remains possible.
+## The browser checks cover a complete playthrough
 
-## Browser acceptance
+Desktop at 1440 × 900 and mobile at 390 × 844 passed 28 checks with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
 
-Serve the repository root, then run the portable harness with an installed Playwright module and Chromium:
+Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, Gauntlet segments, a reward and a boss. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft.
+
+Both runs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These runs cover Chromium at two screen sizes, not every browser or every possible sequence of choices.
+
+To reproduce them, serve the repository root, install Playwright and Chromium, and run:
 
 ```text
 node tests/browser/acceptance.cjs --output /path/to/persistent/results --url http://127.0.0.1:8765/
 ```
 
-If Playwright is installed elsewhere, add `--playwright /path/to/playwright`. Screenshots, downloaded replays, result images and `acceptance.json` go to the selected output folder. On the development machine all output and browser scratch files belong in `Claude Func Folder\football-v2\`. Set `TEMP` and `TMP` to a persistent subfolder there before launching the browser.
+If Playwright is installed elsewhere, add `--playwright /path/to/playwright`. The chosen output folder receives `acceptance.json`, screenshots, replays and result images. The same harness can test the public site by changing `--url` to `https://symonyeal.github.io/Football-Era-Lab/`.
 
-Desktop (1440 × 900) and mobile (390 × 844) passed 28 checks, with animations enabled, no page or console errors, no failed HTTP responses and no horizontal page overflow. Both completed manager choice, five squad draws and fifteen placements, swaps, reload, the 38-match season, Cup, Gauntlet segments/reward/boss, a ten-event circuit with its four player awards, team-code Head to Head and Weekly Challenge. Both also rejected corrupt saves and invalid replays, rejected malformed Gauntlet imports without changing browser storage, downloaded the replay and result PNG, and imported the replay with exact placements. The result report includes the data hash. These checks cover Chromium at those two sizes; other browsers and every possible user choice are not exhaustively tested.
+On the Windows development machine, output and browser scratch belong in `Claude Func Folder\football-v2\`. Set `TEMP` and `TMP` to a persistent subfolder there before launching the browser.
 
-## Match calibration on modern seasons
+## The goal model beats a home-and-away average
 
-The deployed expected-goal model was fitted on 6,716 matched real fixtures from seasons starting in 2014 to 2019. The holdout contains 4,354 matched fixtures from 2020 to 2023, or 8,708 team goal counts. Each club uses its actual FIFA edition roster, the engine's best eleven in 4-3-3, EA position ratings, a neutral manager and no curated tags.
+The goal model was fitted on 6,716 matched real fixtures from seasons starting in 2014 through 2019. It was checked on 4,354 different fixtures from 2020 through 2023, comprising 8,708 team goal counts. These later fixtures were held out: they did not determine the fitted coefficients.
+
+Each club was represented by its actual FIFA edition roster, its best eleven in a 4-3-3, EA position ratings, a neutral manager and no curated tags. This asks whether the model can relate ordinary club strengths to goals. It does not test the mixed-era draft rules.
+
+The comparison predicts every home side using the training period's average of 1.58815 goals and every away side using 1.22186. Both the model and that simple baseline are evaluated on the same later fixtures.
 
 | Held-out measure | Model | Home/away average baseline |
 | --- | ---: | ---: |
 | Mean Poisson negative log likelihood | 1.47598 | 1.54001 |
 | Root mean squared error in goals | 1.18792 | 1.26474 |
 
-Lower is better for both measures. The baseline's home mean (1.58815) and away mean (1.22186) are fitted only on matched training fixtures. Both comparisons use the same matched holdout fixtures. Club-name mappings exclude unmatched fixtures; `data/calibration.json` records league-season coverage and unmapped names, including seasons with missing source results.
+Both measures are better when lower. Poisson negative log likelihood, also called log loss here, penalizes the model when it assigns a low probability to the score that actually occurred. Root mean squared error measures the size of the difference between expected and observed goals, giving larger mistakes more weight. They assess goal predictions in different ways; neither is a percentage of correctly predicted winners.
 
-The selected coefficients are attack/defence `be=0.411503`, midfield weight `ka=0.556609` and log home advantage `h=0.262093`. The report records agreement between Python's fitted goal expectations and JavaScript's deployed `lam` within 1e-10. The 2010s and 2020s use the training neutral intercept, 1.231344 goals per team, so the holdout's measured scoring rate does not tune deployment. Earlier decade intercepts scale that level by measured historical scoring ratios. Rating prediction, historical transfer and the stochastic match simulation are different questions: this fit excludes random absences, fatigue and substitutions, and does not validate mixed-era drafts, historical squads, formations, links, tags or manager grades.
+The full fitted coefficients are `be=0.411503` for the attack/defence gap, `ka=0.556609` for midfield weight, and `h=0.262093` for home advantage on the logarithmic scale. [MODEL.md](MODEL.md#drawing-the-match-score) shows how they enter the calculation. The report records agreement between Python's fitted expectations and JavaScript's deployed `lam` within 1e-10.
 
-## Draft balance across eight decades
+The 2010s and 2020s scoring level is the training neutral intercept, 1.231344 goals per team. The later test period's scoring average does not tune that deployed value. Earlier levels use measured historical scoring ratios.
 
-Reproduce the measurement with:
+Club-name matches restrict fixture coverage. Unmatched fixtures are excluded from both comparisons; [calibration.json](../data/calibration.json) records coverage, unmapped clubs and league-seasons with missing results. The fit excludes random absences, fatigue and substitutions. It does not validate historical squads, mixed-era teams, formations, links, tags or manager grades. Predicting game ratings, transferring those ratings across generations and predicting modern club goals are separate questions.
+
+## Draft difficulty varies by decade
+
+One automatic drafting policy played forty seeds per decade, 1000 through 1039, with `tau=3` and `rho=1.5`. It kept the best-graded manager among the five offered. At each pick it selected the highest position- and era-adjusted value in an open place, adding the nearby same-club points it would gain; bench candidates received a 0.92 weight.
+
+This is a declared computer policy, not a measurement of human players. It does not optimize manager re-spins, squad re-spins or duo partnerships. Reproduce it with:
 
 ```text
 node tests/balance.mjs season 40
 ```
-
-The declared policy takes the best-graded of the five managers. Each pick maximizes slot-rated, era-adjusted value in an open slot, with the nearby club links it would earn; a bench pick gets a 0.92 weight. It uses seeds 1000 through 1039 in every decade, with spin settings `tau=3` and `rho=1.5`. This is an automatic drafting policy, not measured human performance.
 
 | Decade | Median finish | Titles / 40 | Top four / 40 | Median points | Unbeaten / 40 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -64,22 +82,32 @@ The declared policy takes the best-graded of the five managers. Each pick maximi
 | 2010s | 5 | 0 | 16 | 68 | 0 |
 | 2020s | 5 | 4 | 15 | 74 | 0 |
 
-The policy won 42 titles in 320 drafts (13.1%), with no unbeaten seasons. The aggregate meets the chosen 5% to 15% title target; individual decades differ substantially. Zero titles in forty 2000s or 2010s drafts does not establish impossibility, and this sample does not demonstrate the target within every decade. The policy tends to finish near the top in early eras and around fifth to ninth later. More sophisticated picks, manager re-spins, squad re-spins and deliberate duo choices are not optimized by this policy.
+The policy won 42 of 320 titles, or 13.1%, and produced no unbeaten seasons. That aggregate is within the chosen 5% to 15% title target, while individual decades differ substantially. Its typical finish was second to third in the earliest decades, and fifth to ninth later. For forty runs, the harness reports the lower of the two middle observations in the sorted list as its median.
 
-## Gauntlet survival
+Zero titles in forty 2000s or 2010s drafts does not establish that those eras cannot be won. The experiment also does not establish the target title probability in each individual decade. Better selections, deliberate partnerships or use of re-spins remain outside what this policy measures.
+
+## Gauntlet survival depends on reward choices
+
+The same drafting policy played forty Gauntlets using seeds 500 through 539, cycling the draft decades. It took a prime-card boost only when at least five patience would remain after payment; otherwise it rested. This is one conservative reward policy, not a test of every signing, development or boost strategy.
 
 ```text
 node tests/balance.mjs gauntlet 40 5
 ```
 
-The same draft policy uses seeds 500 through 539, cycling draft decades. It takes a boost only when at least five patience will remain after paying; otherwise it rests. Of forty runs, nine ended before clearing the first decade and one cleared all eight. The median was three decades cleared, thirteen points per six-match segment and eight boss matches per run. This measures that conservative reward policy, not every free-agent, badge or boost strategy.
+Nine runs ended before clearing the first decade. One cleared all eight. The median run cleared three decades, earned thirteen points per six-match segment and played eight boss matches.
 
 | Decades cleared | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Runs | 9 | 4 | 3 | 5 | 8 | 3 | 4 | 3 | 1 |
 
-## Evidence files and limits
+The results describe this policy under the current patience and opposition rules. They do not measure the success rate of a player who builds the team around future boss matches or chooses different rewards.
 
-`data/validation.json` describes the exact bundle by its SHA-256, `data/manifest.json` records attribution and unresolved links, and `data/calibration.json` records the match fit and coverage. The notebook derives counts and hash from the loaded file. The development release evidence is kept in `Claude Func Folder\football-v2\review-20261007\review-browser-after\` and `review-20261007\release-*-balance.txt`; the portable commands above regenerate it elsewhere.
+## Identifying the evidence and its limits
 
-Early-decade rating estimates extrapolate from engine-rated cards of 1989 to 2025. Their prediction errors measure resemblance to game ratings, not historical ability. Squad incompleteness, club-name joins, decade aggregation and estimated positions affect results. Unmeasured model effects are identified in [MODEL.md](MODEL.md), and source coverage and terms in [DATA.md](DATA.md). Reports in the [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1) apply only to that implementation.
+[validation.json](../data/validation.json) names the exact bundle by its SHA-256 file fingerprint. [manifest.json](../data/manifest.json) records attribution and unresolved links, and [calibration.json](../data/calibration.json) records the goal fit and fixture coverage. The notebook calculates its counts and hash from the file it loads.
+
+Development browser evidence is kept in `Claude Func Folder\football-v2\review-20261007\review-browser-after\`; the balance outputs are `review-20261007\release-*-balance.txt`. Those local artifacts are not supplied with the repository. The portable commands above generate fresh records in the output folder you choose.
+
+Early-era estimates extend a model fitted to engine-rated cards from 1989 to 2025. Their errors measure resemblance to those games' ratings, not real historical ability. Missing squad members, incorrect club-name joins, decade-wide membership and estimated positions can affect results. The nearby-source date-window limitation is documented in [DATA.md](DATA.md#the-source-label-explains-what-rated-a-card). Additional unmeasured effects are listed in [MODEL.md](MODEL.md#what-the-model-leaves-out).
+
+The tests and reports under the [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1) concern that earlier implementation. They do not establish the behavior of this engine.

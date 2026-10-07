@@ -1,35 +1,55 @@
-# Data, sources and rebuilding
+# Where the players and squads come from
 
-The browser and notebook load `data/game.json`. The bundle contains 28,773 player cards, 16,470 people, 505 club-decades and 96 managers. `data/manifest.json` records source attribution, model evaluation and unresolved curated links; `data/validation.json` records coverage and the exact bundle's SHA-256 hash. Match calibration is a separate report in `data/calibration.json`.
+The archive combines club records with ratings from football games. Club records determine which version of a player belongs in a squad. EA and Championship Manager supply ratings and attributes where they exist; estimates fill the remaining gaps. Recorded scoring statistics have a separate role in choosing the scorers and assist providers of simulated goals.
 
-## What a squad represents
+The shipped bundle contains 28,773 cards for 16,470 people at 505 club-and-decade squads, plus 96 managers. A person can have several cards, but the draft permits that person only once. The evidence is much stronger for later decades than for the 1950s to 1970s.
 
-Club selection combines top-tier domestic results and European Cup progress. Domestic results cover England, Spain, Italy, Germany, France, Netherlands and Portugal, with different historical coverage. European entrants add clubs beyond those leagues. A season belongs to the decade of its start year; a 2020s card represents available years, not a completed decade. Opponent selection starts with the top nineteen eligible club-decades by these result ranks. The game rates their best elevens to order the competition field and choose each decade's boss.
+## A decade squad covers a period at a club
 
-Dated Wikidata club stints supply membership and, where recorded, league appearances and goals. A card needs ten apportioned appearances, or the declared notability rule when appearances are missing: at least two covered seasons and twelve Wikipedia language links. Whole-stint totals are spread over years rather than measured separately by decade. A qualifying squad can combine players who never shared a season, omit others and inherit errors in dates, names or totals. The spin lists every qualifying supplied card. This is a partial archive of club records, not a census of every registered player.
+Domestic league results and European Cup progress select the clubs. The domestic inputs cover England, Spain, Italy, Germany, France, Netherlands and Portugal, with different historical coverage in each. European entrants add clubs from outside those leagues. A season belongs to the decade in which it starts. A 2020s card covers the available years, not a completed decade.
 
-Only club-decades with at least fifteen cards and a goalkeeper can be drafted or oppose you. The pipeline excludes people explicitly marked female by Wikidata's P21 field and records age conflicts. That check establishes the absence of that label in this export; it cannot establish complete or correct gender metadata upstream.
+Wikidata's dated club records supply the players. A qualifying card needs at least ten appearances allocated to that decade. When appearance totals are missing, it can qualify through the declared notability rule: at least two covered seasons and twelve Wikipedia language links. Whole-spell appearances and league goals are spread across the covered years. They are not separately observed totals for every decade.
 
-Wikidata person IDs distinguish people from their many club-decade cards. The same person can be drafted only once. EA and Championship Manager links use names, birth dates and season club evidence; Understat uses name and club-season evidence because its source lacks birth dates. External club IDs are mapped through linked players' clubs. These links remain fallible. EA legend links use explicit aliases and available nationality evidence. Unresolved curated signature players and duos remain listed in the manifest.
+These records can put players in the same decade squad even when they never shared one season. Missing names, wrong dates and incomplete totals can also affect membership. The roster shows every qualifying supplied card for a draw; the archive does not contain every player ever registered at the club.
 
-## Rating badges and attributes
+A squad needs at least fifteen cards and a goalkeeper to be eligible. The league opposition starts with the nineteen highest-ranked eligible club squads by domestic and European results. Their best elevens are then rated by the engine to order that selected field and identify its boss.
 
-| Badge | Meaning |
-| --- | --- |
-| `f` | EA FIFA/FC at this club in a season inside the stint, from FIFA 07 to FC 26. |
-| `c` | Championship Manager at this club in a season inside the stint, converted to the EA rating scale. |
-| `i` | EA Icon/Hero reconstruction, with the age adjustment. |
-| `n` | Nearby EA season, within two seasons of the stint, adjusted for age. |
-| `m` | Nearby Championship Manager season, within two seasons, adjusted for age. |
-| `e` | Fitted estimate when none of those sources supplies a rating. |
+The pipeline excludes people explicitly labelled female by Wikidata's sex-or-gender field, P21, and records age conflicts. The exported people have no cached explicit female label. That check cannot establish complete or correct gender information in the source.
 
-Priority follows the table order. Same-club EA and CM ratings average the best three available season ratings, or fewer when fewer exist. Slot ratings come from the best snapshot used for that source and are scaled to the card's overall; face stats keep that snapshot's values. Nearby ratings and Icon reconstructions retain their different evidence labels. See [MODEL.md](MODEL.md) for the conversion fit and age curve.
+## The source label explains what rated a card
 
-EA and CM cards carry fifteen position ratings and six face stats where available. Natural positions first use game databases, then EA legends or the nearest available engine season, then Transfermarkt and finally Wikidata's declared mapping. Position labels that fall back to Wikidata are coarse; the "wing half" rule is documented in the model. Formations, manager club associations, signature players, Timeless/Maestro tags and duo lists are curated under `pipeline/curated/`. European Cup experience inferred from a club stint does not show that the player appeared in every winning tie.
+| Badge | Browser label | Evidence |
+| --- | --- | --- |
+| `f` | EA FC | The same person at the same club, in an edition inside his recorded spell, from FIFA 07 to FC 26. |
+| `c` | CM 01/02 | The same person at the same club in a CM database season inside that spell, converted to the EA scale. |
+| `i` | Icon / Hero | An EA legend-card reconstruction matched to the person and adjusted for age. |
+| `n` | EA near | An EA edition within two seasons of either recorded spell boundary, at any club, adjusted for age. |
+| `m` | CM near | A CM database within two seasons of either boundary, at any club, adjusted for age. |
+| `e` | Estimated | A prediction fitted on engine-rated cards when the preceding sources supply no rating. |
 
-This build has 5,910 cards with recorded real statistics. Transfermarkt supplies minutes, goals and assists from available competitions; Understat supplies minutes, xG and xA for its covered leagues. The two sources have separate minute denominators and incomplete club-season coverage. Stats are summed only within the card's stint years. They influence simulated scorer and assister selection; simulated events remain separate from historical totals.
+The table gives the source priority. Direct same-club EA or CM evidence averages the best three season ratings, or fewer if fewer exist. Position ratings come from the best snapshot used for that source and are scaled to the overall. The six displayed attributes keep that snapshot's values. A nearby or reconstructed card retains its own label, so it remains distinguishable from an in-period same-club rating.
 
-## Coverage in the shipped build
+The nearby fallback compares with spell boundaries instead of the whole interval. It can therefore miss an interior snapshot from another club during a long recorded spell. That is a documented pipeline correction still to make, alongside checking unreliable source dates. [MODEL.md](MODEL.md#which-version-of-the-player-gets-rated) describes the current rule and conversion fits.
+
+EA and CM profiles provide fifteen position ratings and six attributes where available. Natural positions use game profiles first, then EA legend data or the nearest available engine season, then Transfermarkt's specific position and finally a mapping of Wikidata labels. The last fallback is coarse; the model document explains the "wing half" rule.
+
+Manager club associations, signature players, formations, duo partnerships and Timeless/Maestro tags are curated in [pipeline/curated/](../pipeline/curated/tags.json). European Cup experience inferred from a club spell does not establish that the player appeared in every winning tie.
+
+## Joining records can introduce mistakes
+
+Wikidata person IDs keep one person distinct from his club-and-decade cards. EA and CM records are matched by names, birth dates and season club evidence. Understat lacks birth dates in the supplied source, so its joins use names and club-season evidence. External club IDs are mapped using linked players' clubs. Each of these matches can be wrong.
+
+EA legend records use explicit aliases and available nationality evidence. Unresolved signature-player and duo links are listed in the manifest rather than silently filled. The notebook and each card's source label let you inspect the results of the joins.
+
+## Historical statistics and simulated statistics have different meanings
+
+This build has 5,910 cards with recorded real statistics. Transfermarkt supplies minutes, goals and assists from its available competitions; Understat supplies minutes, expected goals (xG) and expected assists (xA) from its covered leagues. xG measures scoring chances, while xA measures chances created by a player's passes.
+
+The two sources have separate minute totals and incomplete club-season coverage. Their records are summed only within the card's spell years. They influence which player receives a simulated goal or assist. The totals and awards produced by a game run belong to that simulation and remain separate from the historical records.
+
+## Coverage by decade
+
+The six badge columns below use the labels defined above. A nearby rating remains separate from a direct same-club rating, and an Icon reconstruction remains separate from a contemporary edition.
 
 | Decade | Clubs | Cards | `f` | `c` | `i` | `n` | `m` | `e` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -42,9 +62,11 @@ This build has 5,910 cards with recorded real statistics. Transfermarkt supplies
 | 2010s | 70 | 5,697 | 3,686 | 0 | 10 | 1,556 | 46 | 399 |
 | 2020s | 51 | 1,895 | 1,369 | 203 | 0 | 270 | 23 | 30 |
 
-The 1950s to 1970s remain almost entirely estimates. The integrated CM seasons are 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22. Earlier community databases can be added when supplied and linked; they are not included in this release. A curated career-era label on an Icon card does not make its reconstructed rating a contemporaneous measurement.
+The 1950s, 1960s and 1970s are almost entirely estimates. The integrated CM seasons are 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22. Earlier community databases can be added when supplied and linked; they are not included in this release. Giving an Icon card a career-era label does not turn its reconstructed rating into a contemporary measurement.
 
-## Sources and their published terms
+## Source attribution and terms
+
+These are the dataset declarations recorded for the release. They describe different sources; the repository's code licence does not replace them.
 
 | Source | Used for | Publisher's stated terms |
 | --- | --- | --- |
@@ -59,19 +81,19 @@ The 1950s to 1970s remain almost entirely estimates. The integrated CM seasons a
 | [Lucas Silva, FIFA 23 Ultimate Team players database](https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database) | Base Icon/Hero reconstructions. The downloaded file dated 2024-06-07 contains FC 24 cards despite the page title. | CC0 declaration. |
 | [James Curley, engsoccerdata](https://github.com/jalapic/engsoccerdata) | Derived club rankings and scoring baselines; local real-result calibration inputs. | GPL (>= 2). |
 
-Code is MIT licensed; data retains its source terms. Raw results, rating archives and CM databases stay in the persistent local work folder. Omitting raw files does not resolve every obligation for derived or redistributed material. Publisher declarations do not establish an EA licence for artwork or every underlying right. No portraits, badges or card artwork are shipped. Keep source attribution and the manifest with a redistributed bundle and review the original source terms.
+The code is MIT licensed and the data retains its source terms. Raw results, rating archives and CM databases stay in the persistent local work folder. Leaving raw files out of the repository does not resolve every obligation for derived or redistributed data. Publisher declarations do not establish rights to EA artwork or every underlying asset. No portraits, badges or card artwork are supplied. Retain the source attribution and manifest with a redistributed bundle, and consult the original terms.
 
-## Rebuild from local inputs
+## Rebuilding the bundle
 
-Install the pipeline dependencies from the repository root:
+The published browser game uses the supplied data. Rebuilding requires the Python dependencies and local source files:
 
 ```text
 python -m pip install -r requirements-analytics.txt
 ```
 
-Set `FEL_INPUTS` to the persistent raw-input folder and `FEL_CACHE` to the persistent source/build cache. On the development machine these are `Claude Func Folder\football-v2\inputs` and `Claude Func Folder\football-v2\cache` under the shared workspace. Elsewhere, the default is the repository's ignored `work/pipeline/` folder. Do not commit raw archives, cache pickles or secrets. Read only pickle caches you trust.
+Set `FEL_INPUTS` to the persistent raw-input folder and `FEL_CACHE` to the persistent source and build cache. The development machine uses `Claude Func Folder\football-v2\inputs` and `Claude Func Folder\football-v2\cache` under the shared workspace. Elsewhere, the default is the repository's ignored `work/pipeline/` folder. Keep raw archives, cached pickle files and secrets out of commits. Read only pickle caches you trust.
 
-| Input under `FEL_INPUTS` | Contents |
+| File under `FEL_INPUTS` | Required contents |
 | --- | --- |
 | `fc24.zip` | Stefano Leone's complete male edition CSV. |
 | `fut23.zip` | Lucas Silva's downloaded Icon/Hero CSV. |
@@ -82,9 +104,9 @@ Set `FEL_INPUTS` to the persistent raw-input folder and `FEL_CACHE` to the persi
 | `codytipton_player-stats-per-game-understat.zip` | Understat `general_game_stats.csv` and `lineup_stats.csv`. |
 | `cm0102/<manifest folder>/` | Original `.dat` files for each configured CM season. |
 
-`pipeline/curated/cm0102.json` names each CM folder, its real season and its stored-to-real year shift. The reader follows [CM0102Patcher record layouts](https://github.com/nckstwrt/CM0102Patcher) and [CM0102 attribute conversion](https://github.com/agevak/CM0102). Validate record sizes and birth-year shifts before adding a database; the game stores many retro seasons relative to its original 2001 start year.
+[pipeline/curated/cm0102.json](../pipeline/curated/cm0102.json) names each CM folder, its real season and the shift between stored and real years. The reader follows [CM0102Patcher's record layouts](https://github.com/nckstwrt/CM0102Patcher) and the [CM0102 attribute conversion](https://github.com/agevak/CM0102). Check record sizes and birth-year shifts before adding a database; many retro databases store dates relative to the game's original 2001 start year.
 
-The ordered build steps are `clubs`, `universe`, `stints`, `squads`, `persons`, `engines`, `stats`, `model`, `export`:
+The build runs in this order: `clubs`, `universe`, `stints`, `squads`, `persons`, `engines`, `stats`, `model`, `export`.
 
 ```text
 python -m pipeline.build
@@ -93,4 +115,17 @@ python -m pipeline.build export
 python -m pipeline.validate
 ```
 
-The first build downloads/caches result and Wikidata records and reads the local engine inputs. Calibration fits the match model from edition-specific squads and stores its report. The final export embeds those match parameters, and validation records the hash of that export. To resume existing inputs and caches, name the needed steps, for example `python -m pipeline.build model export`. Rebuild all affected downstream steps after changing an upstream source or rule; otherwise the pipeline uses cached values. Run calibration again when its engine rating rules change. Gameplay never rebuilds or downloads data.
+The first command downloads and caches result and Wikidata records, then reads the local game-engine inputs. Calibration fits the match model using edition-specific squads and saves its report. The next export embeds those parameters; validation records the hash of that export.
+
+To resume from existing inputs and caches, name the required steps, for example `python -m pipeline.build model export`. After changing a source or rule, rebuild every affected downstream step; otherwise saved intermediate values remain in use. Run calibration again when its engine-rating rules change. Gameplay does not run this pipeline or download the raw sources.
+
+## Files that describe a build
+
+| File | Contents |
+| --- | --- |
+| [game.json](../data/game.json) | The bundle loaded by the browser and notebook. |
+| [manifest.json](../data/manifest.json) | Source attribution, model evaluation and unresolved curated links. |
+| [validation.json](../data/validation.json) | Coverage and the SHA-256 hash identifying the exact bundle. |
+| [calibration.json](../data/calibration.json) | The separate match-fit report, fixture coverage and parameters. |
+
+A SHA-256 hash is a file fingerprint. Matching hashes identify the same bytes, allowing the notebook, tests and coverage report to refer to one particular export. The [validation document](VALIDATION.md) explains the results without treating a clean structural check as proof that all upstream football records are correct.
