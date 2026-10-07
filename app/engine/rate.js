@@ -6,7 +6,7 @@
 //           qid of the card), tg (tags: tal, rock, mae, poa 1|2 tiers; bg European Cups won; tl
 //           Timeless tier), duo (ids of partners)
 //   T       team: m (manager: nm, ga, gd grades, sig ids), S (11 slots {s, x, y}), xi (11 cards),
-//           bn (4 cards)
+//           bn (4 cards); Gauntlet development may add lk (link multiplier) and gs (grade steps)
 //   Ds      simulation decade
 //   W       slot weights into [attack, midfield, defence]; each row sums to 1
 //   W0      the same sums for a reference 4-4-2, so a line's manpower is read relative to it
@@ -14,7 +14,7 @@
 //   G       manager grade bonus on the matching line
 //   UP      grade one step up (a signature player is in the squad)
 //   b_duo   bonus for each partner of a duo when both start;  b_cl  bonus per club-decade teammate
-//           within distance d_cl on the pitch, capped at m_cl; m_b caps all chemistry
+//           within distance d_cl on the pitch, capped at m_cl; m_b caps all chemistry before lk
 //   wK      keeper share of the defence the opposing attack faces
 //   V       knockout boost by European Cups won (the reference game's rings rule)
 //   fit     slot fit comes from pos.ft: EA-scale slot ratings when the card has them, else the graph
@@ -46,9 +46,10 @@ const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
 export const rate = (T, Ds) => {
   const sig = new Set(T.m?.sig || []);
   const all = [...T.xi, ...T.bn].filter(Boolean);
-  const up = all.some(c => sig.has(c.id));
-  const gA = up ? UP[T.m?.ga || 'C'] : T.m?.ga || 'C';
-  const gD = up ? UP[T.m?.gd || 'C'] : T.m?.gd || 'C';
+  const up = all.some(c => sig.has(c.id)), lk = T.lk || 1;
+  let gA = up ? UP[T.m?.ga || 'C'] : T.m?.ga || 'C';
+  let gD = up ? UP[T.m?.gd || 'C'] : T.m?.gd || 'C';
+  for (let k = 0; k < (T.gs || 0); k++) { gA = UP[gA]; gD = UP[gD]; }
   const ids = new Set(T.xi.filter(Boolean).map(c => c.id));
   const xi = T.S.map((s, i) => {
     const c = T.xi[i];
@@ -63,7 +64,7 @@ export const rate = (T, Ds) => {
       if (j !== i && o && c.cq && o.cq === c.cq && o.D === c.D && Math.hypot(u.x - s.x, u.y - s.y) <= d_cl) k++;
     });
     b += Math.min(m_cl, k) * b_cl;
-    b = Math.min(m_b, b);
+    b = Math.min(m_b, b) * lk;
     return { s: s.s, x: s.x, y: s.y, c, f, lab, e, b, a: c.r * (1 - f) * e + b };
   });
   const bn = T.bn.map(c => (c ? { c, e: em(c.D, Ds, c.tg?.tl || 0), a: c.r * em(c.D, Ds, c.tg?.tl || 0) } : null));

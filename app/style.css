@@ -86,7 +86,49 @@ main{min-height:70vh;padding:0 4.5% 55px}
 .cap-budget p{font-size:.75rem;color:var(--muted);margin-top:8px}
 .cap-budget--classic{background:var(--white);border-color:var(--line)}.cap-budget--classic strong{font-family:var(--mono);font-size:.6rem}
 .tier-badge{display:inline-block;border:1px solid #a6b097;padding:1px 4px;font-family:var(--mono);font-size:.5rem;line-height:1.5;color:var(--ink);background:#edf0e6;white-space:nowrap}
-.tier--S{background:#f2df9a;border-color:#c9a844}.tier--A{background:#e8deed;border-color:#b7a1c3}.tier--B{background:#dce9ee;border-color:#a5bfca}
+/* Gem tiers, after Eraball's cards: S amethyst, A gold, B emerald, C sapphire, D bronze. Dark tier
+   gradients carry light text; S and A add sparkles and a sweeping sheen, B the sheen only. */
+.gem--S{--gem:#b38cff;--gem-bg:linear-gradient(145deg,#0f0620 0%,#1e0c3d 40%,#130826 70%,#0a0415 100%);--gem-spark:#e2cfff;--gem-glow:#aa78ff80}
+.gem--A{--gem:#e2bf55;--gem-bg:linear-gradient(145deg,#2e2000 0%,#6b4800 28%,#3e2a00 60%,#1c1200 100%);--gem-spark:#fff3b0;--gem-glow:#ffe25066}
+.gem--B{--gem:#5fc48b;--gem-bg:linear-gradient(145deg,#001508 0%,#002d12 40%,#001c0a 70%,#000e05 100%);--gem-glow:#4caf7840}
+.gem--C{--gem:#7aa6e3;--gem-bg:linear-gradient(145deg,#040e1c 0%,#0a1e3a 40%,#061428 70%,#020810 100%);--gem-glow:#5b8fd433}
+.gem--D{--gem:#dc914d;--gem-bg:linear-gradient(145deg,#1a0900 0%,#2e1200 40%,#1e0c00 70%,#100600 100%);--gem-glow:#c47a3533}
+.tier-badge{display:inline-block;border:1px solid var(--gem,#a6b097);border-radius:2px;padding:1px 5px;font-family:var(--mono);font-size:.5rem;line-height:1.5;color:var(--gem,var(--ink));background:var(--gem-bg,#edf0e6);white-space:nowrap;letter-spacing:.04em}
+.gem-fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;z-index:2}
+.gem-sheen{position:absolute;top:-10%;left:0;width:45%;height:120%;opacity:0;background:linear-gradient(90deg,#0000 0%,#ffffff2b 40%,#ffffff47 50%,#ffffff2b 60%,#0000 100%);animation:gem-sheen 5s ease-in-out infinite;animation-delay:var(--fx-d,0s)}
+@keyframes gem-sheen{0%{opacity:0;transform:translateX(-150%) skewX(-15deg)}8%{opacity:1}35%{opacity:0;transform:translateX(350%) skewX(-15deg)}100%{opacity:0;transform:translateX(350%) skewX(-15deg)}}
+.gem-sparks i{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--gem-spark);box-shadow:0 0 4px 2px var(--gem-glow);opacity:0;animation:gem-spark 2s ease-in-out infinite}
+@keyframes gem-spark{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:1;transform:scale(1)}}
+.gem-sparks i:nth-child(1){top:15%;left:8%}.gem-sparks i:nth-child(2){top:55%;left:72%;animation-delay:.3s}.gem-sparks i:nth-child(3){top:30%;left:90%;animation-delay:.7s}
+.gem-sparks i:nth-child(4){top:74%;left:38%;animation-delay:1.1s}.gem-sparks i:nth-child(5){top:8%;left:88%;animation-delay:1.5s}.gem-sparks i:nth-child(6){top:85%;left:78%;animation-delay:.2s}
+.gem-sparks i:nth-child(7){top:45%;left:6%;animation-delay:.9s}.gem-sparks i:nth-child(8){top:65%;left:92%;animation-delay:.5s}.gem-sparks i:nth-child(9){top:22%;left:62%;animation-delay:1.7s}
+.gem-sparks i:nth-child(10){top:90%;left:55%;animation-delay:1.3s}
+.player-row.gem{position:relative;overflow:hidden;isolation:isolate;margin:0 0 6px;border:1px solid color-mix(in srgb,var(--gem) 50%,transparent);border-radius:6px;background:var(--gem-bg);color:#f3efe3}
+.player-row.gem:last-child{margin-bottom:0;border-bottom:1px solid color-mix(in srgb,var(--gem) 50%,transparent)}
+.player-row.gem:hover:not(:disabled){background:var(--gem-bg);filter:brightness(1.2)}
+.player-row.gem[aria-pressed=true]{background:var(--gem-bg);box-shadow:inset 0 0 0 3px var(--acid),0 0 16px var(--gem-glow)}
+.player-row.gem:disabled,.player-row.gem.player-row--blocked:disabled{opacity:1;filter:saturate(.3);background:repeating-linear-gradient(135deg,#ffffff0f 0 6px,#0000 6px 12px),var(--gem-bg)}
+.player-row.gem:disabled .player-name{color:#dcd8cc}
+.gem .player-rating{color:var(--gem);border-right-color:#ffffff24}
+.gem .player-name{color:#fbf8ee}
+.gem .player-detail,.gem .tags{color:#cdc8ba}
+.gem .player-select{color:var(--gem)}
+.gem .source{background:#ffffff14;border-color:#ffffff33;color:#ece8dc}
+.gem .sw{color:#ece8dc}.gem .sw b{color:#a3e07c}.gem .sw b:nth-of-type(2){color:#ff9d8f}
+.gem .signature-badge{color:var(--acid)}
+.gem .blocked-reason{color:#ffbf98}
+.slot-circle.gem{background:var(--gem-bg);border:2px solid var(--gem);color:var(--gem);font-family:var(--display);font-size:1.23rem}
+.slot-circle.gem--S,.slot-circle.gem--A{box-shadow:0 0 0 1px #0008,0 0 12px var(--gem-glow)}
+.slot-was{display:inline-block;margin-left:3px;padding:0 3px;border:1px solid #ffffff59;border-radius:2px;color:#f3efe3;background:#0000004d;font-size:.45rem;letter-spacing:.03em}
+.bench-slot.gem{position:relative;overflow:hidden;background:var(--gem-bg);border-color:color-mix(in srgb,var(--gem) 55%,transparent);color:#f3efe3}
+.bench-slot.gem b{color:var(--gem)}
+.bench-slot.gem .slot-name{color:#f3efe3}
+.bench-slot.gem .field-label{color:#cdc8ba}
+.bench-slot.gem.selected{background:var(--gem-bg);box-shadow:inset 0 0 0 3px var(--gold)}
+.cap-count.gem{background:var(--gem-bg);border-color:color-mix(in srgb,var(--gem) 60%,transparent);color:#f3efe3}
+.cap-count.gem b{color:var(--gem)}
+.cap-count.gem small{color:#cdc8ba}
+.cap-count.gem.cap-count--full{filter:saturate(.3)}
 .player-row.player-row--blocked:disabled{opacity:1;background:#f0f0e6}
 .blocked-reason{grid-column:2/-1;font-size:.62rem;color:#824327}
 .signature-badge{color:#4b682e;font-size:.5rem;font-weight:600}
@@ -134,7 +176,7 @@ main{min-height:70vh;padding:0 4.5% 55px}
 .reveal-panel p{color:var(--muted);max-width:350px;font-size:.9rem;margin-bottom:24px}
 .roster-controls{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:9px;margin:14px 0}
 .roster-controls input,.roster-controls select{width:100%;background:var(--white);border:1px solid var(--line);padding:10px;font-size:.75rem;min-height:40px}
-.roster-list{height:470px;overflow:auto;border:1px solid var(--line);background:var(--white);scrollbar-color:#8da184 transparent;scrollbar-width:thin}
+.roster-list{height:470px;overflow:auto;border:1px solid var(--line);background:var(--white);padding:6px;scrollbar-color:#8da184 transparent;scrollbar-width:thin}
 .player-row{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:11px;align-items:center;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;width:100%;min-height:78px;transition:background .1s}
 .player-row:last-child{border-bottom:0}
 .player-row:hover:not(:disabled){background:#e9efdf}
@@ -428,5 +470,6 @@ td:first-child,th:first-child{text-align:left}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .gem-sparks i{opacity:.75}
 }
 .results-layout > *{min-width:0}

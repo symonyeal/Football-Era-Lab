@@ -20,7 +20,11 @@ const nm = p => G.people[p]?.nm || p;
 const club = k => { const [qid, d] = k.split(':'); return `${G.clubs[qid]?.nm || qid} ${d}s`; };
 const rules = s => s.cap ? 'Salary cap' : 'Classic';
 const RANGE = { S: '90+', A: '85–89.9', B: '80–84.9', C: '75–79.9', D: 'below 75' };
-const tier = c => `<span class="tier-badge tier--${TI(c.r)}" title="${TI(c.r)} tier: base rating ${RANGE[TI(c.r)]}">${TI(c.r)} TIER</span>`;
+const MAT = { S: 'amethyst', A: 'gold', B: 'emerald', C: 'sapphire', D: 'bronze' };
+const tier = c => `<span class="tier-badge gem--${TI(c.r)}" title="${TI(c.r)} tier (${MAT[TI(c.r)]}): base rating ${RANGE[TI(c.r)]}">${TI(c.r)} TIER</span>`;
+// Card effects by tier (Eraball): S and A sparkle and catch a sheen, B the sheen only; i staggers the sheen.
+const fx = (t, i = 0) => (['S', 'A', 'B'].includes(t) ? `<span class="gem-fx" aria-hidden="true" style="--fx-d:${(i * 0.61 % 5).toFixed(2)}s"><i class="gem-sheen"></i>${t === 'B' ? '' : `<span class="gem-sparks">${'<i></i>'.repeat(10)}</span>`}</span>` : '');
+const was = (t, t0) => (t !== t0 ? `<span class="slot-was" title="Base tier ${t0}; this place changes his rating">WAS ${t0}</span>` : '');
 // Draft budget (CAP, every tier) or Gauntlet budget (GCAP: S and A limited, B to D counted).
 function budget(s, charge = s.slots, lim = CAP) {
   if (!s.cap) return `<div class="cap-budget cap-budget--classic"><strong>${lim === CAP ? 'CLASSIC DRAFT' : 'CLASSIC RUN'}</strong><p>Any tier can fill an open place.</p></div>`;
@@ -28,7 +32,7 @@ function budget(s, charge = s.slots, lim = CAP) {
   return `<section class="cap-budget" aria-label="Salary cap: places left by tier"><div class="cap-heading"><strong>SALARY CAP</strong><span>${run ? 'Gauntlet: at most 2 S and 4 A among the fifteen' : 'All 15 players, including the bench'}</span></div>
     <div class="cap-counts">${Object.keys(CAP).map(t => {
       const r = t in lim ? lim[t] - n[t] : null;
-      return `<div class="cap-count ${r === 0 ? 'cap-count--full' : ''}" data-cap-tier="${t}" ${r === null ? '' : `data-left="${r}"`} aria-label="${t} tier: ${r === null ? `${n[t]} held, no limit` : `${r} of ${lim[t]} places left`}"><b>${t}</b><span>${r === null ? `${n[t]} held` : `${r} / ${lim[t]} left`}</span><small>${r === null ? 'no limit' : `${n[t]} ${run ? 'held' : 'drafted'}`} · ${RANGE[t]}</small></div>`;
+      return `<div class="cap-count gem gem--${t} ${r === 0 ? 'cap-count--full' : ''}" data-cap-tier="${t}" ${r === null ? '' : `data-left="${r}"`} aria-label="${t} tier: ${r === null ? `${n[t]} held, no limit` : `${r} of ${lim[t]} places left`}"><b>${t}</b><span>${r === null ? `${n[t]} held` : `${r} / ${lim[t]} left`}</span><small>${r === null ? 'no limit' : `${n[t]} ${run ? 'held' : 'drafted'}`} · ${RANGE[t]}</small></div>`;
     }).join('')}</div>
     <p>Tier uses the base card rating, before position, era and link bonuses.${run ? ' A boosted player keeps the tier he was drafted or signed at.' : ''}</p></section>`;
 }
@@ -129,15 +133,16 @@ function lineup() {
   const pos = T.S.map((s, i) => {
     const p = Q.xi[i], c = p.c, v = sel && !c ? preview(G, S, sel, i) : null;
     const label = c ? `${s.s}, ${c.nm}, adjusted ${num(p.a)}. Select to swap.` : `${s.s}, empty.${v ? ` ${v.c.nm} would rate ${num(v.a)}: fit loss ${Math.round(v.f * 100)}%, era loss ${Math.round((1 - v.e) * 100)}%, +${v.b} links. Squad overall ${num(v.ovr)}.${v.up ? ' Manager signature bonus active.' : ''}` : ' Select a roster player first.'}`;
+    const t = c ? TI(p.a) : null;
     return `<button class="pitch-slot ${sw === i ? 'selected' : ''} ${v ? 'preview' : ''}" data-slot="${i}" style="left:${s.x}%;top:${s.y}%" aria-label="${esc(label)}" title="${esc(label)}" ${lock ? 'disabled' : ''}>
-      <span class="slot-circle ${c ? 'slot-circle--filled' : ''}">${c ? Math.round(p.a) : v ? Math.round(v.a) : '+'}</span>
+      <span class="slot-circle ${c ? `slot-circle--filled gem gem--${t}` : ''}">${c ? Math.round(p.a) : v ? Math.round(v.a) : '+'}</span>
       <span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? `${Math.round(v.f * 100)}% fit loss` : s.s)}</span>
-      <span class="slot-role ${p.f > 0.02 ? 'fit-warning' : ''}">${c ? `${s.s} · ${TI(c.r)} tier${p.f > 0.02 ? ` · −${Math.round(p.f * 100)}%` : ''}` : v ? `${v.b ? `+${v.b} links · ` : ''}−${Math.round((1 - v.e) * 100)}% era` : 'OPEN'}</span></button>`;
+      <span class="slot-role ${p.f > 0.02 ? 'fit-warning' : ''}">${c ? `${s.s} · ${t}${was(t, TI(c.r))}${p.f > 0.02 ? ` · −${Math.round(p.f * 100)}%` : ''}` : v ? `${v.b ? `+${v.b} links · ` : ''}−${Math.round((1 - v.e) * 100)}% era` : 'OPEN'}</span></button>`;
   }).join('');
   const bench = T.bn.map((c, j) => {
-    const i = j + 11, v = sel && !c ? preview(G, S, sel, i) : null;
-    return `<button class="bench-slot ${sw === i ? 'selected' : ''} ${v ? 'preview' : ''}" data-slot="${i}" ${lock ? 'disabled' : ''} aria-label="Bench ${j + 1}, ${c ? esc(c.nm) : 'empty'}">
-      <span class="field-label">BENCH ${j + 1}${c ? ` · ${TI(c.r)} tier` : ''}</span><b>${c ? Math.round(Q.bn[j].a) : v ? Math.round(v.a) : '+'}</b><span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? 'No fit loss' : 'OPEN')}</span></button>`;
+    const i = j + 11, v = sel && !c ? preview(G, S, sel, i) : null, t = c ? TI(Q.bn[j].a) : null;
+    return `<button class="bench-slot ${c ? `gem gem--${t}` : ''} ${sw === i ? 'selected' : ''} ${v ? 'preview' : ''}" data-slot="${i}" ${lock ? 'disabled' : ''} aria-label="Bench ${j + 1}, ${c ? esc(c.nm) : 'empty'}">
+      <span class="field-label">BENCH ${j + 1}${c ? ` · ${t}${was(t, TI(c.r))}` : ''}</span><b>${c ? Math.round(Q.bn[j].a) : v ? Math.round(v.a) : '+'}</b><span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? 'No fit loss' : 'OPEN')}</span>${c ? fx(t, i) : ''}</button>`;
   }).join('');
   const selected = sel && G.cards[S.combo]?.find(c => c.p === sel);
   const ins = sel ? `<strong>${esc(nm(sel))} · ${TI(selected.r)} tier · ${num(selected.r)} base</strong> selected. Choose an empty slot; green numbers include position fit, era and links.${T.m.sig.includes(sel) ? ' He is a manager signature player: drafting him raises both manager grades.' : ''}`
@@ -163,10 +168,10 @@ function rows() {
   const by = { name: (a, b) => nm(a.p).localeCompare(nm(b.p)), position: (a, b) => a.pos[0].localeCompare(b.pos[0]) || b.r - a.r, apps: (a, b) => b.n - a.n || b.r - a.r };
   Q = Q.slice().sort(by[sort] || ((a, b) => b.r - a.r));
   if (!Q.length) return '<p class="roster-empty">No players match your search.</p>';
-  return Q.map(c => {
+  return Q.map((c, k) => {
     const t = tags(c), x = per90(c), taken = I.has(c.p), blocked = !can(G, S, c.p), sig = G.managers.find(m => m.nm === S.manager.nm).sig.includes(c.p);
     const why = taken ? 'Already in your squad' : r?.[TI(c.r)] === 0 ? `${TI(c.r)}-tier places full` : blocked ? 'Would block the remaining picks from this club' : '';
-    return `<button class="player-row ${blocked ? 'player-row--blocked' : ''}" data-player="${esc(c.p)}" data-tier="${TI(c.r)}" aria-pressed="${sel === c.p}" ${blocked ? `disabled title="${esc(why)}"` : ''}>
+    return `<button class="player-row gem gem--${TI(c.r)} ${blocked ? 'player-row--blocked' : ''}" data-player="${esc(c.p)}" data-tier="${TI(c.r)}" aria-pressed="${sel === c.p}" ${blocked ? `disabled title="${esc(why)}"` : ''}>${blocked ? '' : fx(TI(c.r), k)}
       <b class="player-rating">${Math.round(c.r)}</b>
       <span><span class="player-name">${esc(nm(c.p))}</span>
         <span class="player-detail">${tier(c)}<span>${esc(c.pos.join(' / '))}</span>${source(c.s)}<span>${c.n} APPS · ${c.g} GOALS</span>${x ? `<span>${x}</span>` : ''}${sig ? '<span class="signature-badge">MANAGER SIGNATURE ↑</span>' : ''}</span>
@@ -414,8 +419,9 @@ async function card() {
   tx(R.K.champ === 'your-club' ? 'EUROPEAN CUP WINNERS' : `CUP WINNERS: ${R.K.champN}`, 490, 295, 25, '#152e28', 'Impact', 650);
   tx(`${S.manager.nm} / ${S.manager.f}`, 55, 364, 29, '#152e28', 'Georgia', 1090);
   tx('STARTING ELEVEN', 55, 412, 18, '#67776a', 'Consolas'); tx('THE BENCH', 705, 412, 18, '#67776a', 'Consolas');
-  Q.xi.forEach((p, j) => { tx(p.s, 55, 449 + j * 30, 18, '#67776a', 'Consolas'); tx(p.c.nm, 125, 449 + j * 30, 23, '#152e28', 'Georgia', 470); tx(Math.round(p.a), 605, 449 + j * 30, 25, '#152e28', 'Impact'); });
-  Q.bn.forEach((p, j) => { tx(`B${j + 1}`, 705, 449 + j * 38, 18, '#67776a', 'Consolas'); tx(p.c.nm, 750, 449 + j * 38, 23, '#152e28', 'Georgia', 340); tx(Math.round(p.a), 1110, 449 + j * 38, 25, '#152e28', 'Impact'); });
+  const TC = { S: '#6b3fd6', A: '#946a06', B: '#1f7a49', C: '#2c5fa8', D: '#94501a' };
+  Q.xi.forEach((p, j) => { const t = TI(p.c.r); tx(p.s, 55, 449 + j * 30, 18, '#67776a', 'Consolas'); tx(p.c.nm, 125, 449 + j * 30, 23, '#152e28', 'Georgia', 450); tx(Math.round(p.a), 590, 449 + j * 30, 25, TC[t], 'Impact'); tx(t, 630, 449 + j * 30, 16, TC[t], 'Consolas'); });
+  Q.bn.forEach((p, j) => { const t = TI(p.c.r); tx(`B${j + 1}`, 705, 449 + j * 38, 18, '#67776a', 'Consolas'); tx(p.c.nm, 750, 449 + j * 38, 23, '#152e28', 'Georgia', 320); tx(Math.round(p.a), 1090, 449 + j * 38, 25, TC[t], 'Impact'); tx(t, 1130, 449 + j * 38, 16, TC[t], 'Consolas'); });
   tx(`OVERALL ${num(Q.ovr)}`, 705, 666, 48, '#152e28', 'Impact');
   g.fillStyle = '#102823'; g.fillRect(0, 802, 1200, 98); tx(`REPLAY SEED ${S.seed} / ${S.D}s`, 55, 844, 24, '#d7f86c', 'Consolas');
   tx('Simulated results. Ratings come from EA and Championship Manager data where it exists.', 55, 876, 17, '#f5f2e9');

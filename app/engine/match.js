@@ -9,7 +9,8 @@
 //   lam(X, Y, Ds, h)  expected goals over 90 minutes of rated lines X against rated lines Y
 //   ln(R, k, f)       lines of rated team R with knockout boost k and fatigue factor f
 //   avail(r, T, Ds, id) team after random absences; id scopes distinct emergency replacements
-//   sub(T, R, Ds, n, m) up to n useful replacements at minute m; the keeper stays
+//   sub(T, R, Ds, n, m) up to n useful replacements at minute m; the keeper stays. A Super Sub
+//                     (tg.ss, Gauntlet development) comes on SS[ss] rating points stronger
 //   gs(r, R)          scorer and assister ids for one goal of rated team R
 //   pens(r, RX, RY)   shootout winner, 0 for X and 1 for Y
 //   play(r, X, Y, Ds, o)  one match between teams X and Y; o.h home advantage for X, o.ko knockout
@@ -74,6 +75,9 @@ export const avail = (r, T, Ds, id = 'team') => {
   return { ...T, xi, bn, out };
 };
 
+export const SS = [0, 3, 5];
+const ssOn = c => (c?.tg?.ss ? { ...c, r: c.r + SS[c.tg.ss] } : c);
+
 export const sub = (T, R, Ds, n = P.ns, m = P.m1) => {
   const xi = T.xi.slice(), bn = T.bn.slice(), ev = [];
   const tired = R.xi.map(p => (p.c && p.s !== 'GK' ? p.a * (1 - P.fat) : Infinity));
@@ -83,13 +87,13 @@ export const sub = (T, R, Ds, n = P.ns, m = P.m1) => {
       if (!c) return;
       xi.forEach((_, i) => {
         if (tired[i] === Infinity) return;
-        const d = av(c, T.S[i].s, Ds) - tired[i];
+        const d = av(ssOn(c), T.S[i].s, Ds) - tired[i];
         if (d > g) { g = d; bi = i; bj = j; }
       });
     });
     if (bi < 0) break;
     ev.push({ off: xi[bi].id, on: bn[bj].id, s: T.S[bi].s, m });
-    xi[bi] = bn[bj]; bn[bj] = null; tired[bi] = Infinity;
+    xi[bi] = ssOn(bn[bj]); bn[bj] = null; tired[bi] = Infinity;
   }
   return { T: { ...T, xi, bn }, n: ev.length, ev };
 };

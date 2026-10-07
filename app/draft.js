@@ -1,5 +1,6 @@
 import { mk, hs, sh, ft, em, rate } from './engine/index.js';
-import { TI, CAP, GCAP, ck, left } from './cap.js';
+import { TI, CAP, ck, left } from './cap.js';
+import { validRun } from './run.js';
 
 // G archive; s serializable run; T hydrated team; c card; p person id; D decade;
 // k club-decade key; S formation slots; xi starting eleven; bn four bench cards.
@@ -167,57 +168,6 @@ export function preview(G, s, p, i) {
   return { c, slot: u, ...f, e, a: v.a, b: v.b || 0, up: Q.up, gA: Q.gA, gD: Q.gD, ovr: Q.ovr, da: Q.ovr - R.ovr };
 }
 
-// Replays are editable files. Check the fields used by the run and its views before storing one.
-function validRun(G, r, manager, cap) {
-  const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-  const int = (x, lo = 0, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(x) && x >= lo && x <= hi;
-  const person = p => typeof p === 'string' && Object.hasOwn(G.people, p);
-  const ref = (k, p) => typeof k === 'string' && person(p) && G.cards[k]?.some(c => c.p === p);
-  const act = e => obj(e) && int(e.act, 0, 7) && e.D === DECADES[e.act];
-  const tag = x => ['tal', 'mae', 'rock'].includes(x);
-  const log = e => {
-    if (!obj(e)) return false;
-    if (e.t === 'seg') return act(e) && int(e.seg, 0, 1) && [e.w, e.d, e.l, e.gf, e.ga].every(x => int(x)) &&
-      e.w + e.d + e.l === 6 && e.pts === 3 * e.w + e.d && [-3, -2, 0, 2].includes(e.dp) &&
-      Array.isArray(e.res) && e.res.length === 6 && e.res.every(f => obj(f) && typeof f.op === 'string' &&
-        typeof f.h === 'boolean' && int(f.gf) && int(f.ga));
-    if (e.t === 'boss') return act(e) && typeof e.op === 'string' && int(e.n, 1) && typeof e.won === 'boolean' &&
-      int(e.gx) && int(e.gy) && typeof e.et === 'boolean' && [4, -4, -6].includes(e.dp) &&
-      (!e.pw || (obj(e.pw) && int(e.pw.w, 0, 1) && int(e.pw.x) && int(e.pw.y)));
-    if (e.t === 'rest') return int(e.gain, 0, 2);
-    if (e.t === 'boost') return ref(e.from, e.p) && ref(e.to, e.p) && int(e.cost, 1, 5);
-    if (e.t === 'sign') return ref(e.k, e.p) && person(e.out) && int(e.cost, 2, 4);
-    if (e.t === 'tag') return person(e.p) && tag(e.tag) && int(e.lv, 1, 2) && e.cost === 2;
-    return false;
-  };
-  const ok = obj(r) && r.v === 1 && int(r.seed, 0, 4294967295) && obj(r.m) && obj(manager) &&
-    r.m.nm === manager.nm && r.m.f === manager.f &&
-    Array.isArray(r.slots) && r.slots.length === 15 && r.slots.every(c => obj(c) && ref(c.k, c.p)) &&
-    new Set(r.slots.map(c => c.p)).size === 15 && int(r.act, 0, 7) && int(r.seg, 0, 2) &&
-    int(r.pat, 0, 20) && int(r.rest) && Array.isArray(r.tries) && r.tries.length === 8 && r.tries.every(x => int(x)) &&
-    obj(r.tags) && Object.entries(r.tags).every(([p, t]) => person(p) && obj(t) &&
-      Object.entries(t).every(([k, v]) => tag(k) && int(v, 1, 2))) &&
-    obj(r.up) && Object.entries(r.up).every(([p, k]) => ref(k, p)) &&
-    Array.isArray(r.log) && r.log.every(log) &&
-    ['seg', 'reward', 'boss', 'done', 'fired'].includes(r.ph) &&
-    (r.ph === 'fired' ? r.pat === 0 : r.pat > 0) &&
-    (r.ph !== 'seg' || r.seg < 2) && (r.ph !== 'reward' || r.seg > 0) &&
-    (r.ph !== 'boss' || r.seg === 2) && (r.ph !== 'done' || (r.act === 7 && r.seg === 0));
-  if (!ok) throw new Error('The saved Gauntlet run is invalid.');
-  if ((r.cap !== undefined && typeof r.cap !== 'boolean') || !!r.cap !== cap) throw new Error('The saved Gauntlet cap does not match the draft.');
-  if (cap) {
-    const U = {};
-    for (const e of r.log) {
-      if (e.t === 'boost') U[e.p] ||= e.from;
-      if (e.t === 'sign') { delete U[e.out]; delete U[e.p]; }
-    }
-    for (const [p, k] of Object.entries(r.up)) {
-      if (U[p] !== k) throw new Error('The saved Gauntlet boost charge is invalid.');
-    }
-    ck(G, r.slots.map(ref => ({ k: r.up[ref.p] || ref.k, p: ref.p })), GCAP);
-  }
-}
-
 export function valid(G, s) {
   if (!s || s.v !== VERSION) throw new Error('This saved run uses a different game version.');
   const n = seed(s.seed);
@@ -256,9 +206,7 @@ export function valid(G, s) {
   for (const [k, n] of E) if ((A.get(k) || 0) !== n) throw new Error('The saved club picks are incomplete.');
   const md = s.mode || {}, rn = md.run;
   if (md.ci !== undefined && (!Number.isInteger(md.ci) || md.ci < 10 || md.ci > 20)) throw new Error('The saved circuit length is invalid.');
-  if (rn !== undefined) {
-    validRun(G, rn, s.manager, !!s.cap);
-  }
+  const run = rn !== undefined ? validRun(G, rn, s.manager, !!s.cap) : undefined;
   if ((md.ci !== undefined || rn !== undefined) && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
   if (s.wk !== undefined && !/^\d{4}-W\d{2}$/.test(s.wk)) throw new Error('The saved weekly challenge is invalid.');
   return { v: VERSION, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: s.manager,
@@ -266,5 +214,5 @@ export function valid(G, s) {
     slots: s.slots.map(c => c ? { k: c.k, p: c.p } : null), history: s.history.slice(),
     ...(s.skip ? { skip: s.skip } : {}),
     ...(s.wk ? { wk: s.wk } : {}),
-    mode: { ...(md.ci !== undefined ? { ci: md.ci } : {}), ...(rn !== undefined ? { run: rn } : {}) } };
+    mode: { ...(md.ci !== undefined ? { ci: md.ci } : {}), ...(run !== undefined ? { run } : {}) } };
 }

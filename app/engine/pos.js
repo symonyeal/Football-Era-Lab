@@ -10,7 +10,8 @@
 //               carries no penalty (the reference game's rule)
 //   LN     line of each slot: G keeper, D defence, M midfield, A attack (for grouping in the UI)
 //   ft(c,s)  fit of card c in slot s: when the card carries slot ratings sr (EA's per-position
-//            ratings, or CM attributes put on EA's scale) the loss is 1 - sr[s]/r; otherwise fit()
+//            ratings, or CM attributes put on EA's scale) the loss is 1 - sr[s]/r; otherwise fit().
+//            A Versatility tag tg.vs (Gauntlet development) keeps VS[vs] of an outfield loss.
 //   lb(f)  label for a loss read from slot ratings
 
 export const SL = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
@@ -51,13 +52,22 @@ export const fit = (P, s, b = false) => {
 const lb = f => (f <= 0.02 ? 'Natural' : f < 0.075 ? `Adapted -${Math.round(f * 100)}%` :
   f < 0.25 ? `Out of position -${Math.round(f * 100)}%` : `Major penalty -${Math.round(f * 100)}%`);
 
-export const ft = (c, s) => {
+export const VS = [1, 0.5, 0];
+
+const ft0 = (c, s) => {
   const j = SL.indexOf(s);
   if (c && Array.isArray(c.sr) && c.sr.length === SL.length && j >= 0 && c.r > 0) {
     const f = Math.min(0.9, Math.max(0, 1 - c.sr[j] / c.r));
     return { f, lab: lb(f) };
   }
   return fit(c?.pos, s);
+};
+
+export const ft = (c, s) => {
+  const o = ft0(c, s), v = c?.tg?.vs;
+  if (!v || o.f <= 0 || s === 'GK' || c.pos?.includes('GK')) return o;
+  const f = o.f * VS[v];
+  return { f, lab: f <= 0.02 ? 'Versatile' : `Versatile -${Math.round(f * 100)}%` };
 };
 
 export const LN = { GK: 'G', LB: 'D', CB: 'D', RB: 'D', LWB: 'D', RWB: 'D', CDM: 'M', CM: 'M', CAM: 'M', LM: 'M', RM: 'M', LW: 'A', RW: 'A', CF: 'A', ST: 'A' };
