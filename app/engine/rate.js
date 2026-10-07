@@ -17,9 +17,10 @@
 //           within distance d_cl on the pitch, capped at m_cl; m_b caps all chemistry
 //   wK      keeper share of the defence the opposing attack faces
 //   V       knockout boost by European Cups won (the reference game's rings rule)
+//   fit     slot fit comes from pos.ft: EA-scale slot ratings when the card has them, else the graph
 //   rate(T, Ds)  per-slot breakdown, lines A M Dd K Dk, effective grades, knockout boost kb, ovr
 
-import { fit } from './pos.js';
+import { ft } from './pos.js';
 import { em } from './era.js';
 
 export const W = {
@@ -52,7 +53,7 @@ export const rate = (T, Ds) => {
   const xi = T.S.map((s, i) => {
     const c = T.xi[i];
     if (!c) return { s: s.s, x: s.x, y: s.y, c: null, f: 0, lab: 'Empty', e: 1, b: 0, a: 0 };
-    const { f, lab } = fit(c.pos, s.s);
+    const { f, lab } = ft(c, s.s);
     const e = em(c.D, Ds, c.tg?.tl || 0);
     let b = 0;
     for (const p of new Set(c.duo || [])) if (p !== c.id && ids.has(p)) b += b_duo;

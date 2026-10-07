@@ -115,6 +115,20 @@ def caps(ps):
     return {p: tuple(c) for p, c in K.items()}
 
 
+def sexes(ps):
+    """Person -> set of sex-or-gender items (P21). Q6581072 is female; the pool is men's football."""
+    ps = sorted(set(ps))
+    X = {}
+    for i in range(0, len(ps), B):
+        b = ps[i:i + B]
+        v = " ".join(f"wd:{p}" for p in b)
+        for r in sparql(f"SELECT ?p ?x WHERE {{ VALUES ?p {{ {v} }} ?p wdt:P21 ?x }}", k=f"sex_{b[0]}_{len(b)}"):
+            X.setdefault(_id(r["p"]), set()).add(_id(r["x"]))
+        if i % (B * 20) == 0:
+            print("sexes", i, len(ps), flush=True)
+    return X
+
+
 def labels(ids):
     """English (or fallback) labels for arbitrary items, e.g. position items."""
     ids = sorted(set(ids))

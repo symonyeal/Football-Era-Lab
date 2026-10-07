@@ -2,12 +2,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import * as E from '../../app/engine/index.js';
 import { fields } from '../../app/data.js';
 
 const G = JSON.parse(readFileSync(new URL('../../data/game.json', import.meta.url), 'utf8'));
 if (G.params) E.cfg(G.params);
 const F = fields(G);
+
+test('the decade field puts its strongest squad first for the boss and Cup selection', () => {
+  for (const D of E.DS) {
+    for (let i = 1; i < F[D].length; i++) assert.ok(F[D][i - 1].x >= F[D][i].x,
+      `${D}s: ${F[D][i - 1].nm} (${F[D][i - 1].x}) precedes stronger ${F[D][i].nm} (${F[D][i].x})`);
+  }
+});
+
+test('the coverage, manifest and calibration reports describe the exact shipped bundle', () => {
+  const raw = readFileSync(new URL('../../data/game.json', import.meta.url));
+  const V = JSON.parse(readFileSync(new URL('../../data/validation.json', import.meta.url), 'utf8'));
+  const M = JSON.parse(readFileSync(new URL('../../data/manifest.json', import.meta.url), 'utf8'));
+  const C = JSON.parse(readFileSync(new URL('../../data/calibration.json', import.meta.url), 'utf8'));
+  assert.equal(V.passed, true);
+  assert.deepEqual(V.defects, []);
+  assert.equal(V.data_sha256, createHash('sha256').update(raw).digest('hex'), 'rebuild the coverage report after changing game.json');
+  assert.deepEqual(V.counts, G.meta.counts);
+  assert.deepEqual(M.meta, G.meta);
+  assert.deepEqual(G.params, C.params, 'embedded match parameters must match the calibration artifact');
+  assert.equal(Object.values(G.cards).reduce((n, q) => n + q.length, 0), G.meta.counts.cards);
+  assert.equal(Object.keys(G.people).length, G.meta.counts.people);
+  for (const D of E.DS) {
+    const cards = Object.entries(G.cards).filter(([k]) => k.endsWith(`:${D}`)).flatMap(([, q]) => q);
+    assert.equal(V.coverage[D].cards, cards.length);
+    for (const [s, n] of Object.entries(V.coverage[D].src)) assert.equal(n, cards.filter(c => c.s === s).length);
+  }
+});
 
 test('the bundled real data plays complete seasons in every supported decade', () => {
   for (const D of [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]) {

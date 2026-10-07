@@ -102,14 +102,43 @@ const pick = (r, w) => {
   return w.length - 1;
 };
 
+// Scorer and assister weights: each player's real rate per 90 minutes where the card has one
+// (Understat xG / xA, else Transfermarkt goals / assists, else Wikidata league goals per game),
+// put on the 2010s scoring level and shrunk toward the rating-and-slot prior by the minutes behind
+// it; a player away from his natural slot keeps the slot's share of that rate.
+//   pg(p), pa(p)  prior goal / assist rate per 90 of rated slot p (design constants k_g, k_a)
+//   rg(c), ra(c)  [rate per 90, minutes behind it] from the card, or null
+//   m0  prior weight in minutes;  sf(p, k)  slot factor relative to the card's natural slot
+const k_g = 0.6, k_a = 0.35, m0 = 900;
+const pg = p => k_g * W[p.s][0] * Math.pow(Math.max(p.a, 30) / 80, 4);
+const pa = p => k_a * (W[p.s][1] + 0.4 * W[p.s][0]) * Math.pow(Math.max(p.a, 30) / 80, 3);
+const lv = c => (P.b[2010] || 1.3) / (P.b[c.D] || P.b[2010] || 1.3);
+const rg = c => {
+  const s = c.st;
+  if (s?.xmi >= 450 && s.xg != null) return [90 * s.xg / s.xmi, s.xmi];
+  if (s?.mi >= 450) return [90 * s.g / s.mi, s.mi];
+  if (c.n >= 15 && !c.pos?.includes('GK')) return [c.g / c.n * lv(c), 80 * c.n];
+  return null;
+};
+const ra = c => {
+  const s = c.st;
+  if (s?.xmi >= 450 && s.xa != null) return [90 * s.xa / s.xmi, s.xmi];
+  if (s?.mi >= 450) return [90 * s.a / s.mi, s.mi];
+  return null;
+};
+const sf = (p, k) => {
+  const n = p.c.pos?.find(x => W[x]) || p.s;
+  return Math.min(1.5, Math.max(0.1, (W[p.s][k] + 0.02) / (W[n][k] + 0.02)));
+};
+const mix = (prior, x, k, p) => (x ? (m0 * prior + x[1] * x[0] * sf(p, k)) / (m0 + x[1]) : prior);
+
 export const gs = (r, R) => {
   const o = R.xi.filter(p => p.c && p.s !== 'GK');
-  const ws = o.map(p => W[p.s][0] * Math.pow(Math.max(p.a, 30) / 75, 4) * (p.c.tg?.poa === 1 ? 1.5 : p.c.tg?.poa === 2 ? 1.25 : 1));
+  const ws = o.map(p => mix(pg(p), rg(p.c), 0, p) * (p.c.tg?.poa === 1 ? 1.5 : p.c.tg?.poa === 2 ? 1.25 : 1));
   const i = pick(r, ws);
   const sc = o[i]?.c.id;
   if (r() > 0.72) return { sc, as: null };
-  const wa = o.map((p, j) => (j === i ? 0 : (W[p.s][1] + 0.4 * W[p.s][0]) * Math.pow(Math.max(p.a, 30) / 75, 3) *
-    (p.c.tg?.mae === 1 ? 1.4 : p.c.tg?.mae === 2 ? 1.2 : 1)));
+  const wa = o.map((p, j) => (j === i ? 0 : mix(pa(p), ra(p.c), 1, p) * (p.c.tg?.mae === 1 ? 1.4 : p.c.tg?.mae === 2 ? 1.2 : 1)));
   const j = pick(r, wa);
   return { sc, as: j >= 0 && j !== i ? o[j]?.c.id : null };
 };

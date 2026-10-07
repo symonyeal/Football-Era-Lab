@@ -1,4 +1,4 @@
-// Regression contracts. C = club field; G = gauntlet; M = played match; E = engine exports.
+// Regression contracts. C = club field; M = played match; E = engine exports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as E from '../../app/engine/index.js';

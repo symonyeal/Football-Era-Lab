@@ -62,11 +62,11 @@ def J(q):
 
 
 def sample():
-    from . import fifa, results
+    from . import ea, fifa, results
     from .build import load
 
     M = load("clubs")
-    E = fifa.club_ids(fifa.editions(), M)
+    E = fifa.club_ids(ea.fc24()[0], M)
     S = [dict(s=s, x=x, y=y) for s, x, y in json.loads((CUR / "formations.json").read_text(encoding="utf-8"))["4-3-3"]["slots"]]
     teams, missed = [], []
     for (q, s), A in E.dropna(subset=["qid"]).groupby(["qid", "s"]):
@@ -75,7 +75,9 @@ def sample():
             missed.append(dict(qid=q, s=int(s), reason="Fewer than eleven edition players or no goalkeeper"))
             continue
         D = dec(s)
-        Q = [dict(id=f"F{a.f}", nm=a.sn, pos=a.pos, r=int(a.o), D=D, cq=q, tg={}, duo=[], src="fifa") for a in A.itertuples()]
+        Q = [dict(id=f"F{a.f}", nm=a.sn, pos=a.pos, r=int(a.o), D=D, cq=q, tg={}, duo=[], src="fifa",
+                  sr=[float(min(a.o, x)) for x in a.sr] if np.isfinite(a.sr).all() else None)
+             for a in A.itertuples() if a.pos]
         teams.append(dict(id=f"{q}:{s}", Ds=D, Q=Q, S=S))
     R = {r["id"]: r for r in J(dict(op="rate", teams=teams))}
     WORK.mkdir(parents=True, exist_ok=True)
@@ -150,7 +152,7 @@ def run():
     else:
         chosen = dict(be=0.55, ka=0.25, h=0.12, b={D: B[D]["goalsPerTeam"] for D in DS}, src="Calibration did not beat the held-out training-mean baseline. Goal sensitivity, midfield and home advantage remain game design defaults; decade scoring levels are measured raw results.")
     rep.update(dict(trainSeasons=[2014, 2019], testSeasons=[2020, 2023], trainMatches=len(train), testMatches=len(test),
-                    features="Neutral manager C; actual FIFA edition roster; engine best XI in 4-3-3; no curated tags or signature boosts",
+                    features="Neutral manager C; actual FIFA edition roster with EA per-position ratings; engine best XI in 4-3-3; no curated tags or signature boosts",
                     candidate={**p, "params": fitted}, accepted=accepted, train=train_metrics, test=test_metrics,
                     baseline=dict(home=bh, away=ba, scope="2014-19 matched training fixtures"), params=chosen, measuredDecades=B,
                     validation="Full train and held-out goal expectations agree with deployed JS lam to 1e-10 tolerance",

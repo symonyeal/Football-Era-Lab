@@ -8,5 +8,5 @@ export function fields(G) {
     const S = shape(G, o.m.f);
     const T = { m: o.m, S, ...best(cards, S, D) };
     return { id: key, nm: `${G.clubs[o.q].nm} · ${D}s`, T, x: rate(T, D).ovr, q: o.q, D };
-  })]));
+  }).sort((a, b) => b.x - a.x || a.id.localeCompare(b.id))]));
 }

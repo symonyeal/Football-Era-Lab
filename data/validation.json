@@ -1,16 +1,25 @@
 {
   "passed": true,
+  "data_sha256": "1b6be710feac925f55bab19bb3a4cabdf8cc5bf82cbfe1b9dc7d225a77018537",
+  "data_build": "2026-10-07",
   "counts": {
-    "combos": 561,
-    "cards": 29568,
-    "people": 16866,
+    "combos": 505,
+    "cards": 28773,
+    "people": 16470,
     "managers": 96
   },
   "coverage": {
     "1950": {
-      "clubs": 59,
-      "cards": 1730,
-      "playable": 43,
+      "clubs": 43,
+      "cards": 1587,
+      "src": {
+        "c": 0,
+        "e": 1585,
+        "f": 0,
+        "i": 2,
+        "m": 0,
+        "n": 0
+      },
       "opponents": [
         "Real Madrid",
         "Stade de Reims",
@@ -44,9 +53,16 @@
       ]
     },
     "1960": {
-      "clubs": 73,
-      "cards": 2384,
-      "playable": 59,
+      "clubs": 59,
+      "cards": 2245,
+      "src": {
+        "c": 0,
+        "e": 2238,
+        "f": 0,
+        "i": 7,
+        "m": 0,
+        "n": 0
+      },
       "opponents": [
         "Real Madrid",
         "Benfica",
@@ -84,9 +100,16 @@
       ]
     },
     "1970": {
-      "clubs": 72,
-      "cards": 2797,
-      "playable": 67,
+      "clubs": 67,
+      "cards": 2721,
+      "src": {
+        "c": 0,
+        "e": 2710,
+        "f": 0,
+        "i": 11,
+        "m": 0,
+        "n": 0
+      },
       "opponents": [
         "Ajax",
         "Bayern Munich",
@@ -123,9 +146,16 @@
       ]
     },
     "1980": {
-      "clubs": 73,
-      "cards": 3566,
-      "playable": 72,
+      "clubs": 72,
+      "cards": 3548,
+      "src": {
+        "c": 1089,
+        "e": 1867,
+        "f": 0,
+        "i": 30,
+        "m": 562,
+        "n": 0
+      },
       "opponents": [
         "Liverpool",
         "Bayern Munich",
@@ -163,9 +193,16 @@
       ]
     },
     "1990": {
-      "clubs": 74,
-      "cards": 4935,
-      "playable": 74,
+      "clubs": 73,
+      "cards": 4884,
+      "src": {
+        "c": 2578,
+        "e": 396,
+        "f": 0,
+        "i": 68,
+        "m": 1842,
+        "n": 0
+      },
       "opponents": [
         "Barcelona",
         "Manchester United",
@@ -203,8 +240,15 @@
     },
     "2000": {
       "clubs": 70,
-      "cards": 6239,
-      "playable": 70,
+      "cards": 6196,
+      "src": {
+        "c": 1273,
+        "e": 1158,
+        "f": 1126,
+        "i": 73,
+        "m": 898,
+        "n": 1668
+      },
       "opponents": [
         "Barcelona",
         "Manchester United",
@@ -238,8 +282,15 @@
     },
     "2010": {
       "clubs": 70,
-      "cards": 5787,
-      "playable": 70,
+      "cards": 5697,
+      "src": {
+        "c": 0,
+        "e": 399,
+        "f": 3686,
+        "i": 10,
+        "m": 46,
+        "n": 1556
+      },
       "opponents": [
         "Real Madrid",
         "Bayern Munich",
@@ -272,9 +323,16 @@
       ]
     },
     "2020": {
-      "clubs": 70,
-      "cards": 2130,
-      "playable": 51,
+      "clubs": 51,
+      "cards": 1895,
+      "src": {
+        "c": 203,
+        "e": 30,
+        "f": 1369,
+        "i": 0,
+        "m": 23,
+        "n": 270
+      },
       "opponents": [
         "Real Madrid",
         "Manchester City",
@@ -316,8 +374,7 @@
         "source": "f",
         "positions": [
           "RW",
-          "CF",
-          "ST"
+          "CF"
         ]
       }
     ],
@@ -337,11 +394,12 @@
       {
         "club": "Napoli",
         "decade": 1980,
-        "rating": 88.0,
-        "source": "i",
+        "rating": 91.2,
+        "source": "c",
         "positions": [
-          "ST",
-          "CF"
+          "CAM",
+          "CF",
+          "CM"
         ]
       }
     ],
@@ -349,11 +407,129 @@
       {
         "club": "Real Madrid",
         "decade": 1950,
-        "rating": 92.0,
+        "rating": 91.1,
         "source": "e",
         "positions": [
           "ST",
           "CF"
+        ]
+      }
+    ],
+    "Marco van Basten": [
+      {
+        "club": "AC Milan",
+        "decade": 1990,
+        "rating": 92.0,
+        "source": "c",
+        "positions": [
+          "CF",
+          "ST"
+        ]
+      }
+    ],
+    "Zinedine Zidane": [
+      {
+        "club": "Real Madrid",
+        "decade": 2000,
+        "rating": 90.5,
+        "source": "c",
+        "positions": [
+          "CM",
+          "CAM",
+          "CF"
+        ]
+      }
+    ]
+  },
+  "wingers": {
+    "Stanley Matthews": [
+      {
+        "club": "Blackpool",
+        "decade": 1950,
+        "source": "e",
+        "positions": [
+          "LW",
+          "RW"
+        ]
+      }
+    ],
+    "Tom Finney": [
+      {
+        "club": "Preston North End",
+        "decade": 1950,
+        "source": "e",
+        "positions": [
+          "LW",
+          "RW"
+        ]
+      }
+    ],
+    "Paco Gento": [
+      {
+        "club": "Real Madrid",
+        "decade": 1950,
+        "source": "e",
+        "positions": [
+          "LW",
+          "RW"
+        ]
+      }
+    ],
+    "George Best": [
+      {
+        "club": "Manchester United",
+        "decade": 1960,
+        "source": "i",
+        "positions": [
+          "RW",
+          "RM",
+          "CAM",
+          "LW"
+        ]
+      }
+    ],
+    "Ryan Giggs": [
+      {
+        "club": "Manchester United",
+        "decade": 1990,
+        "source": "c",
+        "positions": [
+          "LM",
+          "LW"
+        ]
+      }
+    ],
+    "Luís Figo": [
+      {
+        "club": "Barcelona",
+        "decade": 1990,
+        "source": "c",
+        "positions": [
+          "LW",
+          "RW",
+          "LM"
+        ]
+      }
+    ],
+    "Cristiano Ronaldo": [
+      {
+        "club": "Manchester United",
+        "decade": 2000,
+        "source": "f",
+        "positions": [
+          "RM"
+        ]
+      }
+    ],
+    "Arjen Robben": [
+      {
+        "club": "Bayern Munich",
+        "decade": 2010,
+        "source": "f",
+        "positions": [
+          "RM",
+          "LM",
+          "RW"
         ]
       }
     ]
@@ -363,6 +539,6 @@
     "Dated Wikidata records form a partial historical archive, not a census of every registered player.",
     "Membership needs 10 apportioned league appearances, or a notable player with missing appearances and at least two seasons.",
     "Appearances and goals are apportioned across stint years, not measured separately by decade.",
-    "Estimated older ratings extrapolate a modern rating model."
+    "Cards without an EA or Championship Manager snapshot carry an estimate from a model fitted on rated cards of 1989-2025."
   ]
 }

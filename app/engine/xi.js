@@ -7,7 +7,7 @@
 //   best(Q, S, Ds) eleven for slots S from cards Q, then a bench of four: the best remaining keeper
 //                 and the three best remaining outfield players
 
-import { fit } from './pos.js';
+import { ft } from './pos.js';
 import { em } from './era.js';
 
 export const hun = a => {
@@ -42,7 +42,7 @@ export const hun = a => {
   return o;
 };
 
-export const av = (c, s, Ds) => c.r * (1 - fit(c.pos, s).f) * em(c.D, Ds, c.tg?.tl || 0);
+export const av = (c, s, Ds) => c.r * (1 - ft(c, s).f) * em(c.D, Ds, c.tg?.tl || 0);
 
 export const best = (Q, S, Ds) => {
   if (Q.length < S.length) throw new Error('A squad needs at least eleven players.');

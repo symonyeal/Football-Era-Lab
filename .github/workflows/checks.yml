@@ -1,4 +1,4 @@
-name: V2 checks
+name: Game checks
 on: [push, pull_request]
 jobs:
   core:
@@ -16,8 +16,8 @@ jobs:
       - name: Check the shared JavaScript engine and draft
         run: node --test tests/engine/*.test.mjs
       - name: Check pipeline rules without network calls
-        run: python -m unittest discover -s tests -p test_pipeline_v2.py -v
+        run: python -m unittest discover -s tests -p test_pipeline.py -v
       - name: Check calibration against independent synthetic counts
-        run: python -m pytest tests/engine/test_calibration.py -q -p no:cacheprovider
+        run: python -m pytest tests/test_calibration.py -q -p no:cacheprovider
       - name: Execute the notebook with the JavaScript engine
         run: python -c "import nbformat; from nbclient import NotebookClient; n=nbformat.read('Football Era Lab.ipynb',as_version=4); NotebookClient(n,timeout=180,kernel_name='python3').execute()"

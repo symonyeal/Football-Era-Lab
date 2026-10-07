@@ -1,20 +1,27 @@
-"""Base ratings per club-decade card: FIFA where a published edition covers the stint, a legend
-card for icons and heroes, otherwise an estimate from a model fitted where FIFA and Wikidata meet.
+"""Base ratings per club-decade card, taken from game engines wherever one rates the player, and
+estimated only where none does.
+
+Order of evidence for a card: f (EA rows at this club inside the stint) > c (Championship Manager
+records at this club inside the stint) > i (EA Icon/Hero card) > n (nearest EA row within d_near
+seasons, any club, age-shifted) > m (nearest CM record, same rule) > e (model estimate). A card keeps
+the slot ratings, face stats and natural slots of the snapshot that rated it.
 
 Legend
   Q      squad rows: qid, D, p, n (apps in D), g (goals), k (seasons in D at club), s0, s1, x
   P      person facts (dob, pos labels, sl sitelinks);  K  caps by person;  Pl  position labels by item
-  E      FIFA editions (f, s, o overall, pos, dob, ...);  L  person -> FIFA id
+  E      EA season rows (f, s, o, pos, sr, a6, g6, qid);  L  person -> EA id
+  R      CM records (p, s, q, r, sr, a6, g6, pos)
   Gs     league games per club-season by (lg, D), from the result tables
   U      universe rows (club strength z, e, t, lg) by (qid, D)
   X      feature table, one row per squad row
   f_*    features: aps apps share of league games, lk log seasons, gpa goals per app, cz caps z-score
          within decade, sz sitelinks z-score within birth decade, z club ppg z, e European score,
          t titles, lw league weight, age, age2, gk/df/mi/fw position group, x apps missing
-  y      FIFA rating for the card: mean of the best three editions inside the stint and decade
-  yn     nearest-edition FIFA rating within d_near seasons, shifted by the age curve
+  y, yc  EA / CM rating inside the stint at this club: mean of the best three snapshots
+  yn, ym EA / CM rating of the nearest snapshot within d_near seasons, shifted by the age curve
+  pf, pc, pn, pm  profile of the snapshot behind each: o (its rating), sr, a6, g6, pos
+  ep     natural slots of the person's nearest engine snapshot of any season (positions only)
   ac(a)  age curve: 0 from 25 to 30, -0.8 per year younger, -1.2 per year older, floor -12
-  r      final base rating; src: fifa | fifa-near | icon | estimated
   lo,hi  rating clamp
 """
 import math
@@ -50,36 +57,60 @@ def by(d):
         return None
 
 
-def fifa_y(Q, P, L, E):
-    """FIFA rating inside each card's stint and decade, or the nearest edition within d_near seasons."""
-    Ef = {f: g.sort_values("s") for f, g in E.groupby("f")}
-    y, yn, pos = [], [], []
+def _pf(z, o=None):
+    return dict(o=float(z.o if o is None else o), sr=z.sr, a6=z.a6, g6=z.g6, pos=list(z.pos) if z.pos else [])
+
+
+def _in(g, s0, s1, q, k):
+    w = g[(g.s >= s0) & (g.s <= s1) & (g[k] == q)]
+    if not len(w):
+        return np.nan, None
+    t = w.sort_values("o", ascending=False)
+    return float(t.o.head(3).mean()), _pf(t.iloc[0])
+
+
+def _near(g, s0, s1, a_card, b):
+    d = np.minimum((g.s - s0).abs(), (g.s - s1).abs())
+    i = d.idxmin()
+    if d[i] > d_near:
+        return np.nan, None
+    z = g.loc[i]
+    a_s = z.s - b if b else np.nan
+    v = float(z.o + ac(a_card) - ac(a_s))
+    return v, _pf(z)
+
+
+def _ep(gs, s):
+    best, bd = None, 99
+    for g in gs:
+        if g is None:
+            continue
+        for z in g.itertuples():
+            if z.pos and abs(z.s - s) < bd:
+                best, bd = list(z.pos), abs(z.s - s)
+    return best
+
+
+def engine_y(Q, P, L, E, R):
+    """Engine evidence for every squad row; see the module legend for the column meanings."""
+    E = E.rename(columns={"qid": "q"}) if "qid" in E else E if "q" in E else E.assign(q=None)
+    Ef = {f: g.reset_index(drop=True) for f, g in E.groupby("f")}
+    R = R.rename(columns={"r": "o"})
+    Rp = {p: g.reset_index(drop=True) for p, g in R.groupby("p")} if len(R) else {}
+    cols = {k: [] for k in ("y", "yc", "yn", "ym", "pf", "pc", "pn", "pm", "ep")}
     for r in Q.itertuples():
-        f = L.get(r.p)
-        if f is None or f not in Ef:
-            y.append(np.nan); yn.append(np.nan); pos.append(None)
-            continue
-        g = Ef[f]
-        w = g[(g.s >= r.s0) & (g.s <= r.s1) & (g.qid == r.qid)] if "qid" in g else g.iloc[:0]
-        if len(w):
-            y.append(float(w.o.nlargest(3).mean()))
-            yn.append(np.nan)
-            pos.append(list(w.sort_values("o").iloc[-1].pos))
-            continue
-        y.append(np.nan)
-        d = np.minimum((g.s - r.s0).abs(), (g.s - r.s1).abs())
-        k = d.idxmin()
-        if d[k] <= d_near:
-            b = by(P[r.p].get("dob"))
-            a_card = (r.s0 + r.s1) / 2 - b if b else np.nan
-            a_ed = g.s[k] - b if b else np.nan
-            yn.append(float(g.o[k] + ac(a_card) - ac(a_ed)))
-            pos.append(list(g.pos[k]))
-        else:
-            yn.append(np.nan)
-            pos.append(None)
+        b = by(P[r.p].get("dob"))
+        a_card = (r.s0 + r.s1) / 2 - b if b else np.nan
+        g, c = Ef.get(L.get(r.p)), Rp.get(r.p)
+        y, pf = _in(g, r.s0, r.s1, r.qid, "q") if g is not None else (np.nan, None)
+        yc, pc = _in(c, r.s0, r.s1, r.qid, "q") if c is not None else (np.nan, None)
+        yn, pn = _near(g, r.s0, r.s1, a_card, b) if g is not None else (np.nan, None)
+        ym, pm = _near(c, r.s0, r.s1, a_card, b) if c is not None else (np.nan, None)
+        for k, v in zip(cols, (y, yc, yn, ym, pf, pc, pn, pm, _ep((g, c), (r.s0 + r.s1) / 2))):
+            cols[k].append(v)
     Q = Q.copy()
-    Q["y"], Q["yn"], Q["fpos"] = y, yn, pos
+    for k, v in cols.items():
+        Q[k] = v
     return Q
 
 
@@ -91,7 +122,7 @@ def features(Q, P, K, Pl, U, Gs):
         b = by(x.get("dob"))
         c = u.get((r.qid, r.D))
         G = Gs.get((c.lg, r.D), 30) if c is not None else 30
-        wp = slots([Pl.get(i, "") for i in sorted(x["pos"])])
+        wp = r.wpos if isinstance(r.wpos, list) and r.wpos else slots([Pl.get(i, "") for i in sorted(x["pos"])], b, None)
         gp = group(wp)
         age = (r.s0 + r.s1) / 2 - b if b else np.nan
         rows.append(dict(
@@ -130,6 +161,6 @@ def fit(X, y, groups, seed=0):
                rmse=float(np.sqrt(np.mean((pr - yk) ** 2))), mae_base=float(np.mean(np.abs(base - yk))),
                rmse_base=float(np.sqrt(np.mean((base - yk) ** 2))), r2=float(1 - np.sum((pr - yk) ** 2) / np.sum((yk - yk.mean()) ** 2)),
                evaluation="5-fold held-out people; positional baseline fitted within each training fold",
-               scope="Modern FIFA club-decade ratings; historical predictions are extrapolations")
+               scope="Cards rated by EA or Championship Manager (1989-2025); earlier decades are extrapolations")
     m.fit(Xk, yk)
     return m, rep

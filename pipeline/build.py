@@ -6,9 +6,12 @@ Legend
   U      universe rows (club-decades in the pool, opponent rank k)
   ST     stints by club qid
   Q      squad rows (qid, D, p, n, g, k, s0, s1, x)
-  P      person facts;  K  caps
+  P      person facts;  K  caps;  sx  sex-or-gender items (P21);  FEM  female (excluded: men's pool)
+  PS     person -> {season: set of Wikidata club ids}
+  EN     engine evidence: EA rows E, person -> EA id L, Championship Manager records R
   steps  ordered step names
-  y_min  earliest birth year linked to FIFA editions (the editions start in 2014)
+  y_min  earliest birth year linked to EA rows (kept for the legacy FIFA-only link)
+  pick   order of evidence for a card: f, c, i, n, m, then e (see pipeline.ratings)
 """
 import json
 import pickle
@@ -16,11 +19,13 @@ import sys
 
 import pandas as pd
 
-from . import clubs, export, fifa, legends, ratings, results, squads, universe, wikidata
+from . import clubs, engines, export, fifa, legends, ratings, results, squads, stats, universe, wikidata
 from .config import CACHE, CUR, K_lg
+from .positions import slots
 
 B = CACHE / "build"
-steps = ("clubs", "universe", "stints", "squads", "persons", "model", "export")
+steps = ("clubs", "universe", "stints", "squads", "persons", "engines", "stats", "model", "export")
+FEM = "Q6581072"
 
 
 def save(k, x):
@@ -93,49 +98,118 @@ def s_persons():
     ps = sorted(set(d["Q"]["p"]))
     K = wikidata.caps(ps)
     pos = wikidata.labels({x for p in ps for x in d["P"][p]["pos"]} | {x for p in ps for x in d["P"][p]["nat"]})
-    save("persons", dict(K=K, lab=pos))
-    print("caps for", len(K), "labels", len(pos))
+    sx = wikidata.sexes(ps)
+    save("persons", dict(K=K, lab=pos, sx=sx))
+    print("caps for", len(K), "labels", len(pos), "female", sum(FEM in v for v in sx.values()))
+
+
+def person_seasons(ST):
+    PS = {}
+    for q, S in ST.items():
+        for s_ in S:
+            for s in squads.seasons(s_["a"], s_["b"], s_["n"]):
+                PS.setdefault(s_["p"], {}).setdefault(s, set()).add(q)
+    return PS
+
+
+def s_engines():
+    P = load("squads")["P"]
+    EN = engines.build(P, person_seasons(load("stints")))
+    save("engines", EN)
+    print("engines", EN["rep"]["ea"]["rows"], "EA-linked", EN["rep"]["linked_ea"], "CM records", EN["rep"]["cm_records"])
+
+
+
+def s_stats():
+    P = load("squads")["P"]
+    PS = person_seasons(load("stints"))
+    T, pos, rt = stats.tm(P, PS)
+    U, ru = stats.us(P, PS)
+    save("stats", dict(T=T, U=U, pos=pos, rep=dict(tm=rt, us=ru)))
+    print("stats", rt, ru)
 
 
 y_min = 1965
 
 
+def _pos(q, P, Pl, Lg, TP, GA):
+    b = ratings.by(P[q.p].get("dob"))
+    for x in (q.pf, q.pc):
+        if x and x["pos"]:
+            return list(x["pos"])
+    if q.p in Lg and Lg[q.p][1]:
+        return list(Lg[q.p][1])
+    for x in (q.pn, q.pm):
+        if x and x["pos"]:
+            return list(x["pos"])
+    if q.ep:
+        return list(q.ep)
+    if q.p in TP:
+        return list(TP[q.p])
+    return slots([Pl.get(i, "") for i in sorted(P[q.p]["pos"])], b, GA.get(q.p)) or ["CM"]
+
+
+def _f6(z):
+    return [None if x is None or x != x else round(float(x)) for x in z] if z is not None else None
+
+
 def s_model():
-    d, pe, u = load("squads"), load("persons"), load("universe")
+    d, pe, u, EN, SX = load("squads"), load("persons"), load("universe"), load("engines"), load("stats")
     Q, P, K, Pl, U, T = d["Q"].reset_index(drop=True), d["P"], pe["K"], pe["lab"], u["U"], u["T"]
+    fem = {p for p, v in pe.get("sx", {}).items() if FEM in v}
+    nf = int(Q.p.isin(fem).sum())
+    Q = Q[~Q.p.isin(fem)].reset_index(drop=True)
     ok = Q.apply(lambda r: not ratings.by(P[r.p].get("dob")) or
                  (r.s1 - ratings.by(P[r.p]["dob"]) >= 14 and r.s0 - ratings.by(P[r.p]["dob"]) <= 47), axis=1)
     bad = int((~ok).sum())
     Q = Q.loc[ok].reset_index(drop=True)
     Gs = T.groupby(["lg", "D"])["P"].mean().to_dict()
-    E = fifa.club_ids(fifa.editions(), load("clubs"))
-    L = fifa.link({p: P[p] for p in set(Q.p) if ratings.by(P[p].get("dob")) and ratings.by(P[p]["dob"]) >= y_min}, E)
-    Q = ratings.fifa_y(Q, P, L, E)
-    X = ratings.features(Q, P, K, Pl, U, Gs)
-    m, rep = ratings.fit(X, Q["y"].values.astype(float), Q["p"].values)
-    yh = m.predict(X[ratings.F].values)
+    E = fifa.club_ids(EN["E"], load("clubs"))
+    Q = ratings.engine_y(Q, P, EN["L"], E, EN["R"])
     Lg = legends.match(fifa.legends(), P, Pl, sorted(set(Q.p)))
-    r, src, pos = [], [], []
+    ga = Q.groupby("p")[["n", "g"]].sum()
+    GA = {p: g / n for p, n, g in zip(ga.index, ga.n, ga.g) if n >= 30}
+    Q["wpos"] = [_pos(q, P, Pl, Lg, SX["pos"], GA) for q in Q.itertuples()]
+    X = ratings.features(Q, P, K, Pl, U, Gs)
+    yt = Q.y.where(Q.y.notna(), Q.yc).values.astype(float)
+    m, rep_ = ratings.fit(X, yt, Q["p"].values)
+    yh = m.predict(X[ratings.F].values)
+    r, src, pos, sr, f6 = [], [], [], [], []
     for i, q in enumerate(Q.itertuples()):
         b = ratings.by(P[q.p].get("dob"))
         age = (q.s0 + q.s1) / 2 - b if b else float("nan")
+        pr = None
         if q.y == q.y:
-            v, s = q.y, "fifa"
+            v, s, pr = q.y, "fifa", q.pf
+        elif q.yc == q.yc:
+            v, s, pr = q.yc, "cm", q.pc
         elif q.p in Lg:
             v, s = Lg[q.p][0] + ratings.ac(age), "icon"
         elif q.yn == q.yn:
-            v, s = q.yn, "fifa-near"
+            v, s, pr = q.yn, "fifa-near", q.pn
+        elif q.ym == q.ym:
+            v, s, pr = q.ym, "cm-near", q.pm
         else:
             v, s = yh[i], "estimated"
-        r.append(min(ratings.hi, max(ratings.lo, float(v))))
+        v = min(ratings.hi, max(ratings.lo, float(v)))
+        z = list(pr["pos"]) if pr and pr["pos"] else q.wpos
+        r.append(v)
         src.append(s)
-        pos.append(q.fpos or (Lg[q.p][1] if q.p in Lg else None) or X.at[i, "wpos"] or ["CM"])
-    Q["r"], Q["src"], Q["pos"] = r, src, pos
-    rep["legends"] = len(Lg)
-    rep["fifa_linked"] = len(L)
-    rep["excluded_age_conflicts"] = bad
-    save("model", dict(Q=Q, rep=rep, Lg=Lg, L=L))
-    print("model", rep)
+        pos.append(z)
+        if pr is not None and pr["sr"] is not None:
+            sr.append([round(min(v, float(x) * v / max(1.0, pr["o"])), 1) for x in pr["sr"]])
+            f6.append(_f6(pr["g6"] if z[0] == "GK" else pr["a6"]))
+        else:
+            sr.append(None)
+            f6.append(_f6(Lg[q.p][4]) if s == "icon" else None)
+    Q["r"], Q["src"], Q["pos"], Q["sr"], Q["f6"] = r, src, pos, sr, f6
+    D = stats.card(SX["T"], SX["U"])
+    Q["st"] = [stats.agg(D, q.p, q.qid, q.s0, q.s1) for q in Q.itertuples()]
+    rep_.update(legends=len(Lg), ea_linked=len(EN["L"]), cm_records=int(len(EN["R"])), excluded_age_conflicts=bad,
+                excluded_women_cards=nf, stats=SX["rep"], cards_with_stats=int(Q.st.notna().sum()))
+    Q = Q.drop(columns=["pf", "pc", "pn", "pm", "ep"])
+    save("model", dict(Q=Q, rep=rep_, Lg=Lg, L=EN["L"], en_rep=EN["rep"]))
+    print("model", rep_)
     print(Q.groupby(["D", "src"]).size().unstack(fill_value=0))
 
 

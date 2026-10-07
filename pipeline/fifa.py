@@ -7,7 +7,8 @@ Legend
   G5     keeper attributes: diving, handling, kicking, reflexes, positioning
   tok    folded name tokens of length >= 3
   L      link: Wikidata person -> FIFA id
-  I      legend cards: name, o (base card rating), pos, kind (icon | hero), nat
+  I      legend cards: name, o (base card rating), pos, kind (icon | hero), nat, f6 (six face stats;
+         keeper stats for goalkeepers)
   ZIP_E  FC 24 dataset archive name in INP;  CSV_I  Ultimate Team csv name inside its archive
 """
 import re
@@ -21,6 +22,8 @@ from .config import INP
 
 ZIP_E = "fc24.zip"
 ZIP_I = "fut23.zip"
+F6 = ["Pace / Diving", "Shooting / Handling", "Passing / Kicking", "Dribbling / Reflexes", "Defense / Speed",
+      "Physical / Positioning"]
 CSV_I = "eafc24_players_2024-06-07.csv"
 A6 = ["pace", "shooting", "passing", "dribbling", "defending", "physic"]
 G5 = ["goalkeeping_diving", "goalkeeping_handling", "goalkeeping_kicking", "goalkeeping_reflexes", "goalkeeping_positioning"]
@@ -95,5 +98,7 @@ def legends():
     I = []
     for r in x.itertuples():
         alt = [p.strip() for p in str(r.Alternate_Positions).split(",") if p.strip() and p.strip() != "0"]
-        I.append(dict(name=r.Name, o=int(r.Rating), pos=[r.Main_Position] + alt, kind=str(r.Card_Version).lower(), nat=r.Nation))
+        f6 = [x.at[r.Index, c] for c in F6]
+        I.append(dict(name=r.Name, o=int(r.Rating), pos=[r.Main_Position] + alt, kind=str(r.Card_Version).lower(), nat=r.Nation,
+                      f6=[float(v) if pd.notna(v) else None for v in f6]))
     return I

@@ -4,7 +4,13 @@ Legend
   R      ordered rules: label fragment -> slots; the first matching rule of each label applies
   GEN    generic labels (defender, midfielder, forward), dropped when a specific label exists
   n_max  most natural positions kept per player
-  slots(L)  natural slots for the list of position labels L
+  slots(L, b, gpa)  natural slots for position labels L of a person born in year b who scored gpa
+                   league goals per game over his career
+  wing half        Wikidata's "wing half" (Q8025128) is used for wingers far more often than for the
+                   old half-back role (Cristiano Ronaldo, George Best, Tom Finney all carry it alone).
+                   It reads as a winger when the person was born from b_wing, also carries a forward
+                   or winger label, or scored at least g_wing league goals per game (wingers of the
+                   1950s-60s scored 0.25-0.45, wing halves rarely above 0.12); otherwise CDM/CM
   group(P)  line of a natural-position list: GK, DEF, MID or FWD (the rating model's position group)
 """
 R = [
@@ -30,18 +36,21 @@ R = [
 ]
 GEN = {"defender", "midfielder", "forward"}
 n_max = 3
+b_wing, g_wing = 1950, 0.15
 
 
-def _one(l):
+def _one(l, w=False):
     l = l.lower()
     for k, s in R:
         if k in l:
-            return k, s
+            return (k, ["LW", "RW"]) if k == "wing half" and w else (k, s)
     return None, []
 
 
-def slots(L):
-    hits = [(k, s) for k, s in (_one(l) for l in L) if k]
+def slots(L, b=None, gpa=None):
+    w = bool((b and b >= b_wing) or (gpa is not None and gpa >= g_wing) or
+             any("forward" in l.lower() or "winger" in l.lower() for l in L))
+    hits = [(k, s) for k, s in (_one(l, w) for l in L) if k]
     if any(k not in GEN for k, _ in hits):
         hits = [(k, s) for k, s in hits if k not in GEN]
     out = []

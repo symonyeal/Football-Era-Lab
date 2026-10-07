@@ -9,6 +9,9 @@
 //   fit(P,s,b)  penalty and label for natural positions P in slot s; b marks a bench slot, which
 //               carries no penalty (the reference game's rule)
 //   LN     line of each slot: G keeper, D defence, M midfield, A attack (for grouping in the UI)
+//   ft(c,s)  fit of card c in slot s: when the card carries slot ratings sr (EA's per-position
+//            ratings, or CM attributes put on EA's scale) the loss is 1 - sr[s]/r; otherwise fit()
+//   lb(f)  label for a loss read from slot ratings
 
 export const SL = ['GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
 
@@ -43,6 +46,18 @@ export const fit = (P, s, b = false) => {
   if (k === 1) return { f: F[1], lab: 'Adapted -10%' };
   if (k === 2) return { f: F[2], lab: 'Out of position -22%' };
   return { f: F[3], lab: 'Major penalty -35%' };
+};
+
+const lb = f => (f <= 0.02 ? 'Natural' : f < 0.075 ? `Adapted -${Math.round(f * 100)}%` :
+  f < 0.25 ? `Out of position -${Math.round(f * 100)}%` : `Major penalty -${Math.round(f * 100)}%`);
+
+export const ft = (c, s) => {
+  const j = SL.indexOf(s);
+  if (c && Array.isArray(c.sr) && c.sr.length === SL.length && j >= 0 && c.r > 0) {
+    const f = Math.min(0.9, Math.max(0, 1 - c.sr[j] / c.r));
+    return { f, lab: lb(f) };
+  }
+  return fit(c?.pos, s);
 };
 
 export const LN = { GK: 'G', LB: 'D', CB: 'D', RB: 'D', LWB: 'D', RWB: 'D', CDM: 'M', CM: 'M', CAM: 'M', LM: 'M', RM: 'M', LW: 'A', RW: 'A', CF: 'A', ST: 'A' };

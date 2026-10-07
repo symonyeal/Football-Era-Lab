@@ -6,7 +6,7 @@ Legend
   NA     card nation -> Wikidata country label, where they differ
   sl_min sitelinks a candidate needs (legends are widely covered)
   tok    folded name tokens
-  match(I, P, Pl, ps)  person -> (rating, card positions, kind) for people ps
+  match(I, P, Pl, ps)  person -> (rating, card positions, kind, card name, face stats) for people ps
 """
 from .fifa import fold, tok
 
@@ -55,5 +55,5 @@ def match(I, P, Pl, ps):
                 best, bs = p, sc
         if best and bs >= 0.75:
             if best not in out or out[best][0] < c["o"]:
-                out[best] = (c["o"], c["pos"], c["kind"], c["name"])
+                out[best] = (c["o"], c["pos"], c["kind"], c["name"], c.get("f6"))
     return out

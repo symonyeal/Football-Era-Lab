@@ -1,2 +1,0 @@
-# Audited upstream commit. The base offline game uses requirements.txt.
-fas @ git+https://github.com/symonyeal/football_analytics_system.git@a83c577a1d6b81da3a25a41f03c8e4096ecc4764

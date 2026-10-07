@@ -1,0 +1,10 @@
+{
+ "_note": "Championship Manager 01/02 databases read by pipeline.cm0102. Key: folder under FEL_INPUTS/cm0102. s = real season start year; dy = stored year minus real year (the CM 01/02 engine starts in 2001, so later or earlier seasons are stored shifted). Shifts were measured as the modal birth-year difference against Wikidata for players of ability 120+ (cm89 0, cm93 0, cm95 0, cm3 +3, original 0, april -19, october -20; 2026-10-07). One database per season: the patched copies, luessenhoff (a second 2001-02) and november (an earlier 2020-21) are not listed.",
+ "kit-cm89_database": {"s": 1989, "dy": 0, "label": "CM 01/02 community 1989-90"},
+ "kit-cm93_database": {"s": 1993, "dy": 0, "label": "CM 01/02 community 1993-94"},
+ "kit-cm95_database": {"s": 1995, "dy": 0, "label": "CM 01/02 community 1995-96"},
+ "kit-cm3_database": {"s": 1998, "dy": 3, "label": "CM 3 data 1998-99 in CM 01/02"},
+ "kit-original_database": {"s": 2001, "dy": 0, "label": "CM 01/02 original 2001-02 (Sports Interactive)"},
+ "kit-april_database": {"s": 2020, "dy": -19, "label": "CM 01/02 community April 2021 (2020-21)"},
+ "kit-october_database": {"s": 2021, "dy": -20, "label": "CM 01/02 community October 2021 (2021-22)"}
+}

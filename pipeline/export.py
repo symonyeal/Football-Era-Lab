@@ -1,8 +1,10 @@
 """Assemble cards, tags, managers and opponents, and write the game data file.
 
 Legend
-  Q      squad rows with ratings: qid, D, p, n, g, k, s0, s1, r, src, pos
-  SRC    source codes written to the game: f fifa, n fifa-near, i legend card, e estimated
+  Q      squad rows with ratings: qid, D, p, n, g, k, s0, s1, r, src, pos, sr, f6, st (real stats)
+  SRC    source codes written to the game: f EA at this club, c Championship Manager at this club,
+         i EA Icon/Hero, n EA nearby season, m CM nearby season, e estimated
+  n_sq   cards a club-decade needs (with a keeper) to be drafted or to oppose; smaller ones are dropped
   TG     curated tags (timeless, maestro, duos)
   ecw    European Cups won by each person: seasons a stint at a club covers in which that club won
   tags(Q, ...)  per-card tags: tal, rock (rating thresholds by line), mae, tl (curated), poa (goals
@@ -18,7 +20,8 @@ from .config import CUR, DS, N_opp, OUT
 from .names import short, who
 from .squads import seasons
 
-SRC = {"fifa": "f", "fifa-near": "n", "icon": "i", "estimated": "e"}
+SRC = {"fifa": "f", "cm": "c", "icon": "i", "fifa-near": "n", "cm-near": "m", "estimated": "e"}
+n_sq = 15
 DF = {1950: "WM", 1960: "4-2-4", 1970: "4-3-3", 1980: "4-4-2", 1990: "4-4-2", 2000: "4-4-2", 2010: "4-2-3-1", 2020: "4-3-3"}
 LV = ["S", "A", "B", "C", "D"]
 
@@ -96,6 +99,18 @@ def managers(P, ps, cm):
     return out, miss
 
 
+def _card(r):
+    c = dict(p=r.p, r=round(float(r.r), 1), s=SRC[r.src], pos=r.pos, n=int(r.n), g=int(r.g), a=int(r.s0),
+             b=int(r.s1), tg=r.tg)
+    if isinstance(r.sr, list):
+        c["sr"] = [int(round(x)) for x in r.sr]
+    if isinstance(r.f6, list) and any(x is not None for x in r.f6):
+        c["f6"] = r.f6
+    if isinstance(r.st, dict):
+        c["st"] = r.st
+    return c
+
+
 def opp_mgr(q, D, M):
     best, bs = None, 0
     for m in M:
@@ -116,8 +131,9 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
     for (q, D), g in Q.groupby(["qid", "D"]):
         g = g.sort_values(["r", "p"], ascending=[False, True])
         k = f"{q}:{D}"
-        cards[k] = [dict(p=r.p, r=round(float(r.r), 1), s=SRC[r.src], pos=r.pos, n=int(r.n), g=int(r.g), a=int(r.s0),
-                         b=int(r.s1), tg=r.tg) for r in g.itertuples()]
+        if len(g) < n_sq or not any("GK" in r.pos for r in g.itertuples()):
+            continue
+        cards[k] = [_card(r) for r in g.itertuples()]
     for r in U.itertuples():
         k = f"{r.id}:{r.D}"
         if k not in cards:
@@ -126,7 +142,7 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
         gk = sum(1 for c in cs if "GK" in c["pos"])
         combos.append(dict(q=r.id, D=int(r.D), k=int(r.k), x=round(float(r.x), 2), n=len(cs), gk=gk))
         clubs[r.id] = dict(nm=short(labels.get(r.id, r.club)), cc=ccode.get(r.id, r.lg))
-    for p in sorted(set(Q.p)):
+    for p in sorted({c["p"] for v in cards.values() for c in v}):
         x = P[p]
         people[p] = dict(nm=x["name"], by=int(x["dob"][:4]) if x.get("dob") and x["dob"][0] != "-" else None,
                          nat=Pl.get(sorted(x["nat"])[0], "") if x["nat"] else "", duo=duo.get(p, []))
@@ -139,7 +155,7 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
     meta = dict(v=dt.date.today().isoformat(), DS=list(DS), model=rep,
                 counts=dict(combos=len(combos), cards=sum(len(v) for v in cards.values()), people=len(people),
                             managers=len(M)),
-                src={s: int((Q.src == s).sum()) for s in SRC})
+                src={s: sum(c["s"] == SRC[s] for v in cards.values() for c in v) for s in SRC})
     G = dict(meta=meta, clubs=clubs, combos=combos, cards=cards, people=people, managers=M, formations=F, opp=opp)
     cp = OUT / "calibration.json"
     if cp.exists():
@@ -149,7 +165,13 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
     man = dict(meta=meta, unresolved=miss,
                sources=[
                    dict(name="Wikidata", use="squads (club stints, league apps and goals), birth dates, positions, caps", licence="CC0 1.0"),
-                   dict(name="EA Sports FC 24 complete player dataset (Stefano Leone, Kaggle)", use="FIFA 15 - FC 24 ratings and positions", licence="CC0 (as declared by the publisher)"),
+                   dict(name="EA Sports FC 24 complete player dataset (Stefano Leone, Kaggle)", use="FIFA 15 - FC 24 ratings, positions, per-position ratings and attributes", licence="CC0 (as declared by the publisher)"),
+                   dict(name="European Soccer Database (Hugo Mathien, Kaggle)", use="FIFA attributes 2007-2016 and real lineups 2008-2016 (positions)", licence="ODbL 1.0 (as declared by the publisher)"),
+                   dict(name="EA Sports FC 25 database (nyagami, Kaggle)", use="FC 25 ratings, positions and attributes", licence="Apache 2.0 (as declared by the publisher)"),
+                   dict(name="EA Sports FC 26 player ratings (justdhia, Kaggle)", use="FC 26 ratings, positions and attributes", licence="CC0 (as declared by the publisher)"),
+                   dict(name="Football Data from Transfermarkt (dcaribou, Kaggle)", use="appearances, minutes, goals and assists 2012+; sub-positions", licence="CC0 (as declared by the publisher)"),
+                   dict(name="Understat player stats per game (codytipton, Kaggle)", use="xG and xA per player-season, top five leagues and Russia 2014+", licence="MIT (as declared by the publisher)"),
+                   dict(name="Championship Manager 01/02 databases (freeware game since 2008; Sports Interactive original data and community seasons)", use="ability, positions and attributes for 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22; read locally, only derived numbers ship", licence="No stated licence; raw files not redistributed"),
                    dict(name="FIFA 23 Ultimate Team players database (Lucas Silva, Kaggle; file of 2024-06-07 holds FC 24 cards)", use="base Icon and Hero ratings for legends (EA reconstructions)", licence="CC0 (as declared by the publisher)"),
                    dict(name="engsoccerdata (James Curley)", use="league and European Cup results: club rankings and decade goal rates (derived aggregates only)", licence="GPL (>= 2)")])
     (OUT / "manifest.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")

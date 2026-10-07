@@ -1,4 +1,4 @@
-import { mk, hs, sh, fit, em } from './engine/index.js';
+import { mk, hs, sh, ft, em } from './engine/index.js';
 
 // G archive; s serializable run; T hydrated team; c card; p person id; D decade;
 // k club-decade key; S formation slots; xi starting eleven; bn four bench cards.
@@ -50,18 +50,37 @@ export function reroll(s) {
 export const used = s => new Set(s.slots.filter(Boolean).map(c => c.p));
 export const key = c => `${c.q}:${c.D}`;
 
+// Spin draw: a decade with weight exp(-|D - Ds| / (10 rho)) around the simulation decade Ds, then a
+// club-decade of that decade with weight exp(-(k - 1) / tau), k its strength rank in the decade
+// (1 = strongest). DW holds the two declared balance settings: smaller tau lands on the great
+// squads more often; smaller rho keeps more spins near the season's decade (Infinity = uniform).
+// Selected by the 2026-10-07 balance sweep. Current measurements and their policy/seed scope live
+// in docs/VALIDATION.md and can be regenerated with tests/balance.mjs.
+export const DW = { tau: 3, rho: 1.5 };
+
+export function draw(G, r, ok, Ds) {
+  const Q = G.combos.filter(ok);
+  if (!Q.length) return null;
+  const L = [...new Set(Q.map(c => c.D))];
+  const wd = L.map(D => (Ds && Number.isFinite(DW.rho) ? Math.exp(-Math.abs(D - Ds) / (10 * DW.rho)) : 1));
+  let v = r() * wd.reduce((a, b) => a + b, 0), D = L[L.length - 1];
+  for (let i = 0; i < L.length; i++) { v -= wd[i]; if (v <= 0) { D = L[i]; break; } }
+  const Z = Q.filter(c => c.D === D), w = Z.map(c => Math.exp(-((Number.isFinite(c.k) ? c.k : 1) - 1) / DW.tau));
+  let u = r() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < Z.length; i++) { u -= w[i]; if (u <= 0) return Z[i]; }
+  return Z[Z.length - 1];
+}
+
 export function spin(G, s, reroll = false) {
   if (s.phase !== 'draft' || s.picked !== 0) throw new Error('Finish the three picks from this squad first.');
   if (reroll && (!s.combo || s.squadReroll >= 1)) throw new Error('Your squad re-spin has been used.');
   if (!reroll && s.combo) throw new Error('This squad is already revealed.');
   const I = used(s);
-  const Q = G.combos.filter(c => (G.cards[key(c)] || []).filter(p => !I.has(p.p)).length >= 3 &&
-    (!reroll || key(c) !== s.combo));
-  if (!Q.length) throw new Error('No squad has three undrafted players available.');
   const n = s.squadReroll + Number(reroll);
   const r = mk(hs(`${s.seed}:squad:${s.spin}:${n}`));
-  const k = key(Q[Math.floor(r() * Q.length)]);
-  return { ...s, combo: k, squadReroll: n };
+  const c = draw(G, r, c => (G.cards[key(c)] || []).filter(p => !I.has(p.p)).length >= 3 && (!reroll || key(c) !== s.combo), s.D);
+  if (!c) throw new Error('No squad has three undrafted players available.');
+  return { ...s, combo: key(c), squadReroll: n };
 }
 
 export function place(G, s, p, i) {
@@ -110,9 +129,48 @@ export function team(G, s) {
 export function preview(G, s, p, i) {
   const c = hydrate(G, { k: s.combo, p: p });
   const u = i < 11 ? shape(G, s.manager.f)[i].s : 'BENCH';
-  const f = i < 11 ? fit(c.pos, u) : { f: 0, lab: 'Bench' };
+  const f = i < 11 ? ft(c, u) : { f: 0, lab: 'Bench' };
   const e = em(c.D, s.D, c.tg?.tl || 0);
   return { c, slot: u, ...f, e, a: c.r * (1 - f.f) * e };
+}
+
+// Replays are editable files. Check the fields used by the run and its views before storing one.
+function validRun(G, r, manager) {
+  const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const int = (x, lo = 0, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(x) && x >= lo && x <= hi;
+  const person = p => typeof p === 'string' && Object.hasOwn(G.people, p);
+  const ref = (k, p) => typeof k === 'string' && person(p) && G.cards[k]?.some(c => c.p === p);
+  const act = e => obj(e) && int(e.act, 0, 7) && e.D === DECADES[e.act];
+  const tag = x => ['tal', 'mae', 'rock'].includes(x);
+  const log = e => {
+    if (!obj(e)) return false;
+    if (e.t === 'seg') return act(e) && int(e.seg, 0, 1) && [e.w, e.d, e.l, e.gf, e.ga].every(x => int(x)) &&
+      e.w + e.d + e.l === 6 && e.pts === 3 * e.w + e.d && [-3, -2, 0, 2].includes(e.dp) &&
+      Array.isArray(e.res) && e.res.length === 6 && e.res.every(f => obj(f) && typeof f.op === 'string' &&
+        typeof f.h === 'boolean' && int(f.gf) && int(f.ga));
+    if (e.t === 'boss') return act(e) && typeof e.op === 'string' && int(e.n, 1) && typeof e.won === 'boolean' &&
+      int(e.gx) && int(e.gy) && typeof e.et === 'boolean' && [4, -4, -6].includes(e.dp) &&
+      (!e.pw || (obj(e.pw) && int(e.pw.w, 0, 1) && int(e.pw.x) && int(e.pw.y)));
+    if (e.t === 'rest') return int(e.gain, 0, 2);
+    if (e.t === 'boost') return ref(e.from, e.p) && ref(e.to, e.p) && int(e.cost, 1, 5);
+    if (e.t === 'sign') return ref(e.k, e.p) && person(e.out) && int(e.cost, 2, 4);
+    if (e.t === 'tag') return person(e.p) && tag(e.tag) && int(e.lv, 1, 2) && e.cost === 2;
+    return false;
+  };
+  const ok = obj(r) && r.v === 1 && int(r.seed, 0, 4294967295) && obj(r.m) && obj(manager) &&
+    r.m.nm === manager.nm && r.m.f === manager.f &&
+    Array.isArray(r.slots) && r.slots.length === 15 && r.slots.every(c => obj(c) && ref(c.k, c.p)) &&
+    new Set(r.slots.map(c => c.p)).size === 15 && int(r.act, 0, 7) && int(r.seg, 0, 2) &&
+    int(r.pat, 0, 20) && int(r.rest) && Array.isArray(r.tries) && r.tries.length === 8 && r.tries.every(x => int(x)) &&
+    obj(r.tags) && Object.entries(r.tags).every(([p, t]) => person(p) && obj(t) &&
+      Object.entries(t).every(([k, v]) => tag(k) && int(v, 1, 2))) &&
+    obj(r.up) && Object.entries(r.up).every(([p, k]) => ref(k, p)) &&
+    Array.isArray(r.log) && r.log.every(log) &&
+    ['seg', 'reward', 'boss', 'done', 'fired'].includes(r.ph) &&
+    (r.ph === 'fired' ? r.pat === 0 : r.pat > 0) &&
+    (r.ph !== 'seg' || r.seg < 2) && (r.ph !== 'reward' || r.seg > 0) &&
+    (r.ph !== 'boss' || r.seg === 2) && (r.ph !== 'done' || (r.act === 7 && r.seg === 0));
+  if (!ok) throw new Error('The saved Gauntlet run is invalid.');
 }
 
 export function valid(G, s) {
@@ -148,12 +206,16 @@ export function valid(G, s) {
   for (const c of s.slots.filter(Boolean)) A.set(c.k, (A.get(c.k) || 0) + 1);
   for (const [k, n] of A) if (E.get(k) !== n) throw new Error('The saved players do not match their club spins.');
   for (const [k, n] of E) if ((A.get(k) || 0) !== n) throw new Error('The saved club picks are incomplete.');
-  const md = s.mode || {};
-  if (md.ga !== undefined && (!Number.isInteger(md.ga) || md.ga < 0 || md.ga > 10000)) throw new Error('The saved Gauntlet progress is invalid.');
+  const md = s.mode || {}, rn = md.run;
   if (md.ci !== undefined && (!Number.isInteger(md.ci) || md.ci < 10 || md.ci > 20)) throw new Error('The saved circuit length is invalid.');
-  if (Object.keys(md).length && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
+  if (rn !== undefined) {
+    validRun(G, rn, s.manager);
+  }
+  if ((md.ci !== undefined || rn !== undefined) && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
+  if (s.wk !== undefined && !/^\d{4}-W\d{2}$/.test(s.wk)) throw new Error('The saved weekly challenge is invalid.');
   return { v: VERSION, seed: n, D: s.D, phase: s.phase, managerRoll: s.managerRoll, manager: s.manager,
     spin: s.spin, picked: s.picked, squadReroll: s.squadReroll, combo: s.combo,
     slots: s.slots.map(c => c ? { k: c.k, p: c.p } : null), history: s.history.slice(),
-    season: s.phase === 'results', mode: { ...(md.ga !== undefined ? { ga: md.ga } : {}), ...(md.ci !== undefined ? { ci: md.ci } : {}) } };
+    ...(s.wk ? { wk: s.wk } : {}),
+    mode: { ...(md.ci !== undefined ? { ci: md.ci } : {}), ...(rn !== undefined ? { run: rn } : {}) } };
 }

@@ -1,6 +1,6 @@
 {
  "meta": {
-  "v": "2026-10-06",
+  "v": "2026-10-07",
   "DS": [
    1950,
    1960,
@@ -12,30 +12,47 @@
    2020
   ],
   "model": {
-   "n": 3700,
-   "people": 2408,
-   "mae": 2.452363059633258,
-   "rmse": 3.162250206674221,
-   "mae_base": 5.103096528809887,
-   "rmse_base": 6.452742875322766,
-   "r2": 0.7593839859441189,
+   "n": 11493,
+   "people": 7178,
+   "mae": 2.674456306812736,
+   "rmse": 3.443906291776429,
+   "mae_base": 4.890278234441156,
+   "rmse_base": 6.099186530869333,
+   "r2": 0.68325486897052,
    "evaluation": "5-fold held-out people; positional baseline fitted within each training fold",
-   "scope": "Modern FIFA club-decade ratings; historical predictions are extrapolations",
-   "legends": 151,
-   "fifa_linked": 4892,
-   "excluded_age_conflicts": 34
+   "scope": "Cards rated by EA or Championship Manager (1989-2025); earlier decades are extrapolations",
+   "legends": 145,
+   "ea_linked": 8895,
+   "cm_records": 41359,
+   "excluded_age_conflicts": 34,
+   "excluded_women_cards": 142,
+   "stats": {
+    "tm": {
+     "linked": 7372,
+     "clubs_mapped": 162,
+     "rows": 28846
+    },
+    "us": {
+     "teams_mapped": 86,
+     "rows": 10647,
+     "people": 2974
+    }
+   },
+   "cards_with_stats": 5910
   },
   "counts": {
-   "combos": 561,
-   "cards": 29534,
-   "people": 16859,
+   "combos": 505,
+   "cards": 28773,
+   "people": 16470,
    "managers": 96
   },
   "src": {
-   "fifa": 3700,
-   "fifa-near": 2577,
-   "icon": 522,
-   "estimated": 22735
+   "fifa": 6181,
+   "cm": 5143,
+   "icon": 201,
+   "fifa-near": 3494,
+   "cm-near": 3371,
+   "estimated": 10383
   }
  },
  "unresolved": {
@@ -113,8 +130,38 @@
   },
   {
    "name": "EA Sports FC 24 complete player dataset (Stefano Leone, Kaggle)",
-   "use": "FIFA 15 - FC 24 ratings and positions",
+   "use": "FIFA 15 - FC 24 ratings, positions, per-position ratings and attributes",
    "licence": "CC0 (as declared by the publisher)"
+  },
+  {
+   "name": "European Soccer Database (Hugo Mathien, Kaggle)",
+   "use": "FIFA attributes 2007-2016 and real lineups 2008-2016 (positions)",
+   "licence": "ODbL 1.0 (as declared by the publisher)"
+  },
+  {
+   "name": "EA Sports FC 25 database (nyagami, Kaggle)",
+   "use": "FC 25 ratings, positions and attributes",
+   "licence": "Apache 2.0 (as declared by the publisher)"
+  },
+  {
+   "name": "EA Sports FC 26 player ratings (justdhia, Kaggle)",
+   "use": "FC 26 ratings, positions and attributes",
+   "licence": "CC0 (as declared by the publisher)"
+  },
+  {
+   "name": "Football Data from Transfermarkt (dcaribou, Kaggle)",
+   "use": "appearances, minutes, goals and assists 2012+; sub-positions",
+   "licence": "CC0 (as declared by the publisher)"
+  },
+  {
+   "name": "Understat player stats per game (codytipton, Kaggle)",
+   "use": "xG and xA per player-season, top five leagues and Russia 2014+",
+   "licence": "MIT (as declared by the publisher)"
+  },
+  {
+   "name": "Championship Manager 01/02 databases (freeware game since 2008; Sports Interactive original data and community seasons)",
+   "use": "ability, positions and attributes for 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22; read locally, only derived numbers ship",
+   "licence": "No stated licence; raw files not redistributed"
   },
   {
    "name": "FIFA 23 Ultimate Team players database (Lucas Silva, Kaggle; file of 2024-06-07 holds FC 24 cards)",
