@@ -1,4 +1,5 @@
-import { mk, hs, sh, ft, em } from './engine/index.js';
+import { mk, hs, sh, ft, em, rate } from './engine/index.js';
+import { TI, CAP, GCAP, ck, left } from './cap.js';
 
 // G archive; s serializable run; T hydrated team; c card; p person id; D decade;
 // k club-decade key; S formation slots; xi starting eleven; bn four bench cards.
@@ -14,11 +15,12 @@ export function seed(x) {
   return n;
 }
 
-export function start(s, d) {
+export function start(s, d, cap = false) {
   s = seed(s);
+  if (typeof cap !== 'boolean') throw new Error('Choose Salary cap or Classic draft.');
   const D = d === 'random' ? DECADES[Math.floor(mk(hs(`${s}:era`))() * 8)] : Number(d);
   if (!DECADES.includes(D)) throw new Error('Choose a decade from the eight available eras.');
-  return { v: VERSION, seed: s, D, phase: 'manager', managerRoll: 0, manager: null, spin: 0, picked: 0,
+  return { v: VERSION, seed: s, D, cap, phase: 'manager', managerRoll: 0, manager: null, spin: 0, picked: 0,
     squadReroll: 0, combo: null, slots: Array(15).fill(null), history: [], season: false };
 }
 
@@ -50,25 +52,41 @@ export function reroll(s) {
 export const used = s => new Set(s.slots.filter(Boolean).map(c => c.p));
 export const key = c => `${c.q}:${c.D}`;
 
-// Spin draw: a decade with weight exp(-|D - Ds| / (10 rho)) around the simulation decade Ds, then a
-// club-decade of that decade with weight exp(-(k - 1) / tau), k its strength rank in the decade
-// (1 = strongest). DW holds the two declared balance settings: smaller tau lands on the great
-// squads more often; smaller rho keeps more spins near the season's decade (Infinity = uniform).
-// Selected by the 2026-10-07 balance sweep. Current measurements and their policy/seed scope live
-// in docs/VALIDATION.md and can be regenerated with tests/balance.mjs.
-export const DW = { tau: 3, rho: 1.5 };
+// Spin draw: one club-decade, weighted exp(-|D - Ds| / (10 rho)) for its distance from the season
+// decade Ds times exp(-(k - 1) / tau) for k, its strength rank in its decade (1 = strongest). All
+// club-decades run a seeded race (key = Exp(1) / weight) and the first eligible one wins, so each is
+// drawn with probability weight / (sum of eligible weights), and a club ruled out by one player's
+// picks leaves every other draw on that seed unchanged. DW holds the two declared settings: larger
+// tau spreads spins across more clubs; smaller rho keeps more spins near the season's decade
+// (Infinity = uniform). Current measurements live in docs/VALIDATION.md (tests/balance.mjs).
+export const DW = { tau: 20, rho: 1.5 };
 
 export function draw(G, r, ok, Ds) {
-  const Q = G.combos.filter(ok);
-  if (!Q.length) return null;
-  const L = [...new Set(Q.map(c => c.D))];
-  const wd = L.map(D => (Ds && Number.isFinite(DW.rho) ? Math.exp(-Math.abs(D - Ds) / (10 * DW.rho)) : 1));
-  let v = r() * wd.reduce((a, b) => a + b, 0), D = L[L.length - 1];
-  for (let i = 0; i < L.length; i++) { v -= wd[i]; if (v <= 0) { D = L[i]; break; } }
-  const Z = Q.filter(c => c.D === D), w = Z.map(c => Math.exp(-((Number.isFinite(c.k) ? c.k : 1) - 1) / DW.tau));
-  let u = r() * w.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < Z.length; i++) { u -= w[i]; if (u <= 0) return Z[i]; }
-  return Z[Z.length - 1];
+  const wd = D => (Ds && Number.isFinite(DW.rho) ? Math.exp(-Math.abs(D - Ds) / (10 * DW.rho)) : 1);
+  const wk = c => (Number.isFinite(DW.tau) ? Math.exp(-((Number.isFinite(c.k) ? c.k : 1) - 1) / DW.tau) : 1);
+  const Q = G.combos.map(c => [c, -Math.log(1 - r()) / (wd(c.D) * wk(c))]).sort((a, b) => a[1] - b[1]);
+  for (const [c] of Q) if (ok(c)) return c;
+  return null;
+}
+
+export const room = (G, s) => left(G, s.slots);
+
+// Enough distinct, affordable people must remain for the rest of this three-pick batch.
+function batch(G, s, k, p = null) {
+  const I = used(s); if (p) I.add(p);
+  const Q = G.cards[k].filter(c => !I.has(c.p));
+  const need = 3 - s.picked - Number(p !== null);
+  if (!s.cap) return Q.length >= need;
+  const R = room(G, s), n = { S: 0, A: 0, B: 0, C: 0, D: 0 };
+  if (p) R[TI(G.cards[k].find(c => c.p === p).r)]--;
+  if (Object.values(R).some(v => v < 0)) return false;
+  for (const c of Q) n[TI(c.r)]++;
+  return Object.keys(CAP).reduce((a, t) => a + Math.min(R[t], n[t]), 0) >= need;
+}
+
+export function can(G, s, p) {
+  return s.phase === 'draft' && !!s.combo && !used(s).has(p) &&
+    !!G.cards[s.combo]?.some(c => c.p === p) && batch(G, s, s.combo, p);
 }
 
 export function spin(G, s, reroll = false) {
@@ -76,11 +94,19 @@ export function spin(G, s, reroll = false) {
   if (reroll && (!s.combo || s.squadReroll >= 1)) throw new Error('Your squad re-spin has been used.');
   if (!reroll && s.combo) throw new Error('This squad is already revealed.');
   const I = used(s);
+  const H = new Set(s.history.map(k => k.split(':')[0]));
+  if (s.skip) H.add(s.skip.split(':')[0]);
+  if (reroll) H.add(s.combo.split(':')[0]);
   const n = s.squadReroll + Number(reroll);
   const r = mk(hs(`${s.seed}:squad:${s.spin}:${n}`));
-  const c = draw(G, r, c => (G.cards[key(c)] || []).filter(p => !I.has(p.p)).length >= 3 && (!reroll || key(c) !== s.combo), s.D);
-  if (!c) throw new Error('No squad has three undrafted players available.');
-  return { ...s, combo: key(c), squadReroll: n };
+  // Eraball's guarantee: the squad offers a player from the highest tier the fifteen have not yet
+  // filled (Classic counts against the same allowances but blocks nothing), when any new club can;
+  // otherwise any new club that can fill three remaining places.
+  const R = room(G, s), t = Object.keys(CAP).find(t => R[t] > 0);
+  const ok = c => !H.has(c.q) && (G.cards[key(c)] || []).filter(p => !I.has(p.p)).length >= 3 && batch(G, s, key(c));
+  const c = (t && draw(G, r, c => ok(c) && G.cards[key(c)].some(x => !I.has(x.p) && TI(x.r) === t), s.D)) || draw(G, r, ok, s.D);
+  if (!c) throw new Error('No new club can fill three of your remaining tier places.');
+  return { ...s, combo: key(c), squadReroll: n, ...(reroll ? { skip: s.combo } : {}) };
 }
 
 export function place(G, s, p, i) {
@@ -88,6 +114,10 @@ export function place(G, s, p, i) {
   if (!Number.isInteger(i) || i < 0 || i >= 15 || s.slots[i]) throw new Error('Choose an empty pitch or bench slot.');
   if (used(s).has(p)) throw new Error('This person is already in your squad, even in a different decade.');
   if (!G.cards[s.combo].some(c => c.p === p)) throw new Error('Choose a player from the revealed squad.');
+  if (s.cap) {
+    ck(G, [...s.slots.filter(Boolean), { k: s.combo, p }]);
+    if (!can(G, s, p)) throw new Error('This pick would leave too few affordable players to finish the three picks.');
+  }
   const slots = s.slots.slice();
   slots[i] = { k: s.combo, p: p };
   const picked = s.picked + 1;
@@ -131,11 +161,14 @@ export function preview(G, s, p, i) {
   const u = i < 11 ? shape(G, s.manager.f)[i].s : 'BENCH';
   const f = i < 11 ? ft(c, u) : { f: 0, lab: 'Bench' };
   const e = em(c.D, s.D, c.tg?.tl || 0);
-  return { c, slot: u, ...f, e, a: c.r * (1 - f.f) * e };
+  const slots = s.slots.slice(); slots[i] = { k: s.combo, p };
+  const Q = rate(team(G, { ...s, slots }), s.D), R = rate(team(G, s), s.D);
+  const v = i < 11 ? Q.xi[i] : Q.bn[i - 11];
+  return { c, slot: u, ...f, e, a: v.a, b: v.b || 0, up: Q.up, gA: Q.gA, gD: Q.gD, ovr: Q.ovr, da: Q.ovr - R.ovr };
 }
 
 // Replays are editable files. Check the fields used by the run and its views before storing one.
-function validRun(G, r, manager) {
+function validRun(G, r, manager, cap) {
   const obj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
   const int = (x, lo = 0, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(x) && x >= lo && x <= hi;
   const person = p => typeof p === 'string' && Object.hasOwn(G.people, p);
@@ -171,16 +204,30 @@ function validRun(G, r, manager) {
     (r.ph !== 'seg' || r.seg < 2) && (r.ph !== 'reward' || r.seg > 0) &&
     (r.ph !== 'boss' || r.seg === 2) && (r.ph !== 'done' || (r.act === 7 && r.seg === 0));
   if (!ok) throw new Error('The saved Gauntlet run is invalid.');
+  if ((r.cap !== undefined && typeof r.cap !== 'boolean') || !!r.cap !== cap) throw new Error('The saved Gauntlet cap does not match the draft.');
+  if (cap) {
+    const U = {};
+    for (const e of r.log) {
+      if (e.t === 'boost') U[e.p] ||= e.from;
+      if (e.t === 'sign') { delete U[e.out]; delete U[e.p]; }
+    }
+    for (const [p, k] of Object.entries(r.up)) {
+      if (U[p] !== k) throw new Error('The saved Gauntlet boost charge is invalid.');
+    }
+    ck(G, r.slots.map(ref => ({ k: r.up[ref.p] || ref.k, p: ref.p })), GCAP);
+  }
 }
 
 export function valid(G, s) {
   if (!s || s.v !== VERSION) throw new Error('This saved run uses a different game version.');
   const n = seed(s.seed);
+  if (s.cap !== undefined && typeof s.cap !== 'boolean') throw new Error('The saved draft cap is invalid.');
   if (!DECADES.includes(s.D) || !['manager', 'draft', 'review', 'results'].includes(s.phase)) throw new Error('The saved run has an invalid stage or decade.');
   if (![s.managerRoll, s.squadReroll, s.spin, s.picked].every(Number.isInteger) ||
     s.managerRoll < 0 || s.managerRoll > 2 || s.squadReroll < 0 || s.squadReroll > 1 ||
     s.spin < 0 || s.spin > 5 || s.picked < 0 || s.picked > 2) throw new Error('The saved draft counters are invalid.');
   if (!Array.isArray(s.slots) || s.slots.length !== 15 || !Array.isArray(s.history) || s.history.length !== s.spin) throw new Error('The saved squad is incomplete.');
+  if (s.cap) ck(G, s.slots);
   const ids = new Set();
   for (const c of s.slots) {
     if (!c) continue;
@@ -197,6 +244,7 @@ export function valid(G, s) {
     if (!opts(G, s).some(o => o.nm === s.manager.nm && o.f === s.manager.f)) throw new Error('The saved manager was not in this spin.');
   }
   if (s.combo && !G.cards[s.combo]) throw new Error('The saved club squad is unavailable.');
+  if (s.skip !== undefined && (typeof s.skip !== 'string' || !G.cards[s.skip] || s.squadReroll !== 1)) throw new Error('The saved discarded club is invalid.');
   if (s.phase === 'draft' && (s.spin >= 5 || (!s.combo && s.picked))) throw new Error('The saved squad stage is invalid.');
   if (['review', 'results'].includes(s.phase) && (ids.size !== 15 || s.spin !== 5 || s.combo || s.picked)) throw new Error('The saved final squad is incomplete.');
   for (const k of s.history) if (!G.cards[k]) throw new Error('A drafted club squad is unavailable.');
@@ -209,13 +257,14 @@ export function valid(G, s) {
   const md = s.mode || {}, rn = md.run;
   if (md.ci !== undefined && (!Number.isInteger(md.ci) || md.ci < 10 || md.ci > 20)) throw new Error('The saved circuit length is invalid.');
   if (rn !== undefined) {
-    validRun(G, rn, s.manager);
+    validRun(G, rn, s.manager, !!s.cap);
   }
   if ((md.ci !== undefined || rn !== undefined) && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
   if (s.wk !== undefined && !/^\d{4}-W\d{2}$/.test(s.wk)) throw new Error('The saved weekly challenge is invalid.');
-  return { v: VERSION, seed: n, D: s.D, phase: s.phase, managerRoll: s.managerRoll, manager: s.manager,
+  return { v: VERSION, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: s.manager,
     spin: s.spin, picked: s.picked, squadReroll: s.squadReroll, combo: s.combo,
     slots: s.slots.map(c => c ? { k: c.k, p: c.p } : null), history: s.history.slice(),
+    ...(s.skip ? { skip: s.skip } : {}),
     ...(s.wk ? { wk: s.wk } : {}),
     mode: { ...(md.ci !== undefined ? { ci: md.ci } : {}), ...(rn !== undefined ? { run: rn } : {}) } };
 }

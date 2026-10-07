@@ -4,8 +4,8 @@ Legend
   SO     club display overrides by Wikidata label
   PRE    prefixes dropped from a club label;  SUF  suffixes dropped
   short(l)        display name of club label l
-  who(nm, P, ps)  person id among ps for curated name nm: exact folded label first, then every name
-                  token contained in the label; ties go to the most widely covered (sitelinks)
+  who(nm, P, ps, tk)  person id among ps for curated name nm: exact folded label first, then (when tk)
+                  every name token contained in the label; ties go to the most widely covered (sitelinks)
 """
 from .fifa import fold, tok
 
@@ -42,12 +42,12 @@ def short(l):
     return s
 
 
-def who(nm, P, ps):
+def who(nm, P, ps, tk=True):
     f, t = fold(nm), tok(nm)
     ex = [p for p in ps if fold(P[p]["name"]) == f]
     if ex:
         return max(ex, key=lambda p: P[p].get("sl", 0))
-    if not t:
+    if not t or not tk:
         return None
     cn = [p for p in ps if t <= tok(P[p]["name"])]
     return max(cn, key=lambda p: P[p].get("sl", 0)) if cn else None

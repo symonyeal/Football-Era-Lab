@@ -108,5 +108,66 @@ class Stats(unittest.TestCase):
         self.assertIsNone(stats.agg(D, "Q1", "other", 2010, 2019))
 
 
+class ClubSelection(unittest.TestCase):
+    def test_each_big_five_league_contributes_its_top_twenty(self):
+        from pipeline import universe
+        C = pd.DataFrame([
+            dict(lg=lg, D=1990, id=f"{lg}{i}", club=f"Club {i}", n=5,
+                 ppg=2 - i / 100, t=0, e=0, z=2 - i / 100, q=25 - i)
+            for lg in ("ENG", "ESP", "ITA", "GER", "FRA") for i in range(25)
+        ])
+        E = pd.DataFrame(columns=["D", "id", "cc", "e", "club"])
+        U = universe.pick(C, E)
+        self.assertEqual(len(U), 100)
+        for lg in ("ENG", "ESP", "ITA", "GER", "FRA"):
+            self.assertEqual(set(U.loc[U.lg == lg, "id"]), {f"{lg}{i}" for i in range(20)})
+
+    def test_missing_historical_teams_are_not_invented_to_fill_twenty(self):
+        from pipeline import universe
+        C = pd.DataFrame([
+            dict(lg="GER", D=1960, id=f"Q{i}", club=f"Club {i}", n=3,
+                 ppg=1.5, t=0, e=0, z=0, q=20 - i) for i in range(18)
+        ])
+        E = pd.DataFrame(columns=["D", "id", "cc", "e", "club"])
+        U = universe.pick(C, E)
+        self.assertEqual(set(U.id), {f"Q{i}" for i in range(18)})
+
+    def test_an_unresolved_top_twenty_club_does_not_promote_rank_twenty_one(self):
+        from pipeline import universe
+        C = pd.DataFrame([
+            dict(lg="ENG", D=1990, id="nm:Unresolved" if i == 2 else f"Q{i}",
+                 club=f"Club {i}", n=5, ppg=1.5, t=0, e=0, z=0, q=25-i)
+            for i in range(25)
+        ])
+        E = pd.DataFrame(columns=["D", "id", "cc", "e", "club"])
+        U = universe.pick(C, E)
+        self.assertEqual(set(U.id), {f"Q{i}" for i in range(20) if i != 2})
+
+
+class CachedFacts(unittest.TestCase):
+    def test_person_queries_skip_ineligible_stints_but_keep_possible_notable_players(self):
+        from pipeline import build
+        ST = {"club": [dict(p="Q1", a=1991, b=1994, n=9, g=0),
+                        dict(p="Q2", a=1991, b=1992, n=None, g=None),
+                        dict(p="Q3", a=1991, b=1993, n=None, g=None),
+                        dict(p="Q4", a=1991, b=1992, n=6, g=0),
+                        dict(p="Q4", a=1992, b=1993, n=6, g=0)]}
+        self.assertEqual(build.pp(ST, {("club", 1990)}), {"Q3", "Q4"})
+
+    def test_expanding_squads_fetches_only_new_people_and_keeps_known_facts(self):
+        from pipeline import build
+        requested = []
+        def read_people(ids):
+            requested.append(set(ids))
+            return {"Q2": {"name": "New player"}}
+        old = {"Q1": {"name": "Known player", "dob": "1980-01-01"}}
+        P = build.ex(old, {"Q1", "Q2"}, read_people)
+        self.assertEqual(requested, [{"Q2"}])
+        self.assertEqual(P, {"Q1": {"name": "Known player", "dob": "1980-01-01"},
+                             "Q2": {"name": "New player"}})
+        build.ex(P, {"Q1", "Q2"}, read_people)
+        self.assertEqual(requested, [{"Q2"}])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,9 @@ The checks answer several different questions: whether the game follows its rule
 
 ## The rules are checked automatically
 
-The release passed 53 Node tests, 14 Python pipeline tests and 4 calibration tests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet rewards, same-person boosts, boss retries and valid or malformed saved runs.
+The release passed 72 Node tests, 19 Python pipeline tests, 3 identity-batch tests and 4 calibration tests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet rewards, same-person boosts, boss retries and valid or malformed saved runs.
+
+The salary-cap tests check the exact tier boundaries, that a third S-tier card is refused even on the bench, that every allowed pick leaves the club's three picks completable, and that saves, replays, team codes and Gauntlet signings keep the rule. Drafts on the bundled data finish with exactly 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs in every decade. Other tests require draws to follow the declared weights, every club to remain drawable, a squad to offer the best tier still needed, a ruled-out club to leave every other draw on the same seed unchanged, and each hard end-of-draft need to have more supplier clubs than a draft can rule out.
 
 Checks on the supplied data require the strongest rated squad to lead each selected opposition field. They also require the coverage report, manifest counts and embedded calibration settings to describe the exact bundle. A stale data hash fails that check.
 
@@ -15,6 +17,7 @@ Run these commands from the repository root with Node 20 or later and the Python
 ```text
 node --test tests/engine/*.test.mjs
 python -m unittest discover -s tests -p test_pipeline.py -v
+python -m unittest discover -s tests -p test_wikidata.py -v
 python -m pytest tests/test_calibration.py -q -p no:cacheprovider
 ```
 
@@ -24,9 +27,9 @@ The data validator reported zero failures for its structural rules. The export h
 
 ## The browser checks cover a complete playthrough
 
-Desktop at 1440 × 900 and mobile at 390 × 844 passed 28 checks with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
+Desktop at 1440 × 900 and mobile at 390 × 844 passed 38 checks, 19 at each size, with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
 
-Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, Gauntlet segments, a reward and a boss. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft.
+Each confirmed that the salary cap is selected by default and that the rules choice survives an era change. Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, Gauntlet segments, a reward and a boss. The capped draft finished with 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs, the tier counts survived a reload, and blocked cards showed their reasons. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft. Head to Head refused a Classic code against a capped team, a Classic replay link started a Classic draft, and the Weekly Challenge started under the salary cap even after Classic had been chosen.
 
 Both runs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These runs cover Chromium at two screen sizes, not every browser or every possible sequence of choices.
 
@@ -63,50 +66,85 @@ Club-name matches restrict fixture coverage. Unmatched fixtures are excluded fro
 
 ## Draft difficulty varies by decade
 
-One automatic drafting policy played forty seeds per decade, 1000 through 1039, with `tau=3` and `rho=1.5`. It kept the best-graded manager among the five offered. At each pick it selected the highest position- and era-adjusted value in an open place, adding the nearby same-club points it would gain; bench candidates received a 0.92 weight.
+One automatic drafting policy played forty seeds per decade, 1000 through 1039, under each set of rules, with `tau=20` and `rho=1.5`. It kept the best-graded manager among the five offered. At each pick it selected, among the cards the rules allowed, the highest position- and era-adjusted value in an open place, adding the nearby same-club points it would gain; bench candidates received a 0.92 weight.
 
-This is a declared computer policy, not a measurement of human players. It does not optimize manager re-spins, squad re-spins or duo partnerships. Reproduce it with:
+This is a declared computer policy, not a measurement of human players. It does not plan ahead for the cap, optimize manager re-spins, squad re-spins or duo partnerships. Reproduce it with:
 
 ```text
-node tests/balance.mjs season 40
+node tests/balance.mjs season 40 cap
+node tests/balance.mjs season 40 classic
 ```
+
+Under the salary cap:
 
 | Decade | Median finish | Titles / 40 | Top four / 40 | Median points | Unbeaten / 40 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 1950s | 2 | 11 | 36 | 86 | 0 |
-| 1960s | 3 | 11 | 30 | 81 | 0 |
-| 1970s | 3 | 12 | 23 | 75 | 0 |
-| 1980s | 5 | 3 | 15 | 70 | 0 |
-| 1990s | 5 | 1 | 10 | 70 | 0 |
-| 2000s | 9 | 0 | 6 | 60 | 0 |
-| 2010s | 5 | 0 | 16 | 68 | 0 |
-| 2020s | 5 | 4 | 15 | 74 | 0 |
+| 1950s | 3 | 11 | 33 | 85 | 1 |
+| 1960s | 3 | 8 | 27 | 77 | 0 |
+| 1970s | 4 | 4 | 20 | 70 | 0 |
+| 1980s | 6 | 0 | 12 | 65 | 0 |
+| 1990s | 8 | 0 | 3 | 62 | 0 |
+| 2000s | 14 | 0 | 0 | 45 | 0 |
+| 2010s | 12 | 0 | 0 | 52 | 0 |
+| 2020s | 10 | 0 | 0 | 55 | 0 |
 
-The policy won 42 of 320 titles, or 13.1%, and produced no unbeaten seasons. That aggregate is within the chosen 5% to 15% title target, while individual decades differ substantially. Its typical finish was second to third in the earliest decades, and fifth to ninth later. For forty runs, the harness reports the lower of the two middle observations in the sorted list as its median.
+Under Classic:
 
-Zero titles in forty 2000s or 2010s drafts does not establish that those eras cannot be won. The experiment also does not establish the target title probability in each individual decade. Better selections, deliberate partnerships or use of re-spins remain outside what this policy measures.
+| Decade | Median finish | Titles / 40 | Top four / 40 | Median points | Unbeaten / 40 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1950s | 2 | 16 | 37 | 87 | 1 |
+| 1960s | 3 | 10 | 31 | 79 | 0 |
+| 1970s | 4 | 11 | 26 | 77 | 0 |
+| 1980s | 5 | 3 | 17 | 71 | 0 |
+| 1990s | 7 | 0 | 7 | 68 | 0 |
+| 2000s | 12 | 1 | 6 | 53 | 0 |
+| 2010s | 9 | 0 | 10 | 58 | 0 |
+| 2020s | 7 | 0 | 3 | 64 | 0 |
+
+The policy won 23 of 320 capped seasons, or 7.2%, and 41 of 320 Classic seasons, or 12.8%. Both aggregates are within the chosen 5% to 15% title target; the previous release, with Classic rules only, measured 42 of 320. Each rule set produced one unbeaten season, both in the 1950s. For forty runs, the harness reports the lower of the two middle observations in the sorted list as its median.
+
+The cap's titles all came in the 1950s to 1970s. The capped squad's median rating stayed between 85.0 and 86.2 in every decade, while the median of the nineteen opponents rose from 79.7 in the 1950s to 85.5 to 90.6 from the 1980s onwards. Classic squads reached 86.3 to 88.4. Zero titles in forty drafts of a decade does not establish that the decade cannot be won. Better selections, deliberate partnerships or use of re-spins remain outside what this policy measures.
+
+## The spin settings trade variety against strength
+
+Lower `tau` sends more spins to the strongest squads, which makes a team stronger and the draws more repetitive. The tier guarantee keeps stars within reach when the weighting is flatter. Each row below is the same policy over 160 drafts, twenty seeds per decade:
+
+| Draw rule | Capped titles | Classic titles | Clubs seen, capped | Most frequent club, capped |
+| --- | ---: | ---: | ---: | --- |
+| Previous release: `tau=3`, decade then club, no tier guarantee | 7 | 22 | 40 | Real Madrid, 14.1% of spins |
+| `tau=20`, decade then club, no tier guarantee | 3 | 3 | 90 | Real Madrid, 9.5% |
+| `tau=20`, one combined draw, tier guarantee (adopted) | 11 | 20 | 71 | Barcelona, 8.3% |
+| `tau=40`, one combined draw, tier guarantee | 6 | 17 | 83 | Barcelona, 7.5% |
+
+`tau=20` is the flattest tested setting that kept both rule sets inside the title target. Over the full 320 drafts at that setting, 94 different clubs appeared under the cap and 91 under Classic, Barcelona was the most frequent at 8.6% of spins, and 57% of capped spins came from a club ranked in its decade's top ten, against 95% under the previous weighting. Barcelona and Real Madrid remain the most frequent because they hold 22 of the archive's 82 S-tier cards, and every capped squad needs two.
+
+## Capped drafts always finished
+
+Four pick policies each completed 320 capped drafts, one per seed and decade: the highest-rated legal card, the lowest-rated, the lowest tier first, which saves the S places for last, and a random legal card. None of the 1,280 drafts got stuck, and in all 6,400 spins the squad offered a player from the best tier still needed. On the same seed, each of the other three policies met the same club as the highest-rated policy on every first draw, 71% of second draws, 18% of third draws and 8% of fifth draws. The [salary cap rules](MODEL.md#the-salary-cap-limits-stars-across-the-whole-squad) give the supplier-club margin behind this result.
 
 ## Gauntlet survival depends on reward choices
 
-The same drafting policy played forty Gauntlets using seeds 500 through 539, cycling the draft decades. It took a prime-card boost only when at least five patience would remain after payment; otherwise it rested. This is one conservative reward policy, not a test of every signing, development or boost strategy.
+The same drafting policy played forty Gauntlets under each set of rules, using seeds 500 through 539 and cycling the draft decades. It took a prime-card boost only when at least five patience would remain after payment; otherwise it rested. It never signed a free agent or developed a tag. This is one conservative reward policy, not a test of every signing, development or boost strategy.
 
 ```text
-node tests/balance.mjs gauntlet 40 5
+node tests/balance.mjs gauntlet 40 5 cap
+node tests/balance.mjs gauntlet 40 5 classic
 ```
-
-Nine runs ended before clearing the first decade. One cleared all eight. The median run cleared three decades, earned thirteen points per six-match segment and played eight boss matches.
 
 | Decades cleared | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Runs | 9 | 4 | 3 | 5 | 8 | 3 | 4 | 3 | 1 |
+| Salary cap runs | 21 | 5 | 3 | 5 | 5 | 1 | 0 | 0 | 0 |
+| Classic runs | 13 | 4 | 2 | 12 | 6 | 0 | 3 | 0 | 0 |
 
-The results describe this policy under the current patience and opposition rules. They do not measure the success rate of a player who builds the team around future boss matches or chooses different rewards.
+Under Classic the median run cleared three decades, earned thirteen points per six-match segment and played six boss matches; the previous release's policy also reached a median of three, with one full clear in forty. Under the salary cap, 21 of 40 runs ended in the 1950s, the median run cleared none, earned twelve points per segment and played three boss matches, and no run cleared more than five decades. No run under either rule set cleared all eight.
+
+The capped Gauntlet is the hard mode, as in Eraball, where capped runs earn 1.5 times the score. A capped squad must carry three C-tier and two D-tier players, and fatigue and absences bring substitutes into matches. This policy never replaces anyone; signing free agents is how a capped run can strengthen those places, and that was not measured. The results describe this policy under the current patience and opposition rules. They do not measure the success rate of a player who builds the team around future boss matches or chooses different rewards.
 
 ## Identifying the evidence and its limits
 
 [validation.json](../data/validation.json) names the exact bundle by its SHA-256 file fingerprint. [manifest.json](../data/manifest.json) records attribution and unresolved links, and [calibration.json](../data/calibration.json) records the goal fit and fixture coverage. The notebook calculates its counts and hash from the file it loads.
 
-Development browser evidence is kept in `Claude Func Folder\football-v2\review-20261007\review-browser-after\`; the balance outputs are `review-20261007\release-*-balance.txt`. Those local artifacts are not supplied with the repository. The portable commands above generate fresh records in the output folder you choose.
+Development browser evidence is kept in `Claude Func Folder\football-v2\cap-resume-20261007\browser\`; the balance outputs are `cap-resume-20261007\final-*.txt` and the setting comparison `sweep-*.txt`. Those local artifacts are not supplied with the repository. The portable commands above generate fresh records in the output folder you choose.
 
 Early-era estimates extend a model fitted to engine-rated cards from 1989 to 2025. Their errors measure resemblance to those games' ratings, not real historical ability. Missing squad members, incorrect club-name joins, decade-wide membership and estimated positions can affect results. The nearby-source date-window limitation is documented in [DATA.md](DATA.md#the-source-label-explains-what-rated-a-card). Additional unmeasured effects are listed in [MODEL.md](MODEL.md#what-the-model-leaves-out).
 

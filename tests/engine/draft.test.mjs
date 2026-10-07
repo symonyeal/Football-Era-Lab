@@ -9,7 +9,7 @@ const S = [['GK', 50, 92], ['LB', 15, 72], ['CB', 38, 76], ['CB', 62, 76], ['RB'
 const G = { managers: Array.from({ length: 7 }, (_, i) => ({ nm: `Manager ${i}`, f: ['4-4-2'], ga: 'B', gd: 'A', sig: ['p0'] })),
   formations: { '4-4-2': { slots: S } }, combos: [], cards: {}, people: {} };
 for (const D of [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]) {
-  for (let q = 0; q < 4; q++) {
+  for (let q = 0; q < 6; q++) {
     const k = `q${q}:${D}`; G.combos.push({ q: `q${q}`, D, n: 18 });
     G.cards[k] = Array.from({ length: 18 }, (_, i) => {
       const p = `p${q * 12 + i}`;

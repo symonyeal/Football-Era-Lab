@@ -10,8 +10,9 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as E from '../app/engine/index.js';
 import { fields } from '../app/data.js';
+import { TI, ct, ck } from '../app/cap.js';
 import {
-  start, opts, choose, spin, place, used, hydrate, shape, seed as parseSeed,
+  start, opts, choose, spin, place, can, hydrate, shape, seed as parseSeed,
 } from '../app/draft.js';
 
 const root = new URL('../', import.meta.url);
@@ -29,24 +30,17 @@ function refs(ids, D) {
   });
 }
 
-function demo(seed, D) {
-  let s = choose(G, start(seed, D), 0);
+function demo(seed, D, cap) {
+  let s = choose(G, start(seed, D, cap), 0);
   let keepers = 0;
   const selected = [];
   for (let i = 0; i < 5; i++) {
     s = spin(G, s);
-    const pool = G.cards[s.combo].filter(c => !used(s).has(c.p))
-      .slice().sort((a, b) => b.r - a.r || a.p.localeCompare(b.p));
-    const picks = [];
-    if (keepers < 2) {
-      const gk = pool.find(c => c.pos.includes('GK'));
-      if (gk) picks.push(gk);
-    }
-    for (const c of pool) {
-      if (picks.length === 3) break;
-      if (!picks.some(p => p.p === c.p)) picks.push(c);
-    }
-    for (const c of picks) {
+    for (let j = 0; j < 3; j++) {
+      const pool = G.cards[s.combo].filter(c => can(G, s, c.p))
+        .slice().sort((a, b) => b.r - a.r || a.p.localeCompare(b.p));
+      const c = (keepers < 2 ? pool.find(c => c.pos.includes('GK')) : null) || pool[0];
+      if (!c) throw new Error('No legal player remains in this notebook draw.');
       const ref = { k: s.combo, p: c.p };
       s = place(G, s, c.p, selected.length);
       selected.push(ref);
@@ -70,6 +64,8 @@ function parameters() {
 function execute(x) {
   const seed = parseSeed(x.seed ?? 20261006);
   const D = Number(x.decade ?? 1990);
+  const cap = x.cap ?? false;
+  if (typeof cap !== 'boolean') throw new Error('cap must be true for Salary cap or false for Classic.');
   if (!E.DS.includes(D)) throw new Error('Choose a supported simulation decade.');
   const p = parameters();
   if (p) E.cfg(p);
@@ -88,7 +84,7 @@ function execute(x) {
     if (!x.person_ids.every(p => typeof p === 'string')) throw new Error('Each person ID must be a string.');
     selected = refs(x.person_ids, D);
   } else {
-    const d = demo(seed, D);
+    const d = demo(seed, D, cap);
     selected = d.selected;
     chosen = d.manager;
     history = d.history;
@@ -96,6 +92,7 @@ function execute(x) {
   }
   if (selected.length !== 15 || new Set(selected.map(c => c.p)).size !== 15)
     throw new Error('Supply exactly fifteen distinct people.');
+  if (cap) ck(G, selected);
   const m = x.manager ? G.managers.find(m => m.nm === x.manager) : G.managers.find(m => m.nm === chosen.nm);
   if (!m) throw new Error('Choose a manager name from the catalogue.');
   const f = x.formation || (x.manager ? m.f[0] : chosen.f);
@@ -117,12 +114,12 @@ function execute(x) {
   for (const p of season.st2.values()) st.push({ ...p, competition: 'European Cup' });
   const finalRefs = [...T.xi, ...T.bn].map(c => selected.find(r => r.p === c.id));
   return {
-    mode, seed, season_seed: seasonSeed, decade: D, placement, data_sha256: createHash('sha256').update(raw).digest('hex'),
+    mode, cap, tier_counts: ct(G, selected), seed, season_seed: seasonSeed, decade: D, placement, data_sha256: createHash('sha256').update(raw).digest('hex'),
     data_build: G.meta.v, manager: m, formation: f, source_counts: C, source_cards: finalRefs,
     draft_club_decades: history, parameters: E.P,
     squad: [...T.xi, ...T.bn].map((c, i) => ({ place: i < 11 ? `${i + 1}: ${S[i].s}` : `Bench ${i - 10}`,
       id: c.id, player: c.nm, club: G.clubs[c.cq]?.nm || c.cq, card_decade: c.D,
-      positions: c.pos.join(', '), base_rating: c.r, source: c.src, tags: JSON.stringify(c.tg) })),
+      positions: c.pos.join(', '), base_rating: c.r, tier: TI(c.r), source: c.src, tags: JSON.stringify(c.tg) })),
     starters: R.xi.map(p => ({ slot: p.s, id: p.c.id, player: p.c.nm, base_rating: p.c.r,
       source: p.c.src, card_decade: p.c.D, fit_label: p.lab, position_loss: p.f,
       era_multiplier: p.e, chemistry_points: p.b, adjusted_rating: p.a })),

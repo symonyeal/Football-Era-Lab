@@ -49,7 +49,7 @@ LG = {
 }
 URL_es = "https://raw.githubusercontent.com/jalapic/engsoccerdata/master/data-raw/{}.csv"
 
-K_lg = 10
+K_lg = 20
 n_min = 3
 N_opp = 19
 N_cup = 16

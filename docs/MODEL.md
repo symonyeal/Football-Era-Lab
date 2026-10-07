@@ -148,18 +148,40 @@ The league consists of your team and nineteen eligible club squads from the seas
 
 The European Cup uses your squad and the fifteen strongest teams by engine rating within that field. The top eight are seeded against the rest. Ties have two legs through the semi-finals and one neutral final, without away goals. Scorer, assist and clean-sheet awards use the recorded simulated events. Player of the season scores `4 × goals + 3 × assists + 3 × clean sheets + 0.1 × appearances`.
 
+## The salary cap limits stars across the whole squad
+
+A new draft uses the salary cap unless you choose Classic. Each card has a tier set by its base rating, before position, era, link and manager adjustments, and the fifteen must fill these places:
+
+| Tier | Base rating | Places |
+| --- | --- | ---: |
+| S | 90 or above | 2 |
+| A | 85 to 89.9 | 4 |
+| B | 80 to 84.9 | 4 |
+| C | 75 to 79.9 | 3 |
+| D | below 75 | 2 |
+
+The places add up to fifteen, so a finished squad holds exactly these numbers, substitutes included. A card is blocked when its tier is full. It is also blocked when taking it would leave the club without enough undrafted players in open tiers to complete that club's three picks. Swapping two of your players changes nothing, because tiers belong to cards rather than positions.
+
+Eraball's Salary Cap Draft fills nine places with 2 S, 2 A, 2 B, 2 C and 1 D, its D place covering every lower tier. The fifteen-place allowances are this game's adaptation. Eraball also promises that every spin includes a player from a tier you still need. This game applies that promise to each squad draw: the squad must offer an undrafted player from the best tier you still need, S while an S place is open, then A, B, C and D, whenever a club you have not drafted from can supply one. In 6,400 test spins one always could. Classic drafts block nothing but receive the same help, measured against the same allowances. The help matters most for the top tiers: S-tier cards sit in 52 of the 910 club squads, belonging to 28 clubs, A-tier cards in 245, B-tier in 588, C-tier in 864 and D-tier in all 910.
+
+A capped draft cannot get stuck while the archive keeps enough clubs for its scarcest needs. The hardest final draw, two S-tier players and one more, can be supplied by 10 different clubs, and a draft rules out at most 5: the four already drafted and one re-spun. The hardest need over the last two draws can be supplied by 20. An automated test fails if a rebuilt archive leaves any such need with five clubs or fewer.
+
+Saved drafts, replays, team codes, the Weekly Challenge and Head to Head carry the rules. A team code records whether it was capped, and Head to Head requires both teams to use the same rules. Drafts saved before the cap existed resume as Classic.
+
 ## Which squads the spin favours
 
-Each spin draws a decade, then a club squad from that decade. The relative weights are:
+Each spin draws one club squad. Its relative weight is the product of two factors:
 
 ```text
-decade weight = exp(-|card decade - season decade| / (10 × 1.5))
-club weight   = exp(-(strength rank in its decade - 1) / 3)
+decade weight   = exp(-|squad decade - season decade| / (10 × 1.5))
+strength weight = exp(-(strength rank in its decade - 1) / 20)
 ```
 
-Rank 1 is the strongest club. The denominators are the balance settings `rho=1.5` and `tau=3`: lower values concentrate draws nearer the chosen era and nearer the strongest clubs. Every decade remains eligible. With all eight decades available, about 35% of draws stay in a 1980s or 1990s season's own decade, rising to about 49% at the 1950s and 2020s ends of the range. Restrictions such as having three undrafted people available can change an individual draw's pool.
+Rank 1 is the decade's strongest club. The denominators are the balance settings `rho=1.5` and `tau=20`: lower values concentrate draws nearer the chosen era and nearer the strongest clubs. Every club and every decade keeps a chance. Without other restrictions, 35.1% of draws stay in a 1990s season's own decade and 35.3% in a 1980s one, rising to 44.5% for the 1950s and 46.7% for the 2020s.
 
-Only squads with at least fifteen cards and a goalkeeper are eligible. Under the tested automatic selection policy, these settings produced 42 titles in 320 drafts and no unbeaten seasons. The result varies by decade; it does not imply the same title probability in every era. The policy and results are in [VALIDATION.md](VALIDATION.md#draft-difficulty-varies-by-decade).
+The seed puts every squad in a random order in which a squad's chance of coming first is proportional to its weight. The draw takes the first squad in that order that meets the rules: at least fifteen cards with a goalkeeper, a club not already drafted or re-spun away, three picks possible within your remaining places, and, where possible, a player from your best open tier. Two players on the same seed therefore meet the same squad unless their own earlier picks rule it out.
+
+The released game used `tau=3`, which gave the strongest few clubs most draws; on today's archive Real Madrid took about 14% of all spins under it. Under these settings an automatic selection policy won 23 of 320 capped seasons and 41 of 320 Classic seasons, each with one unbeaten season, while 94 and 91 different clubs appeared and no club took more than 8.6% of spins. The result varies by decade; it does not imply the same title probability in every era. The policy and results are in [VALIDATION.md](VALIDATION.md#draft-difficulty-varies-by-decade).
 
 ## Era Gauntlet
 
@@ -181,18 +203,20 @@ A lost boss can be retried while patience remains. The run ends at zero patience
 
 | Reward | What changes | Patience cost or gain |
 | --- | --- | --- |
-| Prime-card boost | An existing player becomes the same person's highest-rated club-and-decade card. | 1 within the same rating tier; 2 for one tier gained; 3 for two; 4 for three or more. Add 1 when reaching S from a lower tier. |
-| Free agent | Choose one of three players from a drawn club squad, and release one of your fifteen. | 2 for D, C or B; 3 for A; 4 for S. A signing must leave at most two S-tier and four A-tier players. |
+| Prime-card boost | An existing player becomes the same person's highest-rated club-and-decade card. On a capped run he keeps the tier of the card he replaced for the cap. | 1 within the same rating tier; 2 for one tier gained; 3 for two; 4 for three or more. Add 1 when reaching S from a lower tier. |
+| Free agent | Choose one of three players from a drawn club squad, and release one of your fifteen. | 2 for D, C or B; 3 for A; 4 for S. On a capped run a signing must leave at most two S-tier and four A-tier players; Classic runs have no limit. |
 | Develop | Add or develop a Talisman, Maestro or Rock tag. | 2. |
 | Rest | Recover patience. | +2, then +1, then zero for consecutive rests. Spending on another reward resets that sequence. |
 
-The rating tiers are S at 90 or above, A at 85, B at 80, C at 75, and D below 75. A purchase must leave at least 1 patience. This follows Eraball's starting patience, cap, boss consequences, upgrade costs, squad cap and rest rules. The two six-match segments and their point thresholds are this game's football adaptation.
+The rating tiers are the salary-cap tiers above: S at 90 or above, A at 85, B at 80, C at 75, and D below 75. A purchase must leave at least 1 patience. This follows Eraball's starting patience, patience maximum, boss consequences, upgrade costs, Gauntlet squad cap and rest rules. Eraball applies its Gauntlet cap of two S-tier and four A-tier players only when its salary cap is on, and so does this game: a capped draft starts a capped run, a Classic draft an uncapped one. Because a boost keeps the original tier for the cap, an earned upgrade never breaks it. The two six-match segments and their point thresholds are this game's football adaptation.
 
 ## Circuit, Head to Head and Weekly Challenge
 
 A circuit runs 10 to 20 events, starting in the season decade and cycling through the eras. It rotates an eight-club league, a sixteen-club European Cup, an eight-club knockout, sixteen clubs in groups followed by knockout, and a one-match Super Cup against the decade's strongest club in the selected field. Each event reassesses the squad for its decade. Titles and player awards come from all of the circuit's recorded match events.
 
-Head to Head accepts two team codes containing exact cards and placement. It plays two legs, with each team at home in its own decade. A level aggregate adds extra time and penalties in the second leg. The Weekly Challenge chooses one seed and decade for the whole ISO week, Monday to Sunday in UTC. These modes have no server-held leaderboard or authenticated competition record.
+Head to Head accepts two team codes containing exact cards and placement. Both codes must use the same rules, salary cap or Classic. It plays two legs, with each team at home in its own decade. A level aggregate adds extra time and penalties in the second leg.
+
+The Weekly Challenge chooses one seed and decade for the whole ISO week, Monday to Sunday in UTC, and always uses the salary cap. Everyone sees the same manager options and the same first squad. Later squads come from the same seeded order, but each must suit the tiers that player still needs, so different picks lead to different clubs. Over 320 test seeds, pairs of drafts following different strategies met the same club on 71% of second draws, 18% of third draws and 8% of fifth draws. These modes have no server-held leaderboard or authenticated competition record.
 
 ## Notebook settings
 
@@ -202,6 +226,7 @@ Install Node 20 or later and Python 3.11 or later, then follow the commands in t
 | --- | --- |
 | `seed` | A whole number from 0 to 4294967295, fixing the draft and season draws. |
 | `decade` | The season decade's start: 1950 through 2020, in steps of ten. |
+| `cap` | `True` drafts under the salary cap, as the notebook's settings and the browser do, and checks fifteen supplied players against it; `False`, or leaving it out, is Classic. |
 | `manager` | A name from the printed catalogue, or `None` for the seeded demonstration choice. |
 | `formation` | A catalogue formation, or `None` to use the selected manager option's formation. |
 | `person_ids` | Fifteen distinct Wikidata person IDs. An empty list requests the automatic demonstration. |

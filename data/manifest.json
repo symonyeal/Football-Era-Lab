@@ -21,38 +21,45 @@
    "r2": 0.68325486897052,
    "evaluation": "5-fold held-out people; positional baseline fitted within each training fold",
    "scope": "Cards rated by EA or Championship Manager (1989-2025); earlier decades are extrapolations",
-   "legends": 145,
-   "ea_linked": 8895,
-   "cm_records": 41359,
-   "excluded_age_conflicts": 34,
-   "excluded_women_cards": 142,
+   "legends": 146,
+   "ea_linked": 12600,
+   "cm_records": 59133,
+   "excluded_age_conflicts": 56,
+   "excluded_women_cards": 200,
    "stats": {
     "tm": {
-     "linked": 7372,
-     "clubs_mapped": 162,
-     "rows": 28846
+     "linked": 10257,
+     "clubs_mapped": 223,
+     "rows": 39785
     },
     "us": {
-     "teams_mapped": 86,
-     "rows": 10647,
-     "people": 2974
+     "teams_mapped": 115,
+     "rows": 12621,
+     "people": 3796
     }
    },
-   "cards_with_stats": 5910
+   "cards_with_stats": 9720,
+   "expansion": {
+    "original_cards": 29392,
+    "added_card_rows": 25136,
+    "estimator": "Original fit and feature normalizers reconstructed from unchanged original input",
+    "calibration_refitted_on_expanded_data": false
+   }
   },
   "counts": {
-   "combos": 505,
-   "cards": 28773,
-   "people": 16470,
+   "clubs": 268,
+   "combos": 910,
+   "cards": 52976,
+   "people": 25382,
    "managers": 96
   },
   "src": {
-   "fifa": 6181,
-   "cm": 5143,
-   "icon": 201,
-   "fifa-near": 3494,
-   "cm-near": 3371,
-   "estimated": 10383
+   "fifa": 10550,
+   "cm": 8876,
+   "icon": 249,
+   "fifa-near": 6667,
+   "cm-near": 6803,
+   "estimated": 19831
   }
  },
  "unresolved": {
@@ -60,10 +67,6 @@
    [
     "Sandro Mazzola",
     "Luis Suárez Miramontes"
-   ],
-   [
-    "Bobby Moore",
-    "Geoff Hurst"
    ]
   ],
   "sig": [
@@ -86,6 +89,10 @@
    [
     "Javier Clemente",
     "Manu Sarabia"
+   ],
+   [
+    "Javier Clemente",
+    "Dani"
    ],
    [
     "Valeriy Lobanovskyi",

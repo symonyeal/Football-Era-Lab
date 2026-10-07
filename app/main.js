@@ -1,5 +1,6 @@
 import * as E from './engine/index.js';
-import { STORE, DECADES, start, opts, choose, reroll, spin, place, swap, team, preview, valid, used } from './draft.js';
+import { STORE, DECADES, start, opts, choose, reroll, spin, place, swap, team, preview, valid, used, room, can } from './draft.js';
+import { TI, CAP, ct } from './cap.js';
 import { fields } from './data.js';
 import * as Rn from './run.js';
 import { wk, code, uncode, h2h } from './play.js';
@@ -8,7 +9,7 @@ import { wk, code, uncode, h2h } from './play.js';
 // R season result; C circuit result; H head-to-head result; D chosen simulation decade.
 // sel selected roster person; sw selected swap slot; tab results tab; q/sort roster filter.
 let G, S = null, F, R = null, C = null, H = null;
-let sel = null, sw = null, tab = 'league', D = 1980, q = '', sort = 'rating', busy = false, ev = 12, timer;
+let sel = null, sw = null, tab = 'league', D = 1980, cap = true, q = '', sort = 'rating', busy = false, ev = 12, timer;
 const root = document.querySelector('#game');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -17,6 +18,20 @@ const rM = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const ord = n => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')}`;
 const nm = p => G.people[p]?.nm || p;
 const club = k => { const [qid, d] = k.split(':'); return `${G.clubs[qid]?.nm || qid} ${d}s`; };
+const rules = s => s.cap ? 'Salary cap' : 'Classic';
+const RANGE = { S: '90+', A: '85–89.9', B: '80–84.9', C: '75–79.9', D: 'below 75' };
+const tier = c => `<span class="tier-badge tier--${TI(c.r)}" title="${TI(c.r)} tier: base rating ${RANGE[TI(c.r)]}">${TI(c.r)} TIER</span>`;
+// Draft budget (CAP, every tier) or Gauntlet budget (GCAP: S and A limited, B to D counted).
+function budget(s, charge = s.slots, lim = CAP) {
+  if (!s.cap) return `<div class="cap-budget cap-budget--classic"><strong>${lim === CAP ? 'CLASSIC DRAFT' : 'CLASSIC RUN'}</strong><p>Any tier can fill an open place.</p></div>`;
+  const n = ct(G, charge), run = lim !== CAP;
+  return `<section class="cap-budget" aria-label="Salary cap: places left by tier"><div class="cap-heading"><strong>SALARY CAP</strong><span>${run ? 'Gauntlet: at most 2 S and 4 A among the fifteen' : 'All 15 players, including the bench'}</span></div>
+    <div class="cap-counts">${Object.keys(CAP).map(t => {
+      const r = t in lim ? lim[t] - n[t] : null;
+      return `<div class="cap-count ${r === 0 ? 'cap-count--full' : ''}" data-cap-tier="${t}" ${r === null ? '' : `data-left="${r}"`} aria-label="${t} tier: ${r === null ? `${n[t]} held, no limit` : `${r} of ${lim[t]} places left`}"><b>${t}</b><span>${r === null ? `${n[t]} held` : `${r} / ${lim[t]} left`}</span><small>${r === null ? 'no limit' : `${n[t]} ${run ? 'held' : 'drafted'}`} · ${RANGE[t]}</small></div>`;
+    }).join('')}</div>
+    <p>Tier uses the base card rating, before position, era and link bonuses.${run ? ' A boosted player keeps the tier he was drafted or signed at.' : ''}</p></section>`;
+}
 
 // Sources, strengths and real stats on a card
 const SRC = { f: 'EA FC', c: 'CM 01/02', i: 'ICON / HERO', n: 'EA NEAR', m: 'CM NEAR', e: 'ESTIMATED' };
@@ -60,7 +75,7 @@ function change(next, msg) { S = next; sel = null; sw = null; q = ''; save(); re
 function progress(a) {
   const st = ['Era', 'Manager', 'Squad', 'Season'];
   return `<nav class="progress" aria-label="Draft progress">${st.map((s, i) => `${i ? '<span class="connector" aria-hidden="true"></span>' : ''}<span class="${i < a ? 'done' : i === a ? 'active' : ''}" ${i === a ? 'aria-current="step"' : ''}><b>${i < a ? '✓' : i + 1}</b>${s}</span>`).join('')}
-    <span class="run-meta">${S.wk ? `WEEKLY ${esc(S.wk)} · ` : ''}${S.D}s · SEED ${S.seed}</span></nav>`;
+    <span class="run-meta">${S.wk ? `WEEKLY ${esc(S.wk)} · ` : ''}${rules(S)} · ${S.D}s · SEED ${S.seed}</span></nav>`;
 }
 
 // Start screen
@@ -69,20 +84,23 @@ function intro() {
   const w = wk();
   return `<section class="hero"><div><span class="eyebrow">A DRAFT THROUGH FOOTBALL HISTORY</span>
       <h1>BUILD A TEAM.<br><em>Across time.</em></h1>
-      <p class="hero-copy">Five club squads. Fifteen of your choices. Put legends and modern greats on the same pitch, then take on the strongest clubs of your era.</p></div>
-    <div class="hero-illustration" aria-hidden="true"><span class="hero-stamp">THE ERA XI / EST. 1950—2029</span><span class="intro-rule"></span><span class="hero-ball">✦</span><span class="hero-years"><span>1950</span><span>2020</span></span><span class="hero-caption">NO TWO TEAMS THE SAME</span></div></section>
+      <p class="hero-copy">Five different clubs. Fifteen of your choices. Balance star power, position fit and teammate connections, then take on the strongest clubs of your era.</p></div>
+    <div class="hero-illustration" aria-hidden="true"><span class="hero-stamp">THE ERA XI / EST. 1950—2029</span><span class="intro-rule"></span><span class="hero-ball">✦</span><span class="hero-years"><span>1950</span><span>2020</span></span><span class="hero-caption">FIVE CLUBS. FIFTEEN CHOICES.</span></div></section>
   <section class="setup" aria-label="Start a draft"><div>
       <div class="section-title"><h2>CHOOSE YOUR ERA</h2><p>Your opponents live here.</p></div>
       <div class="decades">${DECADES.map((d, i) => `<button class="decade" data-era="${d}" aria-pressed="${D === d}"><strong>${d}s</strong><small>${L[i]}</small></button>`).join('')}</div>
       <button class="random-era" data-era="random" aria-pressed="${D === 'random'}">${D === 'random' ? '✓ ' : ''}Let fate choose my decade ↗</button></div>
-    <form id="start-form" class="start-form"><div><label class="field-label" for="seed">REPLAY SEED</label>
+    <form id="start-form" class="start-form"><fieldset class="draft-rules"><legend class="field-label">DRAFT RULES</legend>
+      <label><input id="draft-cap" type="radio" name="draft-rules" value="cap" ${cap ? 'checked' : ''}><span><strong>Salary cap</strong><small>2 S · 4 A · 4 B · 3 C · 2 D</small></span></label>
+      <label><input id="draft-classic" type="radio" name="draft-rules" value="classic" ${!cap ? 'checked' : ''}><span><strong>Classic</strong><small>No tier limits</small></span></label>
+      <p class="help">The cap covers your eleven and all four substitutes.</p></fieldset><div><label class="field-label" for="seed">REPLAY SEED</label>
       <input class="seed-input" id="seed" name="seed" inputmode="numeric" autocomplete="off" value="${Math.floor(Math.random() * 4294967296)}" aria-describedby="seed-help">
-      <p class="help" id="seed-help">Same seed + same choices = same run.</p></div>
+      <p class="help" id="seed-help">Same seed, rules and choices = same run.</p></div>
       <button class="button" type="submit">Enter the draft <span aria-hidden="true">↗</span></button></form></section>
   <section class="weekly"><div><span class="eyebrow">THIS WEEK'S CHALLENGE · ${w.id}</span>
-      <h2>${w.D}s · ONE SEED FOR EVERYONE</h2><p>Every player gets the same managers and the same spins this week. Compare your season with friends.</p></div>
+      <h2>${w.D}s · ONE SEED FOR EVERYONE</h2><p>Everyone uses Salary cap rules, the same managers and the same club order this week. Each squad must suit the tiers you still need, so after the first spin your picks steer which clubs you meet. Compare your season with friends.</p></div>
     <button class="button button--acid" id="weekly">Play the weekly challenge ↗</button></section>
-  <div class="rules-strip"><div><strong>01 / THE MANAGER</strong><p>Pick one of five managers and a formation they used.</p></div><div><strong>02 / THE SQUADS</strong><p>Spin a club and decade. Choose three from its squad.</p></div><div><strong>03 / YOUR ELEVEN</strong><p>Place every player yourself. Keep four on the bench.</p></div><div><strong>04 / THE SEASON</strong><p>A 38-match league and a 16-club European Cup, then the Era Gauntlet.</p></div></div>
+  <div class="rules-strip"><div><strong>01 / THE MANAGER</strong><p>Pick one of five managers and a formation they used.</p></div><div><strong>02 / THE SQUADS</strong><p>Five different clubs, each offering a player from the best tier you still need. Choose three from each within your tier budget.</p></div><div><strong>03 / YOUR ELEVEN</strong><p>Place every player yourself. Keep four on the bench.</p></div><div><strong>04 / THE SEASON</strong><p>A 38-match league and a 16-club European Cup, then the Era Gauntlet.</p></div></div>
   <p class="roster-note"><label class="replay-label">Have a saved replay? <input id="import-replay" type="file" accept="application/json,.json"></label></p>`;
 }
 
@@ -110,22 +128,24 @@ function lineup() {
   const T = team(G, S), Q = E.rate(T, S.D), n = S.slots.filter(Boolean).length, lock = S.phase === 'results';
   const pos = T.S.map((s, i) => {
     const p = Q.xi[i], c = p.c, v = sel && !c ? preview(G, S, sel, i) : null;
-    const label = c ? `${s.s}, ${c.nm}, adjusted ${num(p.a)}. Select to swap.` : `${s.s}, empty.${v ? ` ${v.c.nm} would rate ${num(v.a)}: fit loss ${Math.round(v.f * 100)}%, era loss ${Math.round((1 - v.e) * 100)}%.` : ' Select a roster player first.'}`;
+    const label = c ? `${s.s}, ${c.nm}, adjusted ${num(p.a)}. Select to swap.` : `${s.s}, empty.${v ? ` ${v.c.nm} would rate ${num(v.a)}: fit loss ${Math.round(v.f * 100)}%, era loss ${Math.round((1 - v.e) * 100)}%, +${v.b} links. Squad overall ${num(v.ovr)}.${v.up ? ' Manager signature bonus active.' : ''}` : ' Select a roster player first.'}`;
     return `<button class="pitch-slot ${sw === i ? 'selected' : ''} ${v ? 'preview' : ''}" data-slot="${i}" style="left:${s.x}%;top:${s.y}%" aria-label="${esc(label)}" title="${esc(label)}" ${lock ? 'disabled' : ''}>
       <span class="slot-circle ${c ? 'slot-circle--filled' : ''}">${c ? Math.round(p.a) : v ? Math.round(v.a) : '+'}</span>
       <span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? `${Math.round(v.f * 100)}% fit loss` : s.s)}</span>
-      <span class="slot-role ${p.f > 0.02 ? 'fit-warning' : ''}">${c ? `${s.s}${p.f > 0.02 ? ` · −${Math.round(p.f * 100)}%` : ''}` : v ? `−${Math.round((1 - v.e) * 100)}% era` : 'OPEN'}</span></button>`;
+      <span class="slot-role ${p.f > 0.02 ? 'fit-warning' : ''}">${c ? `${s.s} · ${TI(c.r)} tier${p.f > 0.02 ? ` · −${Math.round(p.f * 100)}%` : ''}` : v ? `${v.b ? `+${v.b} links · ` : ''}−${Math.round((1 - v.e) * 100)}% era` : 'OPEN'}</span></button>`;
   }).join('');
   const bench = T.bn.map((c, j) => {
     const i = j + 11, v = sel && !c ? preview(G, S, sel, i) : null;
     return `<button class="bench-slot ${sw === i ? 'selected' : ''} ${v ? 'preview' : ''}" data-slot="${i}" ${lock ? 'disabled' : ''} aria-label="Bench ${j + 1}, ${c ? esc(c.nm) : 'empty'}">
-      <span class="field-label">BENCH ${j + 1}</span><b>${c ? Math.round(Q.bn[j].a) : v ? Math.round(v.a) : '+'}</b><span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? 'No fit loss' : 'OPEN')}</span></button>`;
+      <span class="field-label">BENCH ${j + 1}${c ? ` · ${TI(c.r)} tier` : ''}</span><b>${c ? Math.round(Q.bn[j].a) : v ? Math.round(v.a) : '+'}</b><span class="slot-name">${esc(c ? c.nm.split(' ').slice(-1)[0] : v ? 'No fit loss' : 'OPEN')}</span></button>`;
   }).join('');
-  const ins = sel ? `<strong>${esc(nm(sel))}</strong> selected. Choose an empty slot; green numbers preview his rating there.`
+  const selected = sel && G.cards[S.combo]?.find(c => c.p === sel);
+  const ins = sel ? `<strong>${esc(nm(sel))} · ${TI(selected.r)} tier · ${num(selected.r)} base</strong> selected. Choose an empty slot; green numbers include position fit, era and links.${T.m.sig.includes(sel) ? ' He is a manager signature player: drafting him raises both manager grades.' : ''}`
     : sw !== null ? 'Choose another slot to swap with, or the same slot to cancel.'
       : lock ? 'Your final squad. The lineup is locked after kick-off.' : 'Select a roster player, then an empty slot. Select two filled slots to swap them.';
   const em = n === 0;
   return `<aside class="lineup-panel" aria-label="Your lineup"><div class="lineup-topline"><span>${esc(S.manager.nm)} / ${esc(S.manager.f)}</span><span>${n} / 15 PLAYERS</span></div>
+    ${budget(S)}
     <div class="pitch" id="pitch"><div class="pitch-lines"><div class="penalty-box penalty-box--top"></div><div class="penalty-box penalty-box--bottom"></div></div>${pos}</div>
     <div class="bench">${bench}</div><div class="lineup-instruction" id="lineup-instruction" role="status">${ins}</div>
     <div class="lineup-scores"><div><span>OVERALL</span><b>${em ? '—' : num(Q.ovr)}</b></div><div><span>ATTACK</span><b>${em ? '—' : num(Q.A)}</b></div><div><span>MIDFIELD</span><b>${em ? '—' : num(Q.M)}</b></div><div><span>DEFENCE</span><b>${em ? '—' : num(Q.Dk)}</b></div></div>
@@ -138,19 +158,20 @@ function breakdown(Q) {
     <p class="roster-note">Final = base × (1 − fit loss) × era factor + links. Fit loss comes from the player's own rating in that slot (EA's per-position ratings, or Championship Manager attributes on the same scale) when a game database rates him, else from how far the slot is from his natural position. Bench players have no fit loss.</p></details>`;
 }
 function rows() {
-  const I = used(S), ql = q.toLowerCase();
+  const I = used(S), ql = q.toLowerCase(), r = S.cap ? room(G, S) : null;
   let Q = G.cards[S.combo].filter(c => `${nm(c.p)} ${c.pos.join(' ')}`.toLowerCase().includes(ql));
   const by = { name: (a, b) => nm(a.p).localeCompare(nm(b.p)), position: (a, b) => a.pos[0].localeCompare(b.pos[0]) || b.r - a.r, apps: (a, b) => b.n - a.n || b.r - a.r };
   Q = Q.slice().sort(by[sort] || ((a, b) => b.r - a.r));
   if (!Q.length) return '<p class="roster-empty">No players match your search.</p>';
   return Q.map(c => {
-    const t = tags(c), x = per90(c), taken = I.has(c.p);
-    return `<button class="player-row" data-player="${esc(c.p)}" aria-pressed="${sel === c.p}" ${taken ? 'disabled' : ''}>
+    const t = tags(c), x = per90(c), taken = I.has(c.p), blocked = !can(G, S, c.p), sig = G.managers.find(m => m.nm === S.manager.nm).sig.includes(c.p);
+    const why = taken ? 'Already in your squad' : r?.[TI(c.r)] === 0 ? `${TI(c.r)}-tier places full` : blocked ? 'Would block the remaining picks from this club' : '';
+    return `<button class="player-row ${blocked ? 'player-row--blocked' : ''}" data-player="${esc(c.p)}" data-tier="${TI(c.r)}" aria-pressed="${sel === c.p}" ${blocked ? `disabled title="${esc(why)}"` : ''}>
       <b class="player-rating">${Math.round(c.r)}</b>
       <span><span class="player-name">${esc(nm(c.p))}</span>
-        <span class="player-detail"><span>${esc(c.pos.join(' / '))}</span>${source(c.s)}<span>${c.n} APPS · ${c.g} GOALS</span>${x ? `<span>${x}</span>` : ''}</span>
+        <span class="player-detail">${tier(c)}<span>${esc(c.pos.join(' / '))}</span>${source(c.s)}<span>${c.n} APPS · ${c.g} GOALS</span>${x ? `<span>${x}</span>` : ''}${sig ? '<span class="signature-badge">MANAGER SIGNATURE ↑</span>' : ''}</span>
         ${sw6(c) || t ? `<span class="tags">${sw6(c)}${t ? `${sw6(c) ? ' · ' : ''}${esc(t)}` : ''}</span>` : ''}</span>
-      <span class="player-select">${taken ? 'IN SQUAD ✓' : sel === c.p ? 'PICKED →' : 'PICK +'}</span></button>`;
+      <span class="player-select">${taken ? 'IN SQUAD ✓' : blocked ? 'BLOCKED' : sel === c.p ? 'PICKED →' : 'PICK +'}</span>${why ? `<span class="blocked-reason">${esc(why)}</span>` : ''}</button>`;
   }).join('');
 }
 function roster() {
@@ -164,7 +185,7 @@ function roster() {
   }
   if (!S.combo) {
     return `<div class="reveal-panel" id="reveal"><span class="eyebrow">SQUAD SPIN ${S.spin + 1} OF 5</span><span class="reveal-number">0${S.spin + 1}</span>
-      <h2>${S.spin ? 'THE NEXT CHAPTER.' : 'OPEN YOUR FIRST SQUAD.'}</h2><p>A club and decade from across the archive, most often a great one. Choose any three and place each yourself.</p>
+      <h2>${S.spin ? 'THE NEXT CHAPTER.' : 'OPEN YOUR FIRST SQUAD.'}</h2><p>Any club in the archive can appear; nearer eras and stronger squads come up more often. A club appears once in your five draws.${S.cap ? ' Each squad offers a player from the best tier you still need. Choose three while saving tier places for your next squads.' : ' Until you hold two S-tier and four A-tier players, each squad offers one. Choose any three and place each yourself.'}</p>
       <button class="button" id="squad-spin">Spin club + decade ↻</button></div>
       ${S.history.length ? `<p class="roster-note">Drafted from ${S.history.map(k => esc(club(k))).join(' · ')}</p>` : ''}`;
   }
@@ -176,7 +197,7 @@ function roster() {
       <label><span class="sr-only">Sort roster</span><select id="roster-sort">${[['rating', 'Rating ↓'], ['name', 'Name A–Z'], ['position', 'Position'], ['apps', 'Apps ↓']].map(([v, l]) => `<option value="${v}" ${sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
     <div class="roster-list" id="roster-list" aria-label="Club squad">${rows()}</div>
     <div class="actions roster-actions"><button class="button button--quiet button--small" id="squad-reroll" ${S.squadReroll >= 1 || S.picked ? 'disabled' : ''}>Re-spin squad ↻ <span>${1 - S.squadReroll} left</span></button><span class="help">One re-spin per draft, before your first pick.</span></div>
-    <p class="roster-note">▲ strengths and ▼ weakness are the player's face stats from his game card. A person can appear once in your squad.</p>`;
+    <p class="roster-note">${S.cap ? 'A blocked card is already drafted, its tier is full, or taking it would prevent you finishing this club’s three picks. ' : ''}▲ strengths and ▼ weakness are the player's face stats from his game card. A person can appear once in your squad.</p>`;
 }
 function opponents() {
   return `<details class="breakdown"><summary>Your ${S.D}s opposition: 19 club squads</summary><div class="table-wrap"><table><thead><tr><th>Club / decade</th><th>Strength</th></tr></thead>
@@ -229,22 +250,30 @@ function results() {
     gauntlet, more }[tab] || (() => '');
   return `${progress(3)}<section class="result-hero"><div><span class="eyebrow">THE ${S.D}s SEASON IS IN THE BOOKS</span>
       <h1>${i === 0 && cup ? 'A TEAM FOR THE AGES.' : i === 0 ? 'TOP OF THE LEAGUE.' : cup ? 'KINGS OF EUROPE.' : 'YOUR ERA. YOUR STORY.'}</h1>
-      <p>${esc(S.manager.nm)}'s ${esc(S.manager.f)} finished ${ord(i + 1)} of 20. ${cup ? 'Your fifteen won the European Cup.' : `The European Cup went to ${esc(R.K.champN)}.`}</p>
+      <p>${rules(S)} · ${esc(S.manager.nm)}'s ${esc(S.manager.f)} finished ${ord(i + 1)} of 20. ${cup ? 'Your fifteen won the European Cup.' : `The European Cup went to ${esc(R.K.champN)}.`}</p>
       <div class="honours">${hon.map(h => `<span class="honour">${esc(h)}</span>`).join('')}</div></div>
     <div class="result-metrics"><div><span>League place</span><b>${i + 1}<small> / 20</small></b></div><div><span>Points</span><b>${t.Pts}</b></div><div><span>Won · drawn · lost</span><b class="wdl">${t.W}·${t.D}·${t.L}</b></div><div><span>Best unbeaten run</span><b>${R.L.unbeaten}<small> games</small></b></div></div></section>
   <div class="results-tabs" role="tablist" aria-label="Season results">${T.map(([v, l]) => `<button role="tab" data-tab="${v}" aria-selected="${tab === v}" aria-controls="result-panel" id="tab-${v}">${l}</button>`).join('')}</div>
   <section id="result-panel" role="tabpanel" aria-labelledby="tab-${tab}">${body()}</section>
-  <div class="share-strip"><p>${S.wk ? `Weekly challenge ${esc(S.wk)} · ` : ''}Seed ${S.seed} · ${S.D}s · Saved on this browser.</p><div class="actions">
+  <div class="share-strip"><p>${S.wk ? `Weekly challenge ${esc(S.wk)} · ` : ''}${rules(S)} · Seed ${S.seed} · ${S.D}s · Saved on this browser.</p><div class="actions">
     <button class="button button--small" id="share">Copy result ↗</button><button class="button button--quiet button--small" id="result-card">Result card ↓</button>
     <button class="button button--quiet button--small" id="download">Download replay ↓</button><button class="button button--quiet button--small" id="replay">Replay this seed ↻</button></div></div>`;
 }
 
 // Era Gauntlet run
 const pips = p => `<span class="pips" role="img" aria-label="Patience ${p} of ${Rn.PAT_MAX}">${Array.from({ length: Rn.PAT_MAX }, (_, i) => `<i class="${i < p ? 'on' : ''}"></i>`).join('')}</span>`;
+const charged = (s, p) => {
+  const r = Rn.bill(G, s).find(r => r.p === p);
+  return TI(G.cards[r.k].find(c => c.p === p).r);
+};
 function runSquad(s) {
   const T = Rn.runTeam(G, s), Q = E.rate(T, Rn.D_of(s));
-  return `<details class="breakdown"><summary>Your squad in the ${Rn.D_of(s)}s · overall ${num(Q.ovr)}</summary><div class="table-wrap"><table><thead><tr><th>Slot</th><th class="table-name">Player</th><th>Card</th><th>Rating here</th></tr></thead>
-    <tbody>${[...Q.xi, ...Q.bn.filter(Boolean).map((p, i) => ({ ...p, s: `B${i + 1}` }))].map(p => `<tr><td>${p.s}</td><td class="table-name">${esc(p.c.nm)}${s.up[p.c.id] ? ' <span class="honour">BOOSTED</span>' : ''}</td><td class="table-name">${esc(club(`${p.c.cq}:${p.c.D}`))} · ${Math.round(p.c.r)}</td><td>${num(p.a)}</td></tr>`).join('')}</tbody></table></div></details>`;
+  const charge = Rn.bill(G, s);
+  return `${budget(s, charge, Rn.GCAP)}<details class="breakdown"><summary>Your squad in the ${Rn.D_of(s)}s · overall ${num(Q.ovr)}</summary><div class="table-wrap"><table><thead><tr><th>Slot</th><th class="table-name">Player</th><th>Card</th><th>Rating here</th></tr></thead>
+    <tbody>${[...Q.xi, ...Q.bn.filter(Boolean).map((p, i) => ({ ...p, s: `B${i + 1}` }))].map(p => {
+      const r = charge.find(r => r.p === p.c.id), c = G.cards[r.k].find(c => c.p === r.p);
+      return `<tr><td>${p.s}</td><td class="table-name">${esc(p.c.nm)} ${tier(p.c)}${s.up[p.c.id] ? ` <span class="honour">BOOSTED${s.cap ? ` · ${TI(c.r)} CHARGE` : ''}</span>` : ''}</td><td class="table-name">${esc(club(`${p.c.cq}:${p.c.D}`))} · ${Math.round(p.c.r)}</td><td>${num(p.a)}</td></tr>`;
+    }).join('')}</tbody></table></div></details>`;
 }
 const left = (s, c) => {
   const n = s.pat - c;
@@ -254,15 +283,15 @@ const left = (s, c) => {
 function offerCard(o, j, s) {
   if (o.kind === 'boost') {
     return `<article class="reward reward--boost"><span class="eyebrow">BOOST CARD · ${o.cost} PATIENCE</span><h3>${esc(nm(o.from.p))}</h3>
-      <p>${esc(club(o.from.k))} ${Math.round(o.from.r)} → <b>${esc(club(o.to.k))} ${Math.round(o.to.r)}</b></p><p class="help">He becomes his best version: the same person, a better card.</p>${left(s, o.cost)}
+      <p>${esc(club(o.from.k))} ${Math.round(o.from.r)} → <b>${esc(club(o.to.k))} ${Math.round(o.to.r)}</b></p><p class="help">He becomes his best version: the same person, a better card.${s.cap ? ` This earned boost keeps his original ${charged(s, o.from.p)}-tier charge.` : ''}</p>${left(s, o.cost)}
       <button class="button button--acid" data-take="${j}" ${s.pat - o.cost < 1 ? 'disabled' : ''}>Upgrade him ↗</button></article>`;
   }
   if (o.kind === 'sign') {
     const sh = Rn.runTeam(G, s).S;
     return `<article class="reward"><span class="eyebrow">FREE AGENT · ${esc(club(o.k))}</span><h3>Sign one, release one</h3>
-      <label class="field-label" for="fa-pick">SIGN</label><select id="fa-pick">${o.list.map((f, i) => `<option value="${i}">${esc(nm(f.p))} · ${Math.round(f.r)} · ${f.cost} patience</option>`).join('')}</select>
-      <label class="field-label" for="fa-slot">RELEASE</label><select id="fa-slot">${s.slots.map((r, i) => `<option value="${i}">${i < 11 ? sh[i].s : `B${i - 10}`} · ${esc(nm(r.p))}</option>`).join('')}</select>
-      <button class="button" data-take="${j}">Sign him ↗</button></article>`;
+      <label class="field-label" for="fa-pick">SIGN</label><select id="fa-pick">${o.list.map((f, i) => `<option value="${i}">${esc(nm(f.p))} · ${Math.round(f.r)} · ${TI(f.r)} tier · ${f.cost} patience</option>`).join('')}</select>
+      <label class="field-label" for="fa-slot">RELEASE</label><select id="fa-slot">${s.slots.map((r, i) => `<option value="${i}">${i < 11 ? sh[i].s : `B${i - 10}`} · ${esc(nm(r.p))}${s.cap ? ` · ${charged(s, r.p)} charge` : ''}</option>`).join('')}</select>
+      ${s.cap ? '<p class="help">The fifteen must stay within 2 S-tier and 4 A-tier players, so an S or A signing usually replaces a player of the same tier. B, C and D signings can replace anyone.</p>' : ''}<button class="button" data-take="${j}">Sign him ↗</button></article>`;
   }
   if (o.kind === 'tag') {
     const L = { tal: 'Talisman', mae: 'Maestro', rock: 'Rock' }[o.tag];
@@ -274,7 +303,7 @@ function gauntlet() {
   const s = S.mode?.run;
   if (!s) {
     return `<div class="challenge-card"><span class="eyebrow">ONE SQUAD. EIGHT DECADES.</span><h2>ERA GAUNTLET</h2>
-      <p>Take your fifteen from the 1950s to the 2020s. Each decade is two six-match segments against its clubs, then its boss, the decade's strongest club. Win segments to earn reward cards: a boost card can turn one of your players into his best version. Lose a boss and you can try again while the board's patience lasts.</p>
+      <p>Take your fifteen from the 1950s to the 2020s. Each decade is two six-match segments against its clubs, then its boss, the decade's strongest club. Win segments to earn reward cards: a boost card can turn one of your players into his best version. Lose a boss and you can try again while the board's patience lasts.${S.cap ? ' Salary cap continues as Eraball’s Gauntlet cap: at most 2 S-tier and 4 A-tier players at once. An earned prime boost keeps the player’s original tier, so it never breaks the cap.' : ''}</p>
       <button class="button button--acid" id="run-start">Start the Gauntlet ↗</button></div>`;
   }
   const Dc = Rn.D_of(s), b = Rn.runBoss(F, s), last = s.log.at(-1), sc = Rn.score(s);
@@ -288,7 +317,7 @@ function gauntlet() {
     : last.t === 'boss' ? `Boss: ${last.gx}–${last.gy}${last.pw ? ' (penalties)' : last.et ? ' (extra time)' : ''} — ${last.won ? 'won' : 'lost'}, patience ${last.dp >= 0 ? '+' : ''}${last.dp}.`
       : last.t === 'boost' ? `Boost card played: ${nm(last.p)} is now ${club(last.to)}.` : last.t === 'sign' ? `Signed ${nm(last.p)}, released ${nm(last.out)}.`
         : last.t === 'tag' ? `${nm(last.p)} developed.` : 'Rested.';
-  return `<section class="run"><div class="run-head"><div><span class="eyebrow">ERA GAUNTLET · DECADE ${Math.min(8, s.act + 1)} OF 8</span><h2>THE ${Dc}s</h2></div>
+  return `<section class="run"><div class="run-head"><div><span class="eyebrow">ERA GAUNTLET · ${rules(s)} · DECADE ${Math.min(8, s.act + 1)} OF 8</span><h2>THE ${Dc}s</h2></div>
       <div class="run-pat"><span class="field-label">BOARD PATIENCE ${s.pat} / ${Rn.PAT_MAX}</span>${pips(s.pat)}</div></div>
     ${msg ? `<p class="run-msg" role="status">${esc(msg)}</p>` : ''}${main}
     ${['done', 'fired'].includes(s.ph) ? '<button class="button button--quiet button--small" id="run-start">Start a new run ↻</button>' : ''}
@@ -310,7 +339,7 @@ function more() {
       <label class="field-label" for="circuit-events">EVENTS</label><select id="circuit-events">${Array.from({ length: 11 }, (_, i) => `<option value="${i + 10}" ${ev === i + 10 ? 'selected' : ''}>${i + 10} events</option>`).join('')}</select>
       <button class="button button--small" id="circuit-start">Play the circuit ↗</button></article>
     <article class="challenge-card"><span class="eyebrow">YOU AGAINST A FRIEND</span><h2>HEAD TO HEAD</h2>
-      <p>Send your team code. Paste a friend's code to play two legs, each team at home in its own decade.</p>
+      <p>Send your team code. Paste a friend's code to play two legs, each team at home in its own decade. Both teams must use ${rules(S)} rules.</p>
       <label class="field-label" for="my-code">YOUR TEAM CODE</label><textarea id="my-code" readonly rows="3">${esc(code(G, S))}</textarea><button class="button button--quiet button--small" id="copy-code">Copy code</button>
       <label class="field-label" for="their-code">FRIEND'S CODE</label><textarea id="their-code" rows="3" placeholder="Paste a team code"></textarea><button class="button button--small" id="h2h-play">Play the tie ↗</button>${hh}</article></div>${cc}`;
 }
@@ -321,10 +350,11 @@ function about() {
   const pc = k => Math.round(100 * (n[k] || 0) / Math.max(1, G.meta.counts.cards));
   return `<span class="eyebrow">HOW IT WORKS</span><h2>MAKE YOUR ERA XI.</h2>
   <p>Choose the decade your season is played in. Draft from any decade; the further a player travels in time, the more rating he loses.</p>
-  <h3>Five managers, then five squads</h3><p>Keep one of five manager and formation pairings (two re-spins). Then spin five club-decade squads, mostly great ones, and place three players from each anywhere on the pitch or bench. One squad re-spin per draft.</p>
+  <h3>Five managers, then five different clubs</h3><p>Keep one of five manager and formation pairings (two re-spins). Any of the archive's clubs can be drawn; squads nearer your chosen era and stronger squads are more likely. No club repeats across your five squads, and each squad includes a player from the best tier your fifteen have not yet filled (2 S, 4 A, 4 B, 3 C, 2 D), when any remaining club has one. Place three players from each anywhere on the pitch or bench. One squad re-spin per draft.</p>
+  <h3>A budget for all fifteen</h3><p>Salary cap is the default: 2 S-tier, 4 A-tier, 4 B-tier, 3 C-tier and 2 D-tier players. Tiers use base rating: S 90+, A 85–89.9, B 80–84.9, C 75–79.9, D below 75. Your bench counts too. Every squad stays visible; cards are blocked when their tier is full or taking them would prevent you finishing its three picks. Classic removes these limits. Weekly challenges use Salary cap.</p>
   <h3>Positions are each player's own</h3><p>A player's rating in every slot comes from his game card where one exists: EA's per-position ratings, or Championship Manager attributes put on EA's scale. Otherwise the loss grows with distance from his natural position: one step 10%, two steps 22%, further 35%, and 75% for a keeper outfield or an outfielder in goal. The bench has no position loss.</p>
   <h3>Shape, links and managers</h3><p>Formation shape moves strength between attack, midfield and defence. Teammates from the same club and decade placed near each other, and famous duos, earn link points. Drafting a manager's signature player raises his grades.</p>
-  <h3>The season and the modes</h3><p>A 20-club league against the decade's strongest club squads and a 16-club European Cup. Then the Era Gauntlet (eight decades, reward cards, boost cards, board patience), a 10 to 20 event circuit, head to head with a friend's team code, and a weekly challenge with one seed for everyone.</p>
+  <h3>The season and the modes</h3><p>A 20-club league against the decade's strongest club squads and a 16-club European Cup. Then the Era Gauntlet (eight decades, reward cards, boost cards, board patience), a 10 to 20 event circuit, head to head with a friend's team code, and a weekly Salary cap challenge with one seed and one club order for everyone.</p>
   <div class="model-callout"><p><b>Where the numbers come from.</b> ${pc('fifa') + pc('fifa-near')}% of cards are rated by EA FIFA/FC data (FIFA 07 to FC 26), ${pc('cm') + pc('cm-near')}% by Championship Manager 01/02 databases, ${pc('icon')}% by EA Icon/Hero cards, and ${pc('estimated')}% are estimated by a model fitted on those ratings, mostly players of the 1950s to 1970s. Every card shows its source. Squads come from dated Wikidata club records, so a decade squad can combine players who never shared a season. Goals and results are simulated with a model fitted on real 2014-19 club results and checked on 2020-23; era losses, links and tags are game rules, not measurements.</p></div>`;
 }
 
@@ -361,7 +391,7 @@ async function play() {
 }
 function share() {
   const i = R.L.tab.findIndex(c => c.me), t = R.L.tab[i];
-  return `Football Era Lab · ${S.wk ? `Weekly ${S.wk} · ` : ''}${S.D}s\n${ord(i + 1)} / 20 · ${t.Pts} points · ${t.W}W ${t.D}D ${t.L}L\nEuropean Cup: ${R.K.champ === 'your-club' ? 'WINNERS' : R.K.champN}\n${S.manager.nm} · ${S.manager.f}\nSeed ${S.seed} · ${location.href.split('?')[0]}?seed=${S.seed}&era=${S.D}`;
+  return `Football Era Lab · ${S.wk ? `Weekly ${S.wk} · ` : ''}${rules(S)} · ${S.D}s\n${ord(i + 1)} / 20 · ${t.Pts} points · ${t.W}W ${t.D}D ${t.L}L\nEuropean Cup: ${R.K.champ === 'your-club' ? 'WINNERS' : R.K.champN}\n${S.manager.nm} · ${S.manager.f}\nSeed ${S.seed} · ${location.href.split('?')[0]}?seed=${S.seed}&era=${S.D}&cap=${S.cap ? 1 : 0}`;
 }
 function download() {
   const b = new Blob([JSON.stringify({ game: 'Football Era Lab', data: G.meta.v, draft: S, result: share() }, null, 2)], { type: 'application/json' });
@@ -378,7 +408,7 @@ async function card() {
     g.fillText(String(s), x, y);
   };
   g.fillStyle = '#f5f2e9'; g.fillRect(0, 0, 1200, 900); g.fillStyle = '#102823'; g.fillRect(0, 0, 1200, 148);
-  tx('FOOTBALL ERA LAB', 52, 73, 55, '#f5f2e9', 'Impact'); tx(`${S.wk ? `WEEKLY ${S.wk} / ` : ''}${S.D}s / YOUR ERA XI`, 55, 116, 20, '#d7f86c', 'Consolas');
+  tx('FOOTBALL ERA LAB', 52, 73, 55, '#f5f2e9', 'Impact'); tx(`${S.wk ? `WEEKLY ${S.wk} / ` : ''}${rules(S).toUpperCase()} / ${S.D}s / YOUR ERA XI`, 55, 116, 20, '#d7f86c', 'Consolas');
   tx(`${ord(i + 1)} / 20`, 53, 260, 94, '#152e28', 'Impact', 390); tx('LEAGUE FINISH', 58, 293, 18, '#67776a', 'Consolas');
   tx(`${t.Pts} POINTS`, 490, 216, 44, '#152e28', 'Impact'); tx(`${t.W} WINS · ${t.D} DRAWS · ${t.L} LOSSES`, 490, 257, 21);
   tx(R.K.champ === 'your-club' ? 'EUROPEAN CUP WINNERS' : `CUP WINNERS: ${R.K.champN}`, 490, 295, 25, '#152e28', 'Impact', 650);
@@ -403,10 +433,11 @@ async function copy(t, ok) {
 root.addEventListener('submit', e => {
   if (e.target.id !== 'start-form') return;
   e.preventDefault();
-  try { change(start($('#seed').value, D)); root.focus(); } catch (x) { notice(x.message, true); }
+  try { change(start($('#seed').value, D, cap)); root.focus(); } catch (x) { notice(x.message, true); }
 });
 root.addEventListener('input', e => { if (e.target.id === 'roster-search') { q = e.target.value; $('#roster-list').innerHTML = rows(); } });
 root.addEventListener('change', async e => {
+  if (e.target.name === 'draft-rules') cap = e.target.value === 'cap';
   if (e.target.id === 'roster-sort') { sort = e.target.value; $('#roster-list').innerHTML = rows(); }
   if (e.target.id === 'circuit-events') ev = Number(e.target.value);
   if (e.target.id === 'import-replay') {
@@ -432,7 +463,7 @@ root.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b || b.disabled || busy) return;
   try {
     if (b.dataset.era) { D = b.dataset.era === 'random' ? 'random' : Number(b.dataset.era); const sd = $('#seed').value; render(); $('#seed').value = sd; }
-    else if (b.id === 'weekly') { const w = wk(); change({ ...start(w.seed, w.D), wk: w.id }, `Weekly challenge ${w.id}: the ${w.D}s, same spins for everyone.`); }
+    else if (b.id === 'weekly') { const w = wk(); change({ ...start(w.seed, w.D, true), wk: w.id }, `Weekly challenge ${w.id}: Salary cap in the ${w.D}s, one club order for everyone.`); }
     else if (b.dataset.manager !== undefined) change(choose(G, S, Number(b.dataset.manager)), 'Manager chosen. Your squad spins begin now.');
     else if (b.id === 'manager-reroll') change(reroll(S));
     else if (b.id === 'squad-spin') await reel(spin(G, S));
@@ -453,7 +484,7 @@ root.addEventListener('click', async e => {
       else notice('Choose a player from the squad first.');
     } else if (b.id === 'simulate') await play();
     else if (b.dataset.tab) { tab = b.dataset.tab; render(); }
-    else if (b.id === 'replay') { R = C = H = null; change(start(S.seed, S.D), 'Same seed. A fresh set of choices.'); window.scrollTo({ top: 0, behavior: 'instant' }); }
+    else if (b.id === 'replay') { R = C = H = null; change(start(S.seed, S.D, !!S.cap), `Same seed and ${rules(S)} rules. A fresh set of choices.`); window.scrollTo({ top: 0, behavior: 'instant' }); }
     else if (b.id === 'share') await copy(share(), 'Result copied. Share your season and replay seed.');
     else if (b.id === 'download') download();
     else if (b.id === 'result-card') await card();
@@ -470,6 +501,7 @@ root.addEventListener('click', async e => {
     } else if (b.id === 'copy-code') await copy(code(G, S), 'Team code copied. Send it to a friend.');
     else if (b.id === 'h2h-play') {
       const t = uncode(G, $('#their-code').value);
+      if (t.cap !== !!S.cap) throw new Error(`Your team uses ${rules(S)} rules. Ask your friend for a matching ${rules(S)} team code, or start a draft with their rules.`);
       H = h2h(S.seed, { id: 'your-club', nm: 'Your Era XI', T: team(G, S), D: S.D }, { id: 'friend', nm: "Friend's XI", T: t.T, D: t.D });
       render(); notice(H.w === 'your-club' ? 'You won the tie.' : 'Your friend won the tie.');
     }
@@ -478,7 +510,7 @@ root.addEventListener('click', async e => {
 $('#about-open').addEventListener('click', () => $('#about-dialog').showModal());
 $('#reset-open').addEventListener('click', () => $('#reset-dialog').showModal());
 $('#reset-cancel').addEventListener('click', () => $('#reset-dialog').close());
-$('#reset-confirm').addEventListener('click', () => { S = R = C = H = null; sel = sw = null; try { localStorage.removeItem(STORE); } catch {} $('#reset-dialog').close(); render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
+$('#reset-confirm').addEventListener('click', () => { S = R = C = H = null; sel = sw = null; cap = true; try { localStorage.removeItem(STORE); } catch {} $('#reset-dialog').close(); render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
 
 async function boot() {
   try {
@@ -489,21 +521,23 @@ async function boot() {
     if (G.params) E.cfg(G.params);
     F = fields(G);
     $('#about-content').innerHTML = about();
-    $('#data-status').textContent = `${G.meta.counts.people.toLocaleString()} PEOPLE · ${G.meta.counts.combos} CLUB ERAS`;
+    $('#data-status').textContent = `${new Set(G.combos.map(c => c.q)).size} CLUBS · ${G.meta.counts.combos} CLUB ERAS · ${G.meta.counts.people.toLocaleString()} PEOPLE`;
     let resumed = false;
     try {
       const sv = localStorage.getItem(STORE);
       if (sv) {
-        S = valid(G, JSON.parse(sv)); if (S.phase === 'results') R = season();
+        S = valid(G, JSON.parse(sv)); cap = !!S.cap; if (S.phase === 'results') R = season();
         if (S.mode?.ci) { ev = S.mode.ci; C = E.circuit(S.seed, me(), F, { events: ev, Ds: S.D }); }
         resumed = true;
       }
     } catch (x) { S = R = C = null; notice(`Your saved run could not be resumed: ${x.message} Start a new draft below.`, true); }
-    render();
     const u = new URL(location.href);
+    if (!resumed && ['0', '1'].includes(u.searchParams.get('cap'))) cap = u.searchParams.get('cap') === '1';
+    render();
     if (!resumed && u.searchParams.has('seed')) {
       const sd = u.searchParams.get('seed'), era = Number(u.searchParams.get('era'));
-      if (DECADES.includes(era)) { D = era; render(); }
+      if (DECADES.includes(era)) D = era;
+      render();
       $('#seed').value = sd;
     }
     if (resumed) notice('Your saved run is back where you left it.');

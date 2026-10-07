@@ -1,5 +1,6 @@
 import { mk, hs, play, P } from './engine/index.js';
 import { hydrate, shape, DECADES } from './draft.js';
+import { ck } from './cap.js';
 
 // Weekly Challenge and Head to Head. Both need no server: the week fixes the seed for everyone, and
 // a team travels between friends as a code.
@@ -24,7 +25,8 @@ const unb64 = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/
 
 export function code(G, s) {
   if (!['review', 'results'].includes(s?.phase)) throw new Error('Finish the draft to get a team code.');
-  return b64(JSON.stringify({ v: 1, b: G.meta.v, D: s.D, m: s.manager, x: s.slots.map(c => [c.k, c.p]) }));
+  if (s.cap) ck(G, s.slots);
+  return b64(JSON.stringify({ v: 1, b: G.meta.v, D: s.D, cap: !!s.cap, m: s.manager, x: s.slots.map(c => [c.k, c.p]) }));
 }
 
 export function uncode(G, c) {
@@ -34,10 +36,12 @@ export function uncode(G, c) {
   const slots = z.x.map(([k, p]) => ({ k, p }));
   if (new Set(slots.map(c => c.p)).size !== 15) throw new Error('A team code needs fifteen different people.');
   slots.forEach(r => hydrate(G, r));
+  if (z.cap !== undefined && typeof z.cap !== 'boolean') throw new Error('That team code has an invalid cap.');
+  if (z.cap) ck(G, slots);
   const m = G.managers.find(m => m.nm === z.m?.nm);
   if (!m || !m.f.includes(z.m.f) || !G.formations[z.m.f]) throw new Error('That team code names a manager or formation this game does not have.');
   const Q = slots.map(r => hydrate(G, r));
-  return { b: z.b, D: z.D, m: z.m, slots, T: { m, S: shape(G, z.m.f), xi: Q.slice(0, 11), bn: Q.slice(11) } };
+  return { b: z.b, D: z.D, cap: !!z.cap, m: z.m, slots, T: { m, S: shape(G, z.m.f), xi: Q.slice(0, 11), bn: Q.slice(11) } };
 }
 
 export function h2h(seed, A, B) {

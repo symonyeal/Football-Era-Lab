@@ -17,6 +17,8 @@ jobs:
         run: node --test tests/engine/*.test.mjs
       - name: Check pipeline rules without network calls
         run: python -m unittest discover -s tests -p test_pipeline.py -v
+      - name: Check identity batches do not share the wrong cached facts
+        run: python -m unittest discover -s tests -p test_wikidata.py -v
       - name: Check calibration against independent synthetic counts
         run: python -m pytest tests/test_calibration.py -q -p no:cacheprovider
       - name: Execute the notebook with the JavaScript engine

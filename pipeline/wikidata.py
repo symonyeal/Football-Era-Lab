@@ -8,7 +8,7 @@ Legend
   K      caps: p -> (caps, goals) summed over senior national teams
   NT     class of senior national association football teams
   LANGS  label languages tried in order when English is missing
-  B      batch size of person queries
+  B      batch size of person queries; _bk full identity-batch fingerprint for cache keys
   _id, _n, _y  item id, integer (None for Wikidata's "unknown value"), year, read from a binding
 """
 import hashlib
@@ -18,6 +18,10 @@ from .net import sparql
 NT = "Q6979593"
 LANGS = ("en", "mul", "es", "it", "de", "fr", "pt", "nl", "hu", "sr", "hr", "cs", "ro")
 B = 150
+
+
+def _bk(Q):
+    return hashlib.sha256(" ".join(sorted(set(Q))).encode()).hexdigest()[:24]
 
 
 def _id(u):
@@ -58,7 +62,7 @@ def persons(ps):
         q = f"""SELECT ?p ?dob ?pos ?nat ?sl ?h WHERE {{ VALUES ?p {{ {v} }}
           OPTIONAL{{?p wdt:P569 ?dob}} OPTIONAL{{?p wdt:P413 ?pos}} OPTIONAL{{?p wdt:P1532 ?nat}}
           OPTIONAL{{?p wikibase:sitelinks ?sl}} OPTIONAL{{?p wdt:P2048 ?h}} }}"""
-        for r in sparql(q, k=f"persons_{ps[i]}_{len(ps[i:i + B])}"):
+        for r in sparql(q, k=f"persons_{_bk(ps[i:i + B])}"):
             p = _id(r["p"])
             x = P.setdefault(p, dict(name="", dob=None, pos=set(), nat=set(), sl=0, h=None))
             if "dob" in r and not x["dob"]:
@@ -78,7 +82,7 @@ def persons(ps):
         q = f"""SELECT ?p ?l ?lang WHERE {{ VALUES ?p {{ {v} }} ?p rdfs:label ?l .
           BIND(LANG(?l) AS ?lang) FILTER(?lang IN ({",".join(f'"{l}"' for l in LANGS)})) }}"""
         L = {}
-        for r in sparql(q, k=f"labels_{ps[i]}_{len(ps[i:i + B])}"):
+        for r in sparql(q, k=f"labels_{_bk(ps[i:i + B])}"):
             L.setdefault(_id(r["p"]), {})[r["lang"]["value"]] = r["l"]["value"]
         for p, d in L.items():
             if p in P:
@@ -122,7 +126,7 @@ def sexes(ps):
     for i in range(0, len(ps), B):
         b = ps[i:i + B]
         v = " ".join(f"wd:{p}" for p in b)
-        for r in sparql(f"SELECT ?p ?x WHERE {{ VALUES ?p {{ {v} }} ?p wdt:P21 ?x }}", k=f"sex_{b[0]}_{len(b)}"):
+        for r in sparql(f"SELECT ?p ?x WHERE {{ VALUES ?p {{ {v} }} ?p wdt:P21 ?x }}", k=f"sex_{_bk(b)}"):
             X.setdefault(_id(r["p"]), set()).add(_id(r["x"]))
         if i % (B * 20) == 0:
             print("sexes", i, len(ps), flush=True)
@@ -137,6 +141,6 @@ def labels(ids):
         v = " ".join(f"wd:{x}" for x in ids[i:i + B])
         q = f"""SELECT ?i ?l ?lang WHERE {{ VALUES ?i {{ {v} }} ?i rdfs:label ?l . BIND(LANG(?l) AS ?lang)
           FILTER(?lang IN ("en","mul")) }}"""
-        for r in sparql(q, k=f"itemlabels_{ids[i]}_{len(ids[i:i + B])}"):
+        for r in sparql(q, k=f"itemlabels_{_bk(ids[i:i + B])}"):
             out.setdefault(_id(r["i"]), r["l"]["value"])
     return out

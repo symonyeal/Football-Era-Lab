@@ -1,10 +1,10 @@
 # Football Era Lab
 
-Football Era Lab is a draft game about building a team across generations. Maradona's Napoli card can play alongside Messi's Barcelona card, but you still have to find a goalkeeper, fill the manager's formation and leave four useful substitutes on the bench. The team then plays a season against the leading club squads of your chosen decade.
+Football Era Lab is a draft game about building a team across generations. Maradona's Napoli card can play alongside Messi's Barcelona card, but you still have to find a goalkeeper, fill the manager's formation, leave four useful substitutes on the bench and stay inside a salary cap that allows only two S-tier stars. The team then plays a season against the leading club squads of your chosen decade.
 
 [Play in your browser](https://symonyeal.github.io/Football-Era-Lab/). The game uses bundled data and needs no account, API key, package installation or separate source downloads.
 
-![The final squad draw: an Ajax roster on the left and a mixed-era team in Pep Guardiola's formation on the right.](docs/images/football-era-lab.png)
+![A capped draft's fourth squad: Manchester United's 1970s roster with George Best, Bobby Charlton and Denis Law blocked because the S-tier and A-tier places are full, beside a mixed-era team in Don Revie's 4-4-2.](docs/images/football-era-lab.png)
 
 ## Five clubs supply your fifteen players
 
@@ -14,9 +14,19 @@ The first draw gives you five manager and formation combinations. You can re-spi
 
 Then you draw five club squads and choose three players from each. A squad belongs to a club and a decade, such as Napoli in the 1980s. Every available player from that squad appears in the roster. Click a player, then an empty place on the pitch or bench. You have one squad re-spin for the whole draft, usable before making a pick from that draw.
 
-This makes each selection depend on what the team still needs. Three outstanding forwards from the first club may leave you looking for defenders later. A reserve goalkeeper costs a place that could have gone to another attacker, but gives you cover when the starter misses a match. The draws favour strong club squads and eras close to the season you chose, while keeping every decade available.
+This makes each selection depend on what the team still needs. Three outstanding forwards from the first club may leave you looking for defenders later. A reserve goalkeeper costs a place that could have gone to another attacker, but gives you cover when the starter misses a match. Any of the archive's 268 clubs can come up. Squads from decades near your season and stronger squads appear more often, and no club appears twice in one draft.
 
 A footballer may have several cards at different clubs or ages. Those cards are versions of the same person, so choosing one rules out the others during the draft. Once all fifteen places are filled, you can swap any two players and inspect the rating breakdown before kick-off.
+
+## The salary cap makes every star a choice
+
+A new draft uses a salary cap modelled on Eraball's Salary Cap Draft. Every card has a tier set by its base rating: S at 90 or above, A from 85, B from 80, C from 75 and D below that. Your fifteen must finish with exactly two S-tier players, four A, four B, three C and two D. Substitutes count, so a star cannot be parked on the bench for free. Eraball fills nine places with two S, two A, two B, two C and one D; the fifteen-place version is this game's adaptation.
+
+In the picture above, the fourth draw is Manchester United in the 1970s, with George Best rated 90 and Bobby Charlton and Denis Law at A tier. This team spent its two S places on Zidane and Lizarazu and already has four A-tier players, so all three United greats are blocked, and the roster says why.
+
+As in Eraball, every squad offers a player from the best tier you still need, starting with S, whenever a club you have not drafted from has one. A card is also blocked if taking it would leave too few affordable players at that club to finish your three picks from it. Test drafts that saved the S places for last, or took the cheapest players first, always finished.
+
+The cap makes the modern decades hard to win. In testing, an automatic drafting policy won 7.2% of capped seasons, and every one of those titles came in a season set in the 1950s to 1970s. Classic, which removes the tier limits but keeps the same draws, won 12.8%. The [model document](docs/MODEL.md#the-salary-cap-limits-stars-across-the-whole-squad) gives the full cap rules, and [validation](docs/VALIDATION.md#draft-difficulty-varies-by-decade) the results decade by decade.
 
 ## The card belongs to a player, a club and a decade
 
@@ -50,21 +60,21 @@ The board starts with 8 patience, with a maximum of 20. Good segments can earn m
 
 After each completed segment you choose a reward. A boost upgrades an existing player to that same person's highest-rated card in the archive. A free-agent offer lets you sign one player and release another. Development adds a playing tag, such as Talisman, Maestro or Rock. Rest recovers patience, although repeated rests pay less. Upgrades and signings spend patience, so a stronger squad can leave you with less room to survive the next loss.
 
-This follows the reward and board-patience loop of Eraball, adapted to six-match football segments. The full reward costs, squad limits and patience rules are in [MODEL.md](docs/MODEL.md#era-gauntlet).
+A capped team keeps Eraball's Gauntlet cap: at most two S-tier and four A-tier players at once. A boosted player keeps his original tier for the cap, so an earned upgrade never breaks it. This follows the reward and board-patience loop of Eraball, adapted to six-match football segments. The full reward costs, squad limits and patience rules are in [MODEL.md](docs/MODEL.md#era-gauntlet).
 
 ## Take the same squad into other competitions
 
 The tournament circuit plays 10 to 20 events across the decades. It rotates through an eight-club league, a European Cup, an eight-club knockout, groups followed by knockout, and a Super Cup. The squad is reassessed for the era of each event. Completion shows your titles and the circuit's leading scorer, assist provider, goalkeeper and player.
 
-Head to Head lets you exchange team codes with a friend. A code contains the exact cards, manager, formation, placement and decade. The game plays two legs, with each team at home in its own era; a level aggregate goes to extra time and penalties in the second leg. It runs locally from the codes you paste.
+Head to Head lets you exchange team codes with a friend. A code contains the exact cards, manager, formation, placement, decade and rules, and both teams must use the same rules. The game plays two legs, with each team at home in its own era; a level aggregate goes to extra time and penalties in the second leg. It runs locally from the codes you paste.
 
-The Weekly Challenge gives everyone the same draft seed and season decade for the week, from Monday to Sunday in UTC. A seed is the number that fixes the random draws. Everyone can receive the same opportunities and make different choices. There is no online leaderboard, and codes or shared results are not authenticated competitive records.
+The Weekly Challenge gives everyone the same draft seed and season decade for the week, from Monday to Sunday in UTC, always under the salary cap. A seed is the number that fixes the random draws. Everyone starts with the same manager options and the same first squad. After that, each draw must suit the tiers you still need, so your own picks steer which clubs you meet. There is no online leaderboard, and codes or shared results are not authenticated competitive records.
 
-Progress stays in the browser you used. Download a replay to preserve your choices and resume them elsewhere, or download a result image to share. A seed alone recreates the draws with the same data and engine; it does not record which players you chose or where you placed them.
+Progress stays in the browser you used. Download a replay to preserve your choices and resume them elsewhere, or download a result image to share. A seed recreates the same draws when the same choices are made with the same data and engine. It does not record which players you chose or where you placed them, and different picks lead to different later draws.
 
 ## The historical archive is uneven
 
-The supplied archive has 28,773 cards for 16,470 people, covering 505 club-and-decade squads and 96 managers. EA and Championship Manager provide much of the later-era rating evidence. The 1950s, 1960s and 1970s remain almost entirely estimated. Earlier community databases are a pending source of evidence, not part of this release.
+The supplied archive has 52,976 cards for 25,382 people, covering 910 club-and-decade squads from 268 clubs, and 96 managers. The five major leagues supply 185 of those clubs, up to twenty per league in each decade; [DATA.md](docs/DATA.md#a-decade-squad-covers-a-period-at-a-club) shows where the records fall short, such as Germany before the Bundesliga. EA and Championship Manager provide much of the later-era rating evidence. The 1950s, 1960s and 1970s remain almost entirely estimated. Earlier community databases are a pending source of evidence, not part of this release.
 
 Wikidata supplies club membership and dated spells at a club. A decade squad can therefore contain players who never shared one season. It can also miss players or inherit incorrect dates. Whole-spell appearances and goals are divided over the covered years rather than observed separately for each decade. The 2020s include only the years available in the sources.
 
@@ -74,7 +84,7 @@ An EA or CM rating is that game's assessment. An estimated historical card is a 
 
 The [Jupyter notebook](Football%20Era%20Lab.ipynb) runs the same JavaScript rating and season functions as the browser. Python displays the data and results. Its saved outputs include the source coverage, a real card's position ratings, the chosen squad, rating adjustments, team strengths, fixtures, Cup ties and player awards.
 
-You can supply your own fifteen players, choose a manager and formation, change the season decade, or compare the same lineup with different placements. The default demonstration draws five club squads and automatically picks three players from each. In the browser, every selection and placement is yours. The notebook also prints the data hash and both random seeds, then checks that unchanged settings produce the same result.
+You can supply your own fifteen players, choose a manager and formation, change the season decade, or compare the same lineup with different placements. The default demonstration drafts under the salary cap: it draws five club squads and automatically picks three allowed players from each. In the browser, every selection and placement is yours. The notebook also prints the data hash and both random seeds, then checks that unchanged settings produce the same result.
 
 The [notebook settings reference](docs/MODEL.md#notebook-settings) explains how to retain exact browser cards and placement. Exporting a notebook result is optional and happens only when you set `export_path`.
 

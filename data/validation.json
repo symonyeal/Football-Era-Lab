@@ -1,20 +1,21 @@
 {
   "passed": true,
-  "data_sha256": "1b6be710feac925f55bab19bb3a4cabdf8cc5bf82cbfe1b9dc7d225a77018537",
+  "data_sha256": "9aaa1550f6025aa0a468d0e4a6dd37e73cada4bc42ff9b3261e4d7ea950c9cdf",
   "data_build": "2026-10-07",
   "counts": {
-    "combos": 505,
-    "cards": 28773,
-    "people": 16470,
+    "clubs": 268,
+    "combos": 910,
+    "cards": 52976,
+    "people": 25382,
     "managers": 96
   },
   "coverage": {
     "1950": {
-      "clubs": 43,
-      "cards": 1587,
+      "clubs": 70,
+      "cards": 2861,
       "src": {
         "c": 0,
-        "e": 1585,
+        "e": 2859,
         "f": 0,
         "i": 2,
         "m": 0,
@@ -53,13 +54,13 @@
       ]
     },
     "1960": {
-      "clubs": 59,
-      "cards": 2245,
+      "clubs": 98,
+      "cards": 3876,
       "src": {
         "c": 0,
-        "e": 2238,
+        "e": 3868,
         "f": 0,
-        "i": 7,
+        "i": 8,
         "m": 0,
         "n": 0
       },
@@ -100,13 +101,13 @@
       ]
     },
     "1970": {
-      "clubs": 67,
-      "cards": 2721,
+      "clubs": 114,
+      "cards": 4808,
       "src": {
         "c": 0,
-        "e": 2710,
+        "e": 4795,
         "f": 0,
-        "i": 11,
+        "i": 13,
         "m": 0,
         "n": 0
       },
@@ -146,14 +147,14 @@
       ]
     },
     "1980": {
-      "clubs": 72,
-      "cards": 3548,
+      "clubs": 126,
+      "cards": 6219,
       "src": {
-        "c": 1089,
-        "e": 1867,
+        "c": 1723,
+        "e": 3424,
         "f": 0,
-        "i": 30,
-        "m": 562,
+        "i": 37,
+        "m": 1035,
         "n": 0
       },
       "opponents": [
@@ -193,14 +194,14 @@
       ]
     },
     "1990": {
-      "clubs": 73,
-      "cards": 4884,
+      "clubs": 143,
+      "cards": 9188,
       "src": {
-        "c": 2578,
-        "e": 396,
+        "c": 4629,
+        "e": 760,
         "f": 0,
-        "i": 68,
-        "m": 1842,
+        "i": 83,
+        "m": 3716,
         "n": 0
       },
       "opponents": [
@@ -221,7 +222,7 @@
         "Spartak Moscow",
         "Kaiserslautern",
         "Feyenoord",
-        "Panathinaikos",
+        "Panathinaikós Athlitikós Ómilos",
         "Sampdoria"
       ],
       "leagues": [
@@ -239,15 +240,15 @@
       ]
     },
     "2000": {
-      "clubs": 70,
-      "cards": 6196,
+      "clubs": 140,
+      "cards": 12463,
       "src": {
-        "c": 1273,
-        "e": 1158,
-        "f": 1126,
-        "i": 73,
-        "m": 898,
-        "n": 1668
+        "c": 2251,
+        "e": 3005,
+        "f": 2120,
+        "i": 94,
+        "m": 1940,
+        "n": 3053
       },
       "opponents": [
         "Barcelona",
@@ -281,15 +282,15 @@
       ]
     },
     "2010": {
-      "clubs": 70,
-      "cards": 5697,
+      "clubs": 139,
+      "cards": 10970,
       "src": {
         "c": 0,
-        "e": 399,
-        "f": 3686,
-        "i": 10,
-        "m": 46,
-        "n": 1556
+        "e": 1084,
+        "f": 6585,
+        "i": 12,
+        "m": 76,
+        "n": 3213
       },
       "opponents": [
         "Real Madrid",
@@ -323,15 +324,15 @@
       ]
     },
     "2020": {
-      "clubs": 51,
-      "cards": 1895,
+      "clubs": 80,
+      "cards": 2591,
       "src": {
-        "c": 203,
-        "e": 30,
-        "f": 1369,
+        "c": 273,
+        "e": 36,
+        "f": 1845,
         "i": 0,
-        "m": 23,
-        "n": 270
+        "m": 36,
+        "n": 401
       },
       "opponents": [
         "Real Madrid",

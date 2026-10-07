@@ -2,11 +2,26 @@
 
 The archive combines club records with ratings from football games. Club records determine which version of a player belongs in a squad. EA and Championship Manager supply ratings and attributes where they exist; estimates fill the remaining gaps. Recorded scoring statistics have a separate role in choosing the scorers and assist providers of simulated goals.
 
-The shipped bundle contains 28,773 cards for 16,470 people at 505 club-and-decade squads, plus 96 managers. A person can have several cards, but the draft permits that person only once. The evidence is much stronger for later decades than for the 1950s to 1970s.
+The shipped bundle contains 52,976 cards for 25,382 people at 910 club-and-decade squads belonging to 268 clubs, plus 96 managers. A person can have several cards, but the draft permits that person only once. The evidence is much stronger for later decades than for the 1950s to 1970s.
 
 ## A decade squad covers a period at a club
 
-Domestic league results and European Cup progress select the clubs. The domestic inputs cover England, Spain, Italy, Germany, France, Netherlands and Portugal, with different historical coverage in each. European entrants add clubs from outside those leagues. A season belongs to the decade in which it starts. A 2020s card covers the available years, not a completed decade.
+Domestic league results and European Cup progress select the clubs. Each domestic league contributes its twenty best-ranked clubs in every decade, counting clubs with at least three top-flight seasons in that decade. The domestic inputs cover England, Spain, Italy, Germany, France, Netherlands and Portugal, with different historical coverage in each. European entrants add clubs from outside those leagues. A season belongs to the decade in which it starts. A 2020s card covers the available years, not a completed decade.
+
+The five major leagues supply 185 of the 268 clubs: 45 English, 35 Spanish, 38 Italian, 35 German and 32 French. The results rule selects twenty clubs from each of those leagues in every decade except the German 1950s: the German league results begin with the Bundesliga in 1963, so three German clubs of that decade come from European results instead. A selected club-decade then needs fifteen qualifying cards including a goalkeeper, described below, or it is left out. The table counts the clubs each league has in the game:
+
+| Decade | England | Spain | Italy | Germany | France |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1950s | 20 | 10 | 20 | 1 | 13 |
+| 1960s | 20 | 14 | 20 | 18 | 11 |
+| 1970s | 20 | 14 | 20 | 20 | 18 |
+| 1980s | 20 | 19 | 20 | 19 | 19 |
+| 1990s | 20 | 20 | 20 | 20 | 20 |
+| 2000s | 20 | 20 | 20 | 20 | 20 |
+| 2010s | 20 | 20 | 20 | 20 | 20 |
+| 2020s | 19 | 16 | 15 | 13 | 10 |
+
+Every shortfall below twenty comes from those two steps. The largest are in the early Spanish and French decades and in the 2020s, which the sources cover only to 2024. The missing club-decades are not filled with invented squads.
 
 Wikidata's dated club records supply the players. A qualifying card needs at least ten appearances allocated to that decade. When appearance totals are missing, it can qualify through the declared notability rule: at least two covered seasons and twelve Wikipedia language links. Whole-spell appearances and league goals are spread across the covered years. They are not separately observed totals for every decade.
 
@@ -39,11 +54,11 @@ Manager club associations, signature players, formations, duo partnerships and T
 
 Wikidata person IDs keep one person distinct from his club-and-decade cards. EA and CM records are matched by names, birth dates and season club evidence. Understat lacks birth dates in the supplied source, so its joins use names and club-season evidence. External club IDs are mapped using linked players' clubs. Each of these matches can be wrong.
 
-EA legend records use explicit aliases and available nationality evidence. Unresolved signature-player and duo links are listed in the manifest rather than silently filled. The notebook and each card's source label let you inspect the results of the joins.
+EA legend records use explicit aliases and available nationality evidence. A manager's signature player is matched first among the cards of the clubs and decades he managed, then only by an exact full name anywhere. Matching by any shared name had linked short names to better-known namesakes: Javier Clemente's "Dani" at Athletic Bilbao to Dani Carvajal, and Helenio Herrera's "Luis Suárez" to the Uruguayan rather than his Barcelona and Inter player. Two names ambiguous even within a manager's own squad are curated in full: "Fernando Reges" and "João Domingos Pinto". The 14 signature names and one duo still unmatched are listed in the manifest rather than guessed. The notebook and each card's source label let you inspect the results of the joins.
 
 ## Historical statistics and simulated statistics have different meanings
 
-This build has 5,910 cards with recorded real statistics. Transfermarkt supplies minutes, goals and assists from its available competitions; Understat supplies minutes, expected goals (xG) and expected assists (xA) from its covered leagues. xG measures scoring chances, while xA measures chances created by a player's passes.
+This build has 9,254 cards with recorded real statistics. Transfermarkt supplies minutes, goals and assists from its available competitions; Understat supplies minutes, expected goals (xG) and expected assists (xA) from its covered leagues. xG measures scoring chances, while xA measures chances created by a player's passes.
 
 The two sources have separate minute totals and incomplete club-season coverage. Their records are summed only within the card's spell years. They influence which player receives a simulated goal or assist. The totals and awards produced by a game run belong to that simulation and remain separate from the historical records.
 
@@ -53,14 +68,14 @@ The six badge columns below use the labels defined above. A nearby rating remain
 
 | Decade | Clubs | Cards | `f` | `c` | `i` | `n` | `m` | `e` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1950s | 43 | 1,587 | 0 | 0 | 2 | 0 | 0 | 1,585 |
-| 1960s | 59 | 2,245 | 0 | 0 | 7 | 0 | 0 | 2,238 |
-| 1970s | 67 | 2,721 | 0 | 0 | 11 | 0 | 0 | 2,710 |
-| 1980s | 72 | 3,548 | 0 | 1,089 | 30 | 0 | 562 | 1,867 |
-| 1990s | 73 | 4,884 | 0 | 2,578 | 68 | 0 | 1,842 | 396 |
-| 2000s | 70 | 6,196 | 1,126 | 1,273 | 73 | 1,668 | 898 | 1,158 |
-| 2010s | 70 | 5,697 | 3,686 | 0 | 10 | 1,556 | 46 | 399 |
-| 2020s | 51 | 1,895 | 1,369 | 203 | 0 | 270 | 23 | 30 |
+| 1950s | 70 | 2,861 | 0 | 0 | 2 | 0 | 0 | 2,859 |
+| 1960s | 98 | 3,876 | 0 | 0 | 8 | 0 | 0 | 3,868 |
+| 1970s | 114 | 4,808 | 0 | 0 | 13 | 0 | 0 | 4,795 |
+| 1980s | 126 | 6,219 | 0 | 1,723 | 37 | 0 | 1,035 | 3,424 |
+| 1990s | 143 | 9,188 | 0 | 4,629 | 83 | 0 | 3,716 | 760 |
+| 2000s | 140 | 12,463 | 2,120 | 2,251 | 94 | 3,053 | 1,940 | 3,005 |
+| 2010s | 139 | 10,970 | 6,585 | 0 | 12 | 3,213 | 76 | 1,084 |
+| 2020s | 80 | 2,591 | 1,845 | 273 | 0 | 401 | 36 | 36 |
 
 The 1950s, 1960s and 1970s are almost entirely estimates. The integrated CM seasons are 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22. Earlier community databases can be added when supplied and linked; they are not included in this release. Giving an Icon card a career-era label does not turn its reconstructed rating into a contemporary measurement.
 
@@ -118,6 +133,12 @@ python -m pipeline.validate
 The first command downloads and caches result and Wikidata records, then reads the local game-engine inputs. Calibration fits the match model using edition-specific squads and saves its report. The next export embeds those parameters; validation records the hash of that export.
 
 To resume from existing inputs and caches, name the required steps, for example `python -m pipeline.build model export`. After changing a source or rule, rebuild every affected downstream step; otherwise saved intermediate values remain in use. Run calibration again when its engine-rating rules change. Gameplay does not run this pipeline or download the raw sources.
+
+### Widening the club pool without changing existing cards
+
+`python -m pipeline.build expand` adds clubs to an existing cached build while keeping every published card. On first use it copies the cached build and the published `game.json` to `expansion-baseline` under `FEL_CACHE`. It then runs six phases: `sources`, `facts`, `engines`, `stats`, `model` and `export`. New players are rated with the original Championship Manager conversion and the original estimate model, both rebuilt from the unchanged original inputs and checked against their recorded reports; neither is refitted on the larger archive. The export stops with an error if any original card or the match calibration changes.
+
+The 2026-10-07 expansion, which raised the league selection from ten to twenty clubs per league and decade, kept all 28,773 earlier cards unchanged and added 24,203. To resume an interrupted expansion, name the remaining phases, for example `python -m pipeline.build expand model export`.
 
 ## Files that describe a build
 

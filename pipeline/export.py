@@ -10,6 +10,8 @@ Legend
   tags(Q, ...)  per-card tags: tal, rock (rating thresholds by line), mae, tl (curated), poa (goals
                 per app), bg (European Cups won)
   grades(m)     manager attack and defence grades from honours: score 4 ec + lt + ct
+  managers(...) curated managers; a signature name resolves among the people of the manager's tenure
+                club-decades (at), else only by exact name anywhere, so a namesake is never chosen
   DF     default formation by decade for clubs without a curated manager
   out(...)      write data/game.json and data/manifest.json
 """
@@ -84,14 +86,16 @@ def grades(m):
     return (b, dn) if m["lean"] == "att" else (dn, b) if m["lean"] == "def" else (b, b)
 
 
-def managers(P, ps, cm):
+def managers(P, ps, cm, at=None):
     M = json.loads((CUR / "managers.json").read_text(encoding="utf-8"))["managers"]
     out, miss = [], []
     for m in M:
         ga, gd = grades(m)
+        T = sorted({p for c, a, b in m["t"] for D in range(a // 10 * 10, b + 1, 10)
+                    for p in (at or {}).get((cm.get(c), D), ())})
         sig = []
         for n in m["sig"]:
-            p = who(n, P, ps)
+            p = who(n, P, T) or who(n, P, ps, tk=False)
             (sig.append(p) if p else miss.append((m["name"], n)))
         t = [[cm.get(c), a, b] for c, a, b in m["t"]]
         out.append(dict(nm=m["name"], f=m["f"], ga=ga, gd=gd, lean=m["lean"], ec=m["ec"], lt=m["lt"], ct=m["ct"],
@@ -126,14 +130,14 @@ def opp_mgr(q, D, M):
     return dict(nm="Club staff", f=DF[D], ga="C", gd="C", sig=[])
 
 
-def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
+def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss, frozen_cards=None):
     cards, combos, clubs, people = {}, [], {}, {}
     for (q, D), g in Q.groupby(["qid", "D"]):
         g = g.sort_values(["r", "p"], ascending=[False, True])
         k = f"{q}:{D}"
         if len(g) < n_sq or not any("GK" in r.pos for r in g.itertuples()):
             continue
-        cards[k] = [_card(r) for r in g.itertuples()]
+        cards[k] = frozen_cards[k] if frozen_cards is not None and k in frozen_cards else [_card(r) for r in g.itertuples()]
     for r in U.itertuples():
         k = f"{r.id}:{r.D}"
         if k not in cards:
@@ -153,7 +157,7 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss):
     F = json.loads((CUR / "formations.json").read_text(encoding="utf-8"))
     F.pop("_note", None)
     meta = dict(v=dt.date.today().isoformat(), DS=list(DS), model=rep,
-                counts=dict(combos=len(combos), cards=sum(len(v) for v in cards.values()), people=len(people),
+                counts=dict(clubs=len(clubs), combos=len(combos), cards=sum(len(v) for v in cards.values()), people=len(people),
                             managers=len(M)),
                 src={s: sum(c["s"] == SRC[s] for v in cards.values() for c in v) for s in SRC})
     G = dict(meta=meta, clubs=clubs, combos=combos, cards=cards, people=people, managers=M, formations=F, opp=opp)

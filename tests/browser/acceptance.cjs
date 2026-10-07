@@ -32,23 +32,59 @@ async function page(kind) {
   assert.equal(await p.locator('#start-form').count(), 1);
   assert.match(await p.locator('#notice').innerText(), /could not be resumed/i);
   await p.evaluate(() => localStorage.clear()); await p.reload(); await settle(p);
+  assert.equal(await p.locator('#draft-cap').isChecked(), true);
+  await p.check('#draft-classic'); await p.click('[data-era="1990"]');
+  assert.equal(await p.locator('#draft-classic').isChecked(), true, 'changing era must keep the rules choice');
+  await p.check('#draft-cap');
+  ok(`${kind}: Salary cap is the default and the rules choice survives an era change`);
   ok(`${kind}: a corrupt save explains the failure and allows a fresh draft`);
   return { b, p };
 }
 
 async function pick(p, prefer) {
   const s = await st(p), I = new Set(s.slots.filter(Boolean).map(c => c.p));
+  const legal = await p.evaluate(async key => {
+    const { can } = await import(new URL('./app/draft.js', location.href));
+    const g = await (await fetch(new URL('./data/game.json', location.href))).json();
+    const state = JSON.parse(localStorage.getItem(key));
+    return g.cards[state.combo].filter(c => can(g, state, c.p)).map(c => c.p);
+  }, KEY);
   const S = G.formations[s.manager.f].slots.map(x => x[0]);
   const open = s.slots.map((c, i) => (c ? null : i)).filter(i => i !== null);
-  const pool = G.cards[s.combo].filter(c => !I.has(c.p)).sort((a, b) => b.r - a.r);
+  const pool = G.cards[s.combo].filter(c => legal.includes(c.p)).sort((a, b) => b.r - a.r);
+  assert.ok(pool.length, 'the revealed club must offer a legal pick');
   let c = null, i = null;
   for (const x of pool) { const j = open.find(j => j < 11 && x.pos.includes(S[j])); if (j !== undefined) { c = x; i = j; break; } }
   if (!c) { c = pool[0]; i = open.find(j => j >= 11) ?? open[0]; }
   if (prefer !== undefined && open.includes(prefer)) i = prefer;
   await p.click(`[data-player="${c.p}"]`);
   assert.equal((await st(p)).slots.filter(Boolean).length, I.size, 'selecting must not place');
+  assert.match(await p.locator('#lineup-instruction').innerText(), /base.*links/);
+  if (i < 11) assert.match(await p.locator(`[data-slot="${i}"]`).getAttribute('aria-label'), /links.*Squad overall/);
   await p.click(`[data-slot="${i}"]`); await settle(p);
   assert.equal((await st(p)).slots[i].p, c.p);
+}
+
+async function capState(p) {
+  const s = await st(p), n = { S: 0, A: 0, B: 0, C: 0, D: 0 }, lim = { S: 2, A: 4, B: 4, C: 3, D: 2 };
+  assert.equal(s.cap, true);
+  const tier = r => r >= 90 ? 'S' : r >= 85 ? 'A' : r >= 80 ? 'B' : r >= 75 ? 'C' : 'D';
+  for (const ref of s.slots.filter(Boolean)) n[tier(G.cards[ref.k].find(c => c.p === ref.p).r)]++;
+  for (const t of Object.keys(lim)) {
+    assert.ok(n[t] <= lim[t], `${t} tier exceeds its whole-squad limit`);
+    assert.equal(await p.locator(`[data-cap-tier="${t}"]`).getAttribute('data-left'), String(lim[t] - n[t]));
+  }
+  if (s.combo) {
+    for (const c of G.cards[s.combo]) {
+      const row = p.locator(`[data-player="${c.p}"]`);
+      assert.equal(await row.getAttribute('data-tier'), tier(c.r));
+      if (n[tier(c.r)] === lim[tier(c.r)]) {
+        assert.equal(await row.isDisabled(), true, 'a full tier must block every card in it');
+        assert.match(await row.innerText(), /places full|Already in your squad/);
+      }
+    }
+  }
+  return n;
 }
 
 async function full(kind) {
@@ -64,6 +100,7 @@ async function full(kind) {
     ok(`${kind}: five manager options and exactly two re-spins`);
     await p.click('[data-manager="2"]'); await settle(p);
     await p.click('#squad-spin'); await settle(p);
+    await capState(p);
     let s = await st(p);
     assert.equal(await p.locator('.player-row').count(), G.cards[s.combo].length);
     await p.fill('#roster-search', 'zzzz-no-such-player'); assert.equal(await p.locator('.player-row').count(), 0);
@@ -73,13 +110,22 @@ async function full(kind) {
     ok(`${kind}: the whole squad is listed, searchable and sortable, with one re-spin`);
     await pick(p);
     await p.reload(); await settle(p);
-    s = await st(p); assert.equal(s.slots.filter(Boolean).length, 1);
-    ok(`${kind}: a placed player survives a reload`);
+    s = await st(p); assert.equal(s.slots.filter(Boolean).length, 1); await capState(p);
+    ok(`${kind}: a placed player and the whole-squad cap survive a reload`);
+    let blocked = false;
     for (let n = 0; n < 5; n++) {
       if (!(await st(p)).combo) { await p.click('#squad-spin'); await settle(p); }
-      while ((await st(p)).picked < 3 && (await st(p)).phase === 'draft' && (await st(p)).combo) await pick(p);
+      while ((await st(p)).picked < 3 && (await st(p)).phase === 'draft' && (await st(p)).combo) {
+        await capState(p);
+        blocked ||= await p.locator('.player-row--blocked:not([title="Already in your squad"])').count() > 0;
+        await pick(p);
+      }
     }
     s = await st(p); assert.equal(s.phase, 'review'); assert.equal(new Set(s.slots.map(c => c.p)).size, 15);
+    assert.deepEqual(await capState(p), { S: 2, A: 4, B: 4, C: 3, D: 2 });
+    assert.equal(blocked, true, 'a capped draft must explain blocked cards while keeping them visible');
+    assert.equal(new Set(s.history.map(k => k.split(':')[0])).size, 5);
+    ok(`${kind}: all fifteen obey 2 S, 4 A, 4 B, 3 C and 2 D, with five distinct clubs and visible blocked cards`);
     const a = s.slots[0].p, z = s.slots[12].p;
     await p.click('[data-slot="0"]'); await p.click('[data-slot="12"]'); await settle(p);
     s = await st(p); assert.equal(s.slots[0].p, z); assert.equal(s.slots[12].p, a);
@@ -96,7 +142,8 @@ async function full(kind) {
     const [download] = await Promise.all([p.waitForEvent('download'), p.click('#download')]);
     await download.saveAs(replay);
     const saved = JSON.parse(fs.readFileSync(replay, 'utf8'));
-    assert.equal(saved.game, 'Football Era Lab'); assert.equal(saved.draft.seed, 424242);
+    assert.equal(saved.game, 'Football Era Lab'); assert.equal(saved.draft.seed, 424242); assert.equal(saved.draft.cap, true);
+    assert.match(saved.result, /Salary cap/); assert.match(saved.result, /cap=1/);
     assert.deepEqual(saved.draft.slots, (await st(p)).slots);
     const [card] = await Promise.all([p.waitForEvent('download'), p.click('#result-card')]);
     const png = path.join(out, `${kind}-result-card.png`); await card.saveAs(png);
@@ -113,6 +160,7 @@ async function full(kind) {
       await settle(p);
     }
     const r = (await st(p)).mode.run;
+    assert.equal(r.cap, true); assert.equal(await p.locator('.run [data-cap-tier]').count(), 5);
     assert.ok(r.log.some(e => e.t === 'seg') && r.log.some(e => e.t === 'boss'), 'the run must reach a boss');
     await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
     assert.deepEqual((await st(p)).mode.run.log.length, r.log.length);
@@ -125,10 +173,18 @@ async function full(kind) {
     assert.match(await p.locator('[aria-label="Circuit awards"]').innerText(), /Circuit top scorer/i);
     ok(`${kind}: circuit completion shows scorer, assist, keeper and player awards`);
     const c = await p.locator('#my-code').inputValue();
+    const classic = JSON.parse(Buffer.from(c, 'base64url').toString()); classic.cap = false;
+    await p.fill('#their-code', Buffer.from(JSON.stringify(classic)).toString('base64url')); await p.click('#h2h-play'); await settle(p);
+    assert.equal(await p.locator('.cup-tie--yours').count(), 0);
+    assert.match(await p.locator('#notice').innerText(), /matching Salary cap team code/i);
+    ok(`${kind}: head to head rejects a Classic code against a capped team and explains the matching rules`);
     await p.fill('#their-code', c); await p.click('#h2h-play'); await settle(p);
     assert.equal(await p.locator('.cup-tie--yours').count(), 1);
     ok(`${kind}: the circuit runs ten events and a team code plays head to head`);
     await wide(p, 'more modes');
+    await p.click('#replay'); await settle(p);
+    assert.equal((await st(p)).cap, true); assert.equal((await st(p)).seed, 424242);
+    ok(`${kind}: replaying a seed preserves Salary cap rules`);
     await p.click('#reset-open'); await p.click('#reset-confirm'); await settle(p);
     await p.setInputFiles('#import-replay', { name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"game":"other"}') });
     assert.equal(await p.locator('#start-form').count(), 1);
@@ -143,11 +199,19 @@ async function full(kind) {
     await p.setInputFiles('#import-replay', replay); await p.waitForSelector('.result-hero'); await settle(p);
     assert.deepEqual((await st(p)).slots, saved.draft.slots);
     assert.equal((await st(p)).phase, 'results');
+    assert.equal((await st(p)).cap, true);
     ok(`${kind}: invalid replays are rejected and a downloaded replay restores exact placements`);
     await p.click('#reset-open'); await p.click('#reset-confirm'); await settle(p);
+    await p.goto(`${base}?seed=77&era=2000&cap=0`); await settle(p);
+    assert.equal(await p.locator('#draft-classic').isChecked(), true);
+    assert.equal(await p.locator('#seed').inputValue(), '77');
+    await p.click('#start-form button'); await settle(p);
+    assert.equal((await st(p)).cap, false);
+    await p.click('#reset-open'); await p.click('#reset-confirm'); await settle(p);
+    ok(`${kind}: a Classic replay link selects and starts its original rules`);
     await p.click('#weekly'); await settle(p);
-    s = await st(p); assert.match(s.wk, /^\d{4}-W\d{2}$/); assert.equal(await p.locator('[data-manager]').count(), 5);
-    ok(`${kind}: the weekly challenge starts a shared-seed draft`);
+    s = await st(p); assert.match(s.wk, /^\d{4}-W\d{2}$/); assert.equal(await p.locator('[data-manager]').count(), 5); assert.equal(s.cap, true);
+    ok(`${kind}: the weekly challenge starts a shared-seed Salary cap draft even after choosing Classic`);
   } finally { await b.close(); }
 }
 

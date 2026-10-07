@@ -19,12 +19,13 @@ e_gap = 1.0
 
 
 def pick(C, E):
-    C = C[~C.id.str.startswith("nm:")].copy()
+    C = C.copy()
     C["src"] = "league"
     rows = []
     for (lg, D), g in C.groupby(["lg", "D"]):
         rows.append(g.sort_values("q", ascending=False).head(K_lg))
     U = pd.concat(rows)
+    U = U[~U.id.str.startswith("nm:")].copy()
     have = set(zip(U.lg, U.D))
     Em = E[~E.id.str.startswith("nm:")]
     best = Em.groupby(["D", "id", "cc"], as_index=False).agg(e=("e", "sum"), emax=("e", "max"), club=("club", "last"))

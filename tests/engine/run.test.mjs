@@ -1,4 +1,4 @@
-// Slot-rating fit, the weighted spin and the Era Gauntlet run, on the bundled data.
+// Slot-rating fit, varied club draws and the Era Gauntlet run, on the bundled data.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -52,14 +52,15 @@ test('bundled cards carry fifteen slot ratings no higher than the card rating', 
   assert.ok(n > 10000, `only ${n} cards carry slot ratings`);
 });
 
-test('spins favour strong club-decades and stay near the season decade without excluding others', () => {
+test('every club and decade can be drawn, and ten clubs per decade do not crowd out the rest', () => {
   const r = E.mk(7), K = {}, Dn = {};
   for (let i = 0; i < 6000; i++) {
     const c = Dr.draw(G, r, () => true, 1980);
     K[c.k <= 10 ? 'top' : 'rest'] = (K[c.k <= 10 ? 'top' : 'rest'] || 0) + 1;
     Dn[c.D] = (Dn[c.D] || 0) + 1;
   }
-  assert.ok(K.top > K.rest, 'top-ten squads should outnumber the rest');
+  assert.ok(K.rest > K.top, 'the much larger remaining pool must not be crowded out by ten clubs');
+  for (const q of new Set(G.combos.map(c => c.q))) assert.equal(Dr.draw(G, E.mk(1), c => c.q === q, 1980)?.q, q, `${q} cannot be drawn`);
   assert.ok(Dn[1980] > Dn[1950] && Dn[1980] > Dn[2020]);
   assert.equal(Object.keys(Dn).length, 8, 'every decade can still be drawn');
 });
