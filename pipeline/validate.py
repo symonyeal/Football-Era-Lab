@@ -6,6 +6,7 @@ Legend: G exported game, D decade, C coverage rows, Q player cards, E defects, H
 import hashlib
 import json
 import math
+import re
 
 from .config import DS, OUT
 from .positions import R
@@ -56,6 +57,9 @@ def check(G, H=None):
         C[D] = dict(clubs=len(Q), cards=len(cs), src={s: sum(c["s"] == s for c in cs) for s in sorted(SC)},
                     opponents=[G["clubs"][o["q"]]["nm"] for o in O],
                     leagues=sorted({G["clubs"][o["q"]]["cc"] for o in O}))
+    for q, c in G["clubs"].items():
+        if not (isinstance(c.get("k"), list) and len(c["k"]) == 2 and all(isinstance(x, str) and re.fullmatch(r"#[0-9A-F]{6}", x) for x in c["k"])):
+            E.append(f"Invalid kit colours for {c.get('nm', q)}")
     for m in G["managers"]:
         if not m["f"] or any(f not in G["formations"] for f in m["f"]):
             E.append(f"Invalid formation for {m['nm']}")

@@ -13,12 +13,14 @@ Legend
   managers(...) curated managers; a signature name resolves among the people of the manager's tenure
                 club-decades (at), else only by exact name anywhere, so a namesake is never chosen
   DF     default formation by decade for clubs without a curated manager
+  K      club kit colours (pipeline/kits.py); a club missing from the table takes the neutral pair N
   out(...)      write data/game.json and data/manifest.json
 """
 import datetime as dt
 import json
 
 from .config import CUR, DS, N_opp, OUT
+from .kits import N, kits
 from .names import short, who
 from .squads import seasons
 
@@ -132,6 +134,7 @@ def opp_mgr(q, D, M):
 
 def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss, frozen_cards=None):
     cards, combos, clubs, people = {}, [], {}, {}
+    K = kits()
     for (q, D), g in Q.groupby(["qid", "D"]):
         g = g.sort_values(["r", "p"], ascending=[False, True])
         k = f"{q}:{D}"
@@ -145,7 +148,7 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss, frozen_cards=None):
         cs = cards[k]
         gk = sum(1 for c in cs if "GK" in c["pos"])
         combos.append(dict(q=r.id, D=int(r.D), k=int(r.k), x=round(float(r.x), 2), n=len(cs), gk=gk))
-        clubs[r.id] = dict(nm=short(labels.get(r.id, r.club)), cc=ccode.get(r.id, r.lg))
+        clubs[r.id] = dict(nm=short(labels.get(r.id, r.club)), cc=ccode.get(r.id, r.lg), k=K.get(r.id, N))
     for p in sorted({c["p"] for v in cards.values() for c in v}):
         x = P[p]
         people[p] = dict(nm=x["name"], by=int(x["dob"][:4]) if x.get("dob") and x["dob"][0] != "-" else None,

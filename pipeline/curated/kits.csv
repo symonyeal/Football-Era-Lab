@@ -1,0 +1,269 @@
+qid,nm,k1,k2,src
+Q131209,Austria Wien,#6B3FA0,#F4F4F0,wikidata
+Q131215,Rapid Wien,#12823E,#F4F4F0,wikidata
+Q187528,Anderlecht,#6B3FA0,#F4F4F0,wikidata
+Q190916,Club Brugge,#1E4FA3,#141414,wikidata
+Q190561,Standard Liège,#D4262E,#F4F4F0,wikidata
+Q136433,CSKA Sofia,#D4262E,#F4F4F0,curated
+Q9617,Arsenal,#DB0007,#F4F4F0,wikidata
+Q18711,Aston Villa,#670E36,#95BFE5,wikidata
+Q19444,Birmingham City,#1E4FA3,#F4F4F0,wikidata
+Q19446,Blackburn Rovers,#1A6FC4,#F4F4F0,wikidata
+Q19449,Blackpool,#F37021,#F4F4F0,wikidata
+Q19451,Bolton Wanderers,#F4F4F0,#1A2A4F,wikidata
+Q19568,Bournemouth,#D4262E,#141414,wikidata
+Q19571,Brentford,#D4262E,#F4F4F0,wikidata
+Q19453,Brighton,#0057B8,#F4F4F0,wikidata
+Q19458,Burnley,#6C1D45,#99D6EA,wikidata
+Q19462,Charlton Athletic,#D4262E,#F4F4F0,wikidata
+Q9616,Chelsea,#034694,#F4F4F0,wikidata
+Q19580,Coventry City,#6AB0E3,#F4F4F0,wikidata
+Q19467,Crystal Palace,#1B458F,#C4122E,wikidata
+Q19470,Derby County,#F4F4F0,#141414,wikidata
+Q5794,Everton,#003399,#F4F4F0,wikidata
+Q18708,Fulham,#F4F4F0,#141414,wikidata
+Q19473,Huddersfield Town,#0E63AD,#F4F4F0,curated
+Q9653,Ipswich Town,#0044A9,#F4F4F0,wikidata
+Q1128631,Leeds United,#F4F4F0,#1D428A,wikidata
+Q19481,Leicester City,#003090,#F4F4F0,wikidata
+Q1130849,Liverpool,#C8102E,#F4F4F0,wikidata
+Q18520,Luton Town,#F07A1A,#1A2A4F,wikidata
+Q50602,Manchester City,#6CABDD,#F4F4F0,wikidata
+Q18656,Manchester United,#DA291C,#141414,wikidata
+Q18661,Middlesbrough,#D4262E,#F4F4F0,wikidata
+Q18716,Newcastle United,#141414,#F4F4F0,wikidata
+Q18721,Norwich City,#F6C800,#12823E,wikidata
+Q19490,Nottingham Forest,#DD0000,#F4F4F0,wikidata
+Q19604,Portsmouth,#001489,#F4F4F0,wikidata
+Q19612,Preston North End,#F4F4F0,#1A2A4F,wikidata
+Q18723,QPR,#1D5BA4,#F4F4F0,wikidata
+Q19607,Sheffield United,#D4262E,#F4F4F0,wikidata
+Q19498,Sheffield Wednesday,#1E4FA3,#F4F4F0,wikidata
+Q18732,Southampton,#D4262E,#F4F4F0,wikidata
+Q18736,Stoke City,#D4262E,#F4F4F0,wikidata
+Q18739,Sunderland,#D4262E,#F4F4F0,wikidata
+Q18659,Swansea City,#F4F4F0,#141414,wikidata
+Q18741,Tottenham Hotspur,#F4F4F0,#132257,wikidata
+Q2714,Watford,#F6C800,#141414,wikidata
+Q18744,West Brom,#122F67,#F4F4F0,wikidata
+Q18747,West Ham United,#7A263A,#1BB1E7,wikidata
+Q18750,Wigan Athletic,#1D59AF,#F4F4F0,wikidata
+Q19482,Wimbledon,#1E3C8C,#F6C800,wikidata
+Q19500,Wolves,#FDB913,#141414,wikidata
+Q576285,Albacete,#F4F4F0,#141414,curated
+Q8687,Athletic Bilbao,#EE2523,#F4F4F0,wikidata
+Q8701,Atlético Madrid,#CB3524,#F4F4F0,wikidata
+Q7156,Barcelona,#A50044,#004D98,wikidata
+Q657865,CD Logroñés,#D4262E,#F4F4F0,curated
+Q124518,CD Málaga,#1E4FA3,#F4F4F0,curated
+Q8749,Celta de Vigo,#8AC3EE,#F4F4F0,curated
+Q10286,Club Atlético Osasuna,#D91A21,#0A346F,curated
+Q460448,Cádiz,#F6C800,#1E4FA3,curated
+Q223620,Deportivo Alavés,#0761AF,#F4F4F0,curated
+Q8760,Deportivo La Coruña,#1F4E99,#F4F4F0,curated
+Q10512,Elche,#F4F4F0,#12823E,wikidata
+Q8780,Espanyol de Barcelona,#007FC8,#F4F4F0,wikidata
+Q8806,Getafe,#005999,#F4F4F0,wikidata
+Q8812,Granada,#D4262E,#F4F4F0,curated
+Q11963,Hércules,#1E4FA3,#F4F4F0,wikidata
+Q8823,Levante UD,#004D98,#B4053F,curated
+Q8835,Mallorca,#E20613,#141414,wikidata
+Q8857,Málaga,#5BA4DD,#F4F4F0,wikidata
+Q12236,Racing de Santander,#F4F4F0,#12823E,wikidata
+Q10300,Rayo Vallecano,#F4F4F0,#D4262E,curated
+Q8723,Real Betis,#0BB363,#F4F4F0,curated
+Q8682,Real Madrid,#F4F4F0,#5A3696,wikidata
+Q271574,Real Oviedo,#0D3F8C,#F4F4F0,wikidata
+Q10315,Real Sociedad,#0067B1,#F4F4F0,wikidata
+Q10319,Real Valladolid,#5A3696,#F4F4F0,wikidata
+Q10308,Real Zaragoza,#F4F4F0,#1E4FA3,wikidata
+Q929753,SD Compostela,#C9D2E3,#55627D,neutral
+Q770740,SD Eibar,#0032A0,#D50032,curated
+Q10329,Sevilla,#F4F4F0,#D4262E,wikidata
+Q12278,Sporting de Gijón,#D4262E,#F4F4F0,wikidata
+Q216661,Tenerife,#F4F4F0,#1E4FA3,curated
+Q2569964,UD Almería B,#D4262E,#F4F4F0,curated
+Q10333,Valencia,#F4F4F0,#141414,wikidata
+Q12297,Villarreal,#F6C800,#0B4EA2,wikidata
+Q19523,A.S. Nancy-Lorraine,#F4F4F0,#D4262E,wikidata
+Q182876,AJ Auxerre,#F4F4F0,#1E4FA3,curated
+Q845137,Angers SCO,#141414,#F4F4F0,wikidata
+Q208399,Bastia,#1E4FA3,#F4F4F0,curated
+Q172476,Bordeaux,#1A2A4F,#F4F4F0,wikidata
+Q193377,Caen,#0A3E8E,#D4262E,curated
+Q298267,Cannes,#D4262E,#F4F4F0,curated
+Q459148,En Avant de Guingamp,#D4262E,#141414,wikidata
+Q333838,Evian Thonon Gaillard,#E87BAE,#F4F4F0,curated
+Q328658,Le Havre AC,#7CB8E4,#1A2A4F,wikidata
+Q191843,Lens,#D4262E,#F6C800,curated
+Q19516,Lille OSC,#D4262E,#1A2A4F,curated
+Q48911,Lorient,#F07A1A,#141414,wikidata
+Q704,Lyon,#F4F4F0,#D4262E,wikidata
+Q132885,Marseille,#F4F4F0,#2FAEE0,wikidata
+Q221525,Metz,#7A1F33,#F4F4F0,wikidata
+Q180305,Monaco,#E5262B,#F4F4F0,wikidata
+Q19513,Montpellier,#1A2A4F,#F07A1A,wikidata
+Q192071,Nantes,#F6C800,#12823E,wikidata
+Q730809,Nîmes Olympique,#D4262E,#F4F4F0,curated
+Q185163,OGC Nice,#D4262E,#141414,wikidata
+Q483020,Paris Saint-Germain,#004170,#DA291C,wikidata
+Q982889,Racing Club de France,#6AB0E3,#F4F4F0,curated
+Q19509,Rennes,#D4262E,#141414,curated
+Q19521,Saint-Étienne,#009639,#F4F4F0,wikidata
+Q19512,Sochaux,#F6C800,#1E4FA3,curated
+Q1056987,Sporting Toulon Var,#D4262E,#141414,curated
+Q760736,Stade Lavallois,#F07A1A,#141414,curated
+Q208228,Stade de Reims,#D4262E,#F4F4F0,curated
+Q126334,Strasbourg,#0A5EAD,#F4F4F0,curated
+Q19518,Toulouse,#6B3FA0,#F4F4F0,wikidata
+Q212269,Valenciennes,#D4262E,#F4F4F0,wikidata
+Q104770,1. FC Köln,#F4F4F0,#D4262E,wikidata
+Q105254,1. FSV Mainz 05,#D4262E,#F4F4F0,wikidata
+Q131603,1860 Munich,#6AB0E3,#F4F4F0,wikidata
+Q105844,Arminia Bielefeld,#004E95,#F4F4F0,curated
+Q15755,Augsburg,#F4F4F0,#D4262E,curated
+Q104761,Bayer Leverkusen,#E32221,#141414,curated
+Q15789,Bayern Munich,#DC052D,#F4F4F0,curated
+Q105861,Bochum,#005CA9,#F4F4F0,wikidata
+Q41420,Borussia Dortmund,#FDE100,#141414,wikidata
+Q101959,Borussia Mönchengladbach,#F4F4F0,#141414,curated
+Q819382,Borussia Neunkirchen,#C9D2E3,#55627D,neutral
+Q141931,Dynamo Dresden,#F6C800,#141414,curated
+Q154053,Eintracht Braunschweig,#F6C800,#1E4FA3,curated
+Q38245,Eintracht Frankfurt,#D4262E,#141414,wikidata
+Q151747,Fortuna Düsseldorf,#D4262E,#F4F4F0,curated
+Q106394,Freiburg,#D4262E,#F4F4F0,curated
+Q51974,Hamburger SV,#F4F4F0,#1E4FA3,wikidata
+Q33748,Hannover 96,#D4262E,#141414,curated
+Q142005,Hansa Rostock,#004A9F,#F4F4F0,curated
+Q102720,Hertha BSC,#005CA9,#F4F4F0,curated
+Q22707,Hoffenheim,#1961B5,#F4F4F0,curated
+Q157464,KFC Uerdingen 05,#D4262E,#1E4FA3,curated
+Q8466,Kaiserslautern,#E2001A,#F4F4F0,wikidata
+Q105853,Karlsruher,#0C3C9E,#F4F4F0,curated
+Q159936,Kickers Offenbach,#D4262E,#F4F4F0,curated
+Q154293,MSV Duisburg,#1E4FA3,#F4F4F0,curated
+Q15786,Nürnberg,#AA1124,#141414,wikidata
+Q702455,RB Leipzig,#F4F4F0,#DD0741,curated
+Q155218,Rot-Weiss Essen,#D4262E,#F4F4F0,curated
+Q32494,Schalke 04,#004D9D,#F4F4F0,wikidata
+Q4512,Stuttgart,#F4F4F0,#D4262E,wikidata
+Q170134,Waldhof Mannheim,#0E3C8F,#141414,curated
+Q51976,Werder Bremen,#1D9053,#F4F4F0,curated
+Q101859,Wolfsburg,#65B32E,#F4F4F0,wikidata
+Q170157,Wuppertaler SV,#D4262E,#1E4FA3,curated
+Q4122219,Panathinaikós Athlitikós Ómilos,#12823E,#F4F4F0,wikidata
+Q244595,Újpest,#5A3696,#F4F4F0,wikidata
+Q16344,A.C. Perugia,#D4262E,#F4F4F0,curated
+Q6664,AC Cesena,#F4F4F0,#141414,wikidata
+Q2037,AC ChievoVerona,#F6C800,#1E4FA3,curated
+Q1543,AC Milan,#FB090B,#141414,wikidata
+Q13385,Ars et Labor Ferrara,#6AB0E3,#F4F4F0,wikidata
+Q6630,Ascoli Calcio 1898,#141414,#F4F4F0,wikidata
+Q1886,Atalanta BC,#1E71B8,#141414,curated
+Q298217,Avellino 1912,#12823E,#F4F4F0,curated
+Q6641,Bari,#D4262E,#F4F4F0,curated
+Q1893,Bologna,#A21C26,#1A2F48,wikidata
+Q6651,Brescia,#0060A9,#F4F4F0,wikidata
+Q1900,Cagliari,#A91E2C,#002350,wikidata
+Q139399,Calcio Foggia 1920,#D4262E,#141414,curated
+Q8428,Calcio Padova,#F4F4F0,#D4262E,curated
+Q2018,Catania,#D4262E,#2F86D6,wikidata
+Q1120838,Como 1907,#1E4FA3,#F4F4F0,curated
+Q6703,Empoli,#00579C,#F4F4F0,wikidata
+Q2052,Fiorentina,#482E92,#F4F4F0,wikidata
+Q2074,Genoa CFC,#AE1919,#1A2F48,wikidata
+Q631,Inter,#0068A8,#141414,wikidata
+Q1422,Juventus,#141414,#F4F4F0,wikidata
+Q2609,Lazio,#87D8F7,#F4F4F0,wikidata
+Q13391,Lecce,#F6C800,#D4262E,wikidata
+Q430993,Mantova 1911,#F4F4F0,#D4262E,curated
+Q2641,Napoli,#12A0D7,#F4F4F0,wikidata
+Q8416,Novara,#1E4FA3,#F4F4F0,curated
+Q2674,Palermo,#E87BAE,#141414,wikidata
+Q2693,Parma,#F6C800,#0B3D91,curated
+Q459794,Piacenza,#D4262E,#F4F4F0,curated
+Q2739,Roma,#8E1F2F,#F0BC42,wikidata
+Q1457,Sampdoria,#1B5497,#F4F4F0,wikidata
+Q8603,Sassuolo,#12823E,#141414,wikidata
+Q2768,Torino,#8B1A1A,#F4F4F0,curated
+Q13381,Triestina Calcio 1918,#D4262E,#F4F4F0,curated
+Q2798,Udinese,#141414,#F4F4F0,curated
+Q501372,Unione Sportiva Catanzaro,#F6C800,#D4262E,curated
+Q8639,Verona,#F6C800,#1E3A8A,wikidata
+Q8643,Vicenza,#D4262E,#F4F4F0,curated
+Q24904,ADO Den Haag,#12823E,#F6C800,curated
+Q191264,AZ Alkmaar,#DB0021,#F4F4F0,curated
+Q81888,Ajax,#F4F4F0,#D2122E,curated
+Q875120,Cambuur,#F6C800,#1E4FA3,curated
+Q221927,De Graafschap,#1E4FA3,#F4F4F0,curated
+Q370712,Excelsior Rotterdam,#D4262E,#141414,curated
+Q134241,Feyenoord,#E30613,#F4F4F0,wikidata
+Q854167,Fortuna Sittard,#F6C800,#12823E,curated
+Q749589,Go Ahead Eagles,#D4262E,#F6C800,curated
+Q24711,Groningen,#12823E,#F4F4F0,curated
+Q854141,HFC Haarlem,#C9D2E3,#55627D,neutral
+Q200321,Heerenveen,#1E4FA3,#F4F4F0,curated
+Q11961,Heracles Almelo,#141414,#F4F4F0,curated
+Q876568,MVV Maastricht,#D4262E,#F4F4F0,curated
+Q332642,NAC Breda,#F6C800,#141414,wikidata
+Q318348,NEC Nijmegen,#D4262E,#141414,curated
+Q269151,PEC Zwolle,#1E4FA3,#F4F4F0,wikidata
+Q11938,PSV Eindhoven,#ED1C24,#F4F4F0,curated
+Q1053450,RBC Roosendaal,#C9D2E3,#55627D,neutral
+Q24699,RKC Waalwijk,#F6C800,#1E4FA3,curated
+Q24719,Roda JC Kerkrade,#F6C800,#141414,curated
+Q209895,Sparta Rotterdam,#D4262E,#F4F4F0,curated
+Q19603,Twente,#D4262E,#F4F4F0,curated
+Q24680,Utrecht,#D4262E,#F4F4F0,curated
+Q219233,Vitesse,#F6C800,#141414,curated
+Q738060,Volendam,#F07A1A,#F4F4F0,curated
+Q332664,Willem II,#D4262E,#1E4FA3,curated
+Q193749,Legia Warszawa,#F4F4F0,#12823E,wikidata
+Q244981,RTS Widzew Łódź,#D4262E,#F4F4F0,wikidata
+Q1386850,Alverca,#C9D2E3,#55627D,neutral
+Q1386869,Arouca,#F6C800,#1E4FA3,wikidata
+Q243235,Associação Académica de Coimbra – O.A.F.,#141414,#F4F4F0,curated
+Q846008,Associação Naval 1º de Maio,#C9D2E3,#55627D,neutral
+Q688300,Beira-Mar,#F6C800,#141414,curated
+Q131499,Benfica,#E83030,#F4F4F0,wikidata
+Q219703,Boavista,#141414,#F4F4F0,wikidata
+Q75684,Braga,#D4262E,#F4F4F0,wikidata
+Q216503,C.S. Marítimo,#12823E,#D4262E,curated
+Q1023227,CD Tondela,#12823E,#F6C800,curated
+Q630227,Campomaiorense,#C9D2E3,#55627D,neutral
+Q543467,Chaves,#D4262E,#55627D,wikidata
+Q634829,Estoril Praia,#F6C800,#1E4FA3,wikidata
+Q838134,Estrela da Amadora,#D4262E,#12823E,curated
+Q744353,Farense,#141414,#F4F4F0,curated
+Q926438,Gil Vicente Futebol Clube,#C9D2E3,#55627D,neutral
+Q211401,Leiria,#C9D2E3,#55627D,neutral
+Q623730,Leixões S.C.,#D4262E,#F4F4F0,curated
+Q1822470,Leça,#12823E,#F4F4F0,wikidata
+Q1346314,Moreirense,#12823E,#F4F4F0,curated
+Q216459,Nacional,#141414,#F4F4F0,curated
+Q621259,Olhanense,#D4262E,#141414,curated
+Q216510,Os Belenenses,#1E4FA3,#F4F4F0,wikidata
+Q371136,Paços de Ferreira,#F6C800,#12823E,curated
+Q621120,Portimonense S.C.,#141414,#F4F4F0,curated
+Q128446,Porto,#003893,#F4F4F0,wikidata
+Q622432,Rio Ave,#12823E,#F4F4F0,curated
+Q1754163,Salgueiros,#C9D2E3,#55627D,neutral
+Q75729,Sporting CP,#008057,#F4F4F0,wikidata
+Q208585,Vitória,#12823E,#F4F4F0,curated
+Q223450,Vitória S.C.,#F4F4F0,#141414,wikidata
+Q204237,Dinamo Bucharest,#D4262E,#F4F4F0,curated
+Q179658,Steaua Bucharest,#D4262E,#1E4FA3,curated
+Q29112,Spartak Moscow,#D4262E,#F4F4F0,curated
+Q19593,Celtic,#018749,#F4F4F0,wikidata
+Q335483,Dundee,#1A2A4F,#F4F4F0,curated
+Q192873,Dundee United,#F58220,#141414,curated
+Q192597,Hibernian,#12823E,#F4F4F0,curated
+Q19597,Rangers,#1B458F,#F4F4F0,curated
+Q188656,Partizan,#141414,#F4F4F0,curated
+Q173009,Red Star Belgrade,#D4262E,#F4F4F0,curated
+Q206692,Zürich,#1E4FA3,#F4F4F0,curated
+Q201567,IFK Göteborg,#1E4FA3,#F4F4F0,curated
+Q204881,Malmö FF,#6AB0E3,#F4F4F0,curated
+Q495299,Galatasaray,#A90432,#FDB912,wikidata
+Q179075,Dynamo Kyiv,#F4F4F0,#1E4FA3,wikidata
