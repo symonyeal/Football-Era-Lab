@@ -7,14 +7,14 @@ import * as E from '../../app/engine/index.js';
 
 const S = ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'ST', 'ST'].map((s, i) => [s, 10 + i * 7, 50]);
 const G = { people: {}, cards: {}, combos: [{ q: 'q0', D: 1990, k: 1 }, { q: 'q1', D: 2000, k: 2 }, { q: 'q1', D: 1960, k: 1 }],
-  managers: [{ nm: 'Manager', f: ['4-4-2'], ga: 'B', gd: 'B', sig: [] }], formations: { '4-4-2': { slots: S } } };
+  managers: [{ nm: 'Manager', f: ['4-4-2'], ga: 'B', gd: 'B', sig: [], t: [['q0', 1990, 1993]] }], formations: { '4-4-2': { slots: S } } };
 const rs = [94, 92, 89, 88, 86, 85, 84, 83, 81, 80, 79, 78, 76, 74, 72];
 G.cards['q0:1990'] = rs.map((r, i) => { const p = `p${i}`; G.people[p] = { nm: p }; return { p, r, pos: ['ST'], tg: {} }; });
 G.cards['q1:2000'] = [{ p: 'p13', r: 95, pos: ['ST'], tg: {} }, ...[91, 87, 82, 77, 71].map((r, i) => {
   const p = `f${i}`; G.people[p] = { nm: p }; return { p, r, pos: ['ST'], tg: {} };
 })];
 G.cards['q1:1960'] = G.cards['q1:2000'].filter(c => c.p.startsWith('f'));
-const d = { manager: { nm: 'Manager', f: '4-4-2' }, cap: true, slots: rs.map((r, i) => ({ k: 'q0:1990', p: `p${i}` })) };
+const d = { manager: { nm: 'Manager', q: 'q0', a: 1990 }, f: '4-4-2', cap: true, slots: rs.map((r, i) => ({ k: 'q0:1990', p: `p${i}` })) };
 const reward = seed => ({ ...Rn.runNew(seed, d), ph: 'node', rd: 0, pat: 20 });
 
 test('an earned prime boost retains the original tier charge and cannot erase cap mode', () => {

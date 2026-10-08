@@ -3,7 +3,7 @@
 // Legend
 //   G   bundled game JSON; x editable settings read as JSON from standard input
 //   ref source card {k: clubQID:decade, p: personQID}; Q fifteen hydrated cards
-//   T   user team; R engine rating breakdown; F decade opponent fields
+//   T   user team; R engine rating breakdown; F decade opponent fields; o seeded team {nm, q, a, b}
 //   C   source count map; st league/Cup player statistics
 
 import { readFileSync } from 'node:fs';
@@ -47,7 +47,7 @@ function demo(seed, D, cap) {
       if (c.pos.includes('GK')) keepers++;
     }
   }
-  return { selected, manager: s.manager, history: s.history };
+  return { selected, team: s.manager, history: s.history };
 }
 
 function parameters() {
@@ -74,7 +74,7 @@ function execute(x) {
   let selected;
   let mode = 'Manual notebook team; experimental choices, not a browser ranked run.';
   let history = [];
-  let chosen = opts(G, start(seed, D))[0];
+  let o = opts(G, start(seed, D))[0];
   if (x.source_cards?.length) {
     selected = x.source_cards.map(c => {
       if (!c || typeof c.k !== 'string' || typeof c.p !== 'string') throw new Error('Each source card needs string k and p fields.');
@@ -86,16 +86,18 @@ function execute(x) {
   } else {
     const d = demo(seed, D, cap);
     selected = d.selected;
-    chosen = d.manager;
+    o = d.team;
     history = d.history;
     mode = 'Notebook-only seeded draft demonstration: automatic picks, with editable placement.';
   }
   if (selected.length !== 15 || new Set(selected.map(c => c.p)).size !== 15)
     throw new Error('Supply exactly fifteen distinct people.');
   if (cap) ck(G, selected);
-  const m = x.manager ? G.managers.find(m => m.nm === x.manager) : G.managers.find(m => m.nm === chosen.nm);
+  const m = G.managers.find(m => m.nm === (x.manager || o.nm));
   if (!m) throw new Error('Choose a manager name from the catalogue.');
-  const f = x.formation || (x.manager ? m.f[0] : chosen.f);
+  const sp = x.manager ? null : m.t.find(([q, a]) => q === o.q && a === o.a);
+  const team = sp && { club: G.clubs[sp[0]]?.nm || sp[0], q: sp[0], a: sp[1], b: sp[2] };
+  const f = x.formation || m.f[0];
   const S = shape(G, f);
   const Q = selected.map(c => hydrate(G, c));
   const placement = x.placement || 'best';
@@ -115,7 +117,7 @@ function execute(x) {
   const finalRefs = [...T.xi, ...T.bn].map(c => selected.find(r => r.p === c.id));
   return {
     mode, cap, tier_counts: ct(G, selected), seed, season_seed: seasonSeed, decade: D, placement, data_sha256: createHash('sha256').update(raw).digest('hex'),
-    data_build: G.meta.v, manager: m, formation: f, source_counts: C, source_cards: finalRefs,
+    data_build: G.meta.v, manager: m, team, formation: f, source_counts: C, source_cards: finalRefs,
     draft_club_decades: history, parameters: E.P,
     squad: [...T.xi, ...T.bn].map((c, i) => ({ place: i < 11 ? `${i + 1}: ${S[i].s}` : `Bench ${i - 10}`,
       id: c.id, player: c.nm, club: G.clubs[c.cq]?.nm || c.cq, card_decade: c.D,

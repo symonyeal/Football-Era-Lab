@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seed, start, opts, choose, reroll, spin, place, swap, valid, used, preview, team, shape } from '../../app/draft.js';
+import { seed, start, opts, opts2, choose, reroll, spin, place, swap, valid, used, preview, team, shape } from '../../app/draft.js';
 import { rate } from '../../app/engine/index.js';
 
 // G small archive with repeated people across clubs/decades; s draft; Q roster; i slot.
 const S = [['GK', 50, 92], ['LB', 15, 72], ['CB', 38, 76], ['CB', 62, 76], ['RB', 85, 72],
   ['LM', 15, 46], ['CM', 38, 50], ['CM', 62, 50], ['RM', 85, 46], ['ST', 38, 19], ['ST', 62, 19]];
-const G = { managers: Array.from({ length: 7 }, (_, i) => ({ nm: `Manager ${i}`, f: ['4-4-2'], ga: 'B', gd: 'A', sig: ['p0'] })),
-  formations: { '4-4-2': { slots: S } }, combos: [], cards: {}, people: {} };
+// Manager i has one spell at club q(i mod 6); Manager 6 has two spells at q0.
+const G = { managers: Array.from({ length: 7 }, (_, i) => ({ nm: `Manager ${i}`, f: ['4-4-2'], ga: 'B', gd: 'A', sig: ['p0'], t: [[`q${i % 6}`, 1990, 1993]] })),
+  formations: { '4-4-2': { slots: S }, '4-3-3': { slots: S } }, combos: [], cards: {}, people: {}, clubs: {} };
+G.managers[6].t = [['q0', 1990, 1992], ['q0', 1996, 1998]];
+for (let q = 0; q < 6; q++) G.clubs[`q${q}`] = { nm: `Club ${q}`, cc: 'ENG' };
 for (const D of [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]) {
   for (let q = 0; q < 6; q++) {
     const k = `q${q}:${D}`; G.combos.push({ q: `q${q}`, D, n: 18 });
@@ -30,6 +33,7 @@ test('Manager spin offers five different managers, permits exactly two re-spins,
   let s = start(42, 1990);
   assert.equal(opts(G, s).length, 5);
   assert.equal(new Set(opts(G, s).map(m => m.nm)).size, 5);
+  for (const o of opts(G, s)) assert.ok(G.managers.find(m => m.nm === o.nm).t.some(([q, a, b]) => q === o.q && a === o.a && b === o.b), `${o.nm} offered a spell he never had`);
   assert.deepEqual(opts(G, s), opts(G, start(42, 1990)));
   s = reroll(reroll(s)); assert.throws(() => reroll(s));
   s = choose(G, s, 4); assert.equal(s.phase, 'draft'); assert.equal(used(s).size, 0);
@@ -84,7 +88,37 @@ test('Corrupt resume rejects duplicate identities, counters, fake clubs and inco
   assert.throws(() => valid(G, { ...t, slots: t.slots.map((c, i) => i === 1 ? t.slots[0] : c), picked: 2 }));
   assert.throws(() => valid(G, { ...t, picked: 0 }));
   assert.throws(() => valid(G, { ...t, combo: 'missing:1980' }));
-  assert.throws(() => valid(G, { ...t, manager: { nm: 'missing', f: '4-4-2' } }));
+  assert.throws(() => valid(G, { ...t, manager: { nm: 'missing', q: 'q0', a: 1990 } }));
+  assert.throws(() => valid(G, { ...t, f: 'missing' }), /formation/i);
   assert.throws(() => valid(G, { ...t, mode: { ci: 21 } }));
   assert.equal(valid(G, t).slots[0].p, t.slots[0].p);
+});
+
+test('Two spells at one club are separate options, each kept exactly by a save', () => {
+  const pick = a => { for (let n = 0; n < 400; n++) { const s = start(n, 1990), i = opts(G, s).findIndex(o => o.nm === 'Manager 6' && o.a === a); if (i >= 0) return choose(G, s, i); } };
+  for (const a of [1990, 1996]) {
+    const s = pick(a);
+    assert.deepEqual(valid(G, JSON.parse(JSON.stringify(s))).manager, { nm: 'Manager 6', q: 'q0', a });
+    assert.throws(() => valid(G, { ...s, manager: { nm: 'Manager 6', q: 'q0', a: 1993 } }), /spin/);
+  }
+});
+
+test('Choosing a team starts in his first recorded formation unless another catalogue formation is named', () => {
+  const s = start(42, 1990);
+  assert.equal(choose(G, s, 0).f, '4-4-2');
+  assert.equal(choose(G, s, 0, '4-3-3').f, '4-3-3');
+  assert.throws(() => choose(G, s, 0, 'missing'), /formation/i);
+});
+
+test('A version 2 save keeps its manager and formation pair as a legacy team', () => {
+  const s0 = start(42, 1990), o = opts2(G, s0)[1];
+  const v2 = { v: 2, seed: 42, D: 1990, cap: false, phase: 'draft', managerRoll: 0, manager: { nm: o.nm, f: o.f }, spin: 0, picked: 0,
+    squadReroll: 0, combo: null, slots: Array(15).fill(null), history: [], season: false };
+  const t = valid(G, v2);
+  assert.equal(t.v, 3);
+  assert.deepEqual(t.manager, { nm: o.nm, q: null, a: null, f0: '4-4-2' });
+  assert.equal(t.f, '4-4-2');
+  assert.deepEqual(valid(G, t), t);
+  const out = G.managers.find(m => !opts2(G, s0).some(x => x.nm === m.nm)).nm;
+  assert.throws(() => valid(G, { ...v2, manager: { nm: out, f: '4-4-2' } }), /spin/);
 });

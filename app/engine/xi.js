@@ -6,6 +6,12 @@
 //   av(c, s, Ds)  adjusted rating of card c in slot s in decade Ds (fit and era, no chemistry)
 //   best(Q, S, Ds) eleven for slots S from cards Q, then a bench of four: the best remaining keeper
 //                 and the three best remaining outfield players
+//   move(Q, A, B, Ds) new slot of each starter after a formation change: Q[i] the card in old slot
+//                 A[i] (null when open), B the new slots; o[i] is the new index of old slot i, -1 when
+//                 open. Cost c_ij = W1·[A_i.s ≠ B_j.s] + W2·round(10·r_i·f_ij·e_i) + round(|A_i − B_j|):
+//                 with at most 11 rows, 11·142 < W2 and 11·(891·W2 + 142) < W1, so the minimum keeps
+//                 the most role codes, then loses the least rating to position fit, then moves least.
+//                 Integers below 2^53 sum exactly; ties follow hun()'s fixed scan order. O(11^3).
 
 import { ft } from './pos.js';
 import { em } from './era.js';
@@ -58,4 +64,15 @@ export const best = (Q, S, Ds) => {
   for (const c of rest.filter(c => c !== g).sort((x, y) => y.r - x.r)) { if (bn.length >= 4) break; bn.push(c); }
   while (bn.length < 4) bn.push(null);
   return { xi, bn };
+};
+
+export const W1 = 1e9, W2 = 1e4;
+export const move = (Q, A, B, Ds) => {
+  const I = Q.map((c, i) => (c ? i : -1)).filter(i => i >= 0), o = Q.map(() => -1);
+  if (!I.length) return o;
+  const a = I.map(i => B.map(b => W1 * (A[i].s !== b.s) +
+    W2 * Math.round(10 * Q[i].r * ft(Q[i], b.s).f * em(Q[i].D, Ds, Q[i].tg?.tl || 0)) +
+    Math.round(Math.hypot(A[i].x - b.x, A[i].y - b.y))));
+  hun(a).forEach((j, k) => { o[I[k]] = j; });
+  return o;
 };

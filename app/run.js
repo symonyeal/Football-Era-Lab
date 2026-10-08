@@ -1,4 +1,4 @@
-import { mk, hs, sh, play, P, tie, shift } from './engine/index.js';
+import { mk, hs, sh, play, P, tie, shift, move } from './engine/index.js';
 import { hydrate, shape, draw, key } from './draft.js';
 import { TI, GCAP, fits, ck } from './cap.js';
 export { TI, CAP, GCAP } from './cap.js';
@@ -31,7 +31,7 @@ export { TI, CAP, GCAP } from './cap.js';
 //   LINES      position lines by first position, for the transfer window and development
 //   HOP_N      signings from each decade in the transfer window (Eraball 1 of 3 each for 9 places)
 //   bossAt     the act's boss from the seed; a retry draws a different one of the three
-//   state v 2: seed, cap, map, m, slots, act, rd, ph (rd | node | boss | hop | repo | done | fired),
+//   state v 3: seed, cap, map, m (the draft's team), f (formation), slots, act, rd, ph (rd | node | boss | hop | repo | done | fired),
 //              pat, rest, tries (ties per act), lost (ties lost in the run), boss, tags (person -> tag
 //              overrides), up (person -> card charged for the cap), mv (person -> MVP/LVP points),
 //              neg (person -> 'S' | 'C' terms), badge {glue, mgr}, last (development offered at the
@@ -79,17 +79,22 @@ export const bossAt = (seed, act, n, prev) => {
 };
 
 export function runNew(seed, draft, map = 'original') {
-  if (!draft?.manager || draft.slots?.filter(Boolean).length !== 15) throw new Error('The run needs a finished fifteen-player draft.');
+  if (!draft?.manager || !draft.f || draft.slots?.filter(Boolean).length !== 15) throw new Error('The run needs a finished fifteen-player draft.');
   if (!MAPS[map]) throw new Error('Choose one of the four Gauntlet maps.');
-  return { v: 2, seed, cap: !!draft.cap, map, m: draft.manager, slots: draft.slots.map(c => ({ k: c.k, p: c.p })),
+  return { v: 3, seed, cap: !!draft.cap, map, m: draft.manager, f: draft.f, slots: draft.slots.map(c => ({ k: c.k, p: c.p })),
     act: 0, rd: 0, ph: 'rd', pat: PAT0, rest: 0, tries: MAPS[map].D.map(() => 0), lost: 0, boss: bossAt(seed, 0, 0, -1),
     tags: {}, up: {}, mv: {}, neg: {}, badge: { glue: 0, mgr: 0 }, last: [], fa: 0, prem: 0, log: [] };
 }
 
 // A run saved before v 2 was the eight-decade map from the 1950s; it resumes there at the start of
-// its current act (or at its boss), keeping squad, tags, upgrades, patience and history.
+// its current act (or at its boss), keeping squad, tags, upgrades, patience and history. A v 2 run
+// played its manager option's formation, which becomes its formation f.
 export function migrate(r) {
-  if (r?.v !== 1 || !Array.isArray(r.log)) return r;
+  if (r?.v === 1 && Array.isArray(r.log)) r = up1(r);
+  return r?.v === 2 ? { ...r, v: 3, f: r.m?.f } : r;
+}
+
+function up1(r) {
   if (!Number.isInteger(r.seg) || r.seg < 0 || r.seg > 2 || !['seg', 'reward', 'boss', 'done', 'fired'].includes(r.ph) ||
     (r.cap !== undefined && typeof r.cap !== 'boolean') || (r.ph === 'seg' && r.seg >= 2) ||
     (r.ph === 'reward' && r.seg === 0) || (r.ph === 'boss' && r.seg !== 2) || (r.ph === 'done' && r.seg !== 0)) {
@@ -113,7 +118,17 @@ export function runTeam(G, s) {
     const x = t ? { ...c, tg: { ...c.tg, ...t } } : c;
     return shift(x, d);
   });
-  return { m, S: shape(G, s.m.f), xi: Q.slice(0, 11), bn: Q.slice(11), lk: s.badge?.glue ? 1.5 : 1, gs: s.badge?.mgr || 0 };
+  return { m, S: shape(G, s.f), xi: Q.slice(0, 11), bn: Q.slice(11), lk: s.badge?.glue ? 1.5 : 1, gs: s.badge?.mgr || 0 };
+}
+
+// Formation change in the lineup stage between decades: the draft's policy on the run's own cards
+// (tags, MVP points, signing terms), rated for the decade about to be played. Logged as {t: 'form'}.
+export function runForm(G, s, f) {
+  if (s.ph !== 'repo') throw new Error('Change formation after the transfer window, before the next decade.');
+  const T = runTeam(G, s), o = move(T.xi, T.S, shape(G, f), MAPS[s.map].D[s.act + 1]);
+  const slots = [...Array(11).fill(null), ...s.slots.slice(11)];
+  o.forEach((j, i) => { slots[j] = s.slots[i]; });
+  return { ...s, f, slots, log: [...s.log, { t: 'form', act: s.act, f }] };
 }
 
 const me = (G, s) => ({ id: 'your-club', nm: 'Your Era XI', T: runTeam(G, s), me: true });
@@ -408,10 +423,13 @@ export function validRun(G, r0, manager, cap) {
     if (e.t === 'hop') return M && int(e.act, 0, M.D.length - 2) && Array.isArray(e.in) && Array.isArray(e.out) && e.in.length === e.out.length &&
       e.in.length <= 2 * HOP_N && e.in.every(x => Array.isArray(x) && ref(x[0], x[1])) && e.out.every(person);
     if (e.t === 'act') return M && int(e.act, 1, M.D.length - 1);
+    if (e.t === 'form') return M && int(e.act, 0, M.D.length - 2) && typeof e.f === 'string' && Object.hasOwn(G.formations, e.f);
     return false;
   };
-  const ok = obj(r) && r.v === 2 && int(r.seed, 0, 4294967295) && typeof r.cap === 'boolean' && !!M && obj(r.m) && obj(manager) &&
-    r.m.nm === manager.nm && r.m.f === manager.f && Array.isArray(r.slots) && r.slots.length === 15 && r.slots.every(c => obj(c) && ref(c.k, c.p)) &&
+  // A run made before club spells (m without q) matches its draft by manager name.
+  const ok = obj(r) && r.v === 3 && int(r.seed, 0, 4294967295) && typeof r.cap === 'boolean' && !!M && obj(r.m) && obj(manager) &&
+    r.m.nm === manager.nm && (r.m.q === undefined || (r.m.q === manager.q && r.m.a === manager.a)) &&
+    typeof r.f === 'string' && Object.hasOwn(G.formations, r.f) && Array.isArray(r.slots) && r.slots.length === 15 && r.slots.every(c => obj(c) && ref(c.k, c.p)) &&
     new Set(r.slots.map(c => c.p)).size === 15 && int(r.act, 0, M.D.length - 1) && int(r.rd, 0, N_RD) && PH.includes(r.ph) &&
     int(r.pat, 0, PAT_MAX) && int(r.rest) && Array.isArray(r.tries) && r.tries.length === M.D.length && r.tries.every(x => int(x)) &&
     int(r.lost) && int(r.boss, 0, 2) && obj(r.tags) && Object.entries(r.tags).every(([p, t]) => person(p) && obj(t) && Object.entries(t).every(([k, v]) => tg(k, v))) &&

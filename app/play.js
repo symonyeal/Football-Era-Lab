@@ -7,8 +7,9 @@ import { ck } from './cap.js';
 //
 // Legend
 //   wk(t)       ISO week of date t (UTC): id 'YYYY-Www', the shared seed, and the week's decade
-//   code(G, s)  team code of a finished draft s: base64url of {v, b (data build), D, m, x (refs)}
-//   uncode(G,c) the team behind a code, checked against the bundled data
+//   code(G, s)  team code of a finished draft s: base64url of {v: 2, b (data build), D, cap, m (team), f, x (refs)}
+//   uncode(G,c) the team behind a code, checked against the bundled data; a v 1 code's formation is m.f,
+//               which had to be one the manager recorded
 //   h2h(seed, A, B)  two legs, each club at home in its own decade; a level aggregate goes to extra
 //               time and penalties in the second leg. A, B = {id, nm, T, D}
 
@@ -26,22 +27,22 @@ const unb64 = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/
 export function code(G, s) {
   if (!['review', 'results'].includes(s?.phase)) throw new Error('Finish the draft to get a team code.');
   if (s.cap) ck(G, s.slots);
-  return b64(JSON.stringify({ v: 1, b: G.meta.v, D: s.D, cap: !!s.cap, m: s.manager, x: s.slots.map(c => [c.k, c.p]) }));
+  return b64(JSON.stringify({ v: 2, b: G.meta.v, D: s.D, cap: !!s.cap, m: s.manager, f: s.f, x: s.slots.map(c => [c.k, c.p]) }));
 }
 
 export function uncode(G, c) {
   let z;
   try { z = JSON.parse(unb64(String(c).trim())); } catch { throw new Error('That is not a Football Era Lab team code.'); }
-  if (z?.v !== 1 || !Array.isArray(z.x) || z.x.length !== 15 || !DECADES.includes(z.D)) throw new Error('That team code is incomplete.');
+  if (![1, 2].includes(z?.v) || !Array.isArray(z.x) || z.x.length !== 15 || !DECADES.includes(z.D)) throw new Error('That team code is incomplete.');
   const slots = z.x.map(([k, p]) => ({ k, p }));
   if (new Set(slots.map(c => c.p)).size !== 15) throw new Error('A team code needs fifteen different people.');
   slots.forEach(r => hydrate(G, r));
   if (z.cap !== undefined && typeof z.cap !== 'boolean') throw new Error('That team code has an invalid cap.');
   if (z.cap) ck(G, slots);
-  const m = G.managers.find(m => m.nm === z.m?.nm);
-  if (!m || !m.f.includes(z.m.f) || !G.formations[z.m.f]) throw new Error('That team code names a manager or formation this game does not have.');
+  const m = G.managers.find(m => m.nm === z.m?.nm), f = z.v === 1 ? z.m?.f : z.f;
+  if (!m || typeof f !== 'string' || !Object.hasOwn(G.formations, f) || (z.v === 1 && !m.f.includes(f))) throw new Error('That team code names a manager or formation this game does not have.');
   const Q = slots.map(r => hydrate(G, r));
-  return { b: z.b, D: z.D, cap: !!z.cap, m: z.m, slots, T: { m, S: shape(G, z.m.f), xi: Q.slice(0, 11), bn: Q.slice(11) } };
+  return { b: z.b, D: z.D, cap: !!z.cap, m: z.m, f, slots, T: { m, S: shape(G, f), xi: Q.slice(0, 11), bn: Q.slice(11) } };
 }
 
 export function h2h(seed, A, B) {

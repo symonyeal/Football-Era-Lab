@@ -21,3 +21,19 @@ test('the notebook rejects a non-boolean cap rather than treating it as Classic'
   assert.equal(p.status, 1);
   assert.match(p.stderr, /cap/i);
 });
+
+test("the notebook plays the named formation and reports the manager's club spell", () => {
+  const p = run({ seed: 20261006, decade: 1990, cap: true, formation: '3-5-2' });
+  assert.equal(p.status, 0, p.stderr);
+  const R = JSON.parse(p.stdout);
+  assert.equal(R.formation, '3-5-2');
+  assert.deepEqual(R.starters.map(x => x.slot), ['GK', 'CB', 'CB', 'CB', 'LWB', 'CDM', 'CM', 'CM', 'RWB', 'ST', 'ST']);
+  assert.ok(R.manager.t.some(([q, a]) => q === R.team.q && a === R.team.a));
+});
+
+test("without a formation setting the notebook starts in the manager's first recorded formation", () => {
+  const p = run({ seed: 20261006, decade: 1990, cap: true });
+  assert.equal(p.status, 0, p.stderr);
+  const R = JSON.parse(p.stdout);
+  assert.equal(R.formation, R.manager.f[0]);
+});

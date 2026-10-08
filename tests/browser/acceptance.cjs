@@ -49,7 +49,7 @@ async function pick(p, prefer) {
     const state = JSON.parse(localStorage.getItem(key));
     return g.cards[state.combo].filter(c => can(g, state, c.p)).map(c => c.p);
   }, KEY);
-  const S = G.formations[s.manager.f].slots.map(x => x[0]);
+  const S = G.formations[s.f].slots.map(x => x[0]);
   const open = s.slots.map((c, i) => (c ? null : i)).filter(i => i !== null);
   const pool = G.cards[s.combo].filter(c => legal.includes(c.p)).sort((a, b) => b.r - a.r);
   assert.ok(pool.length, 'the revealed club must offer a legal pick');

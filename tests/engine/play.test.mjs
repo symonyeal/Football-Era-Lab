@@ -50,3 +50,23 @@ test('head to head plays one leg in each decade and its winner matches the aggre
   if (p !== q) assert.equal(x.w, p > q ? 'a' : 'b');
   else assert.ok(x.pw, 'a level tie needs penalties');
 });
+
+const v1 = (s, f) => Buffer.from(JSON.stringify({ v: 1, b: G.meta.v, D: s.D, cap: !!s.cap, m: { nm: s.manager.nm, f }, x: s.slots.map(c => [c.k, c.p]) })).toString('base64url');
+
+test('a team code carries the club spell and the formation in use, which need not be one he recorded', () => {
+  const s = Dr.form(G, done(21, 1990), '2-3-5'), t = uncode(G, code(G, s));
+  assert.deepEqual(t.m, s.manager);
+  assert.equal(t.f, '2-3-5');
+  assert.deepEqual(t.T.S.map(x => x.s), ['GK', 'CB', 'CB', 'LM', 'CDM', 'RM', 'LW', 'CF', 'ST', 'CF', 'RW']);
+  assert.deepEqual(t.slots, s.slots);
+});
+
+test('a version 1 team code still plays in the formation it names, and only a recorded one', () => {
+  const s = done(21, 1990), m = G.managers.find(m => m.nm === s.manager.nm), t = uncode(G, v1(s, m.f[0]));
+  assert.equal(t.f, m.f[0]);
+  assert.deepEqual(t.T.S.map(x => x.s), G.formations[m.f[0]].slots.map(x => x[0]));
+  const other = Object.keys(G.formations).find(f => !m.f.includes(f));
+  assert.throws(() => uncode(G, v1(s, other)), /manager or formation/);
+  const z = JSON.parse(Buffer.from(code(G, s), 'base64url').toString());
+  assert.throws(() => uncode(G, Buffer.from(JSON.stringify({ ...z, f: 'missing' })).toString('base64url')), /manager or formation/);
+});

@@ -9,7 +9,7 @@ import * as Rn from '../../app/run.js';
 
 const S = ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'ST', 'ST'].map((s, i) => [s, 10 + i * 7, 50]);
 const G = { meta: { v: 'cap-test' }, clubs: {}, people: {}, cards: {}, combos: [],
-  managers: Array.from({ length: 6 }, (_, i) => ({ nm: `Manager ${i}`, f: ['4-4-2'], ga: 'B', gd: 'B', sig: [] })),
+  managers: Array.from({ length: 6 }, (_, i) => ({ nm: `Manager ${i}`, f: ['4-4-2'], ga: 'B', gd: 'B', sig: [], t: [[`q${i}`, 1990, 1993]] })),
   formations: { '4-4-2': { slots: S } } };
 for (let q = 0; q < 6; q++) {
   const k = `q${q}:1990`;

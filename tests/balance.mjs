@@ -24,7 +24,7 @@ function draft(seed, D) {
   const s0 = Dr.start(seed, D, cap);
   const mo = Dr.opts(G, s0).map((o, i) => { const m = G.managers.find(m => m.nm === o.nm); return [GR[m.ga] + GR[m.gd], i]; });
   let s = Dr.choose(G, s0, mo.sort((a, b) => b[0] - a[0] || a[1] - b[1])[0][1]);
-  const SH = Dr.shape(G, s.manager.f), S = SH.map(x => x.s);
+  const SH = Dr.shape(G, s.f), S = SH.map(x => x.s);
   for (let n = 0; n < 5; n++) {
     s = Dr.spin(G, s);
     for (let j = 0; j < 3; j++) {

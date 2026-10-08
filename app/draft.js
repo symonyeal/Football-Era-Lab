@@ -1,11 +1,12 @@
-import { mk, hs, sh, ft, em, rate } from './engine/index.js';
+import { mk, hs, sh, ft, em, rate, move } from './engine/index.js';
 import { TI, CAP, ck, left } from './cap.js';
 import { validRun } from './run.js';
 
 // G archive; s serializable run; T hydrated team; c card; p person id; D decade;
-// k club-decade key; S formation slots; xi starting eleven; bn four bench cards.
+// k club-decade key; S formation slots; xi starting eleven; bn four bench cards;
+// s.manager the seeded team {nm, q, a}: manager, club QID, first season of the spell; s.f formation in use.
 
-export const VERSION = 2;
+export const VERSION = 3;
 export const STORE = 'football-era-lab-v2';
 export const DECADES = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
 
@@ -21,11 +22,24 @@ export function start(s, d, cap = false) {
   if (typeof cap !== 'boolean') throw new Error('Choose Salary cap or Classic draft.');
   const D = d === 'random' ? DECADES[Math.floor(mk(hs(`${s}:era`))() * 8)] : Number(d);
   if (!DECADES.includes(D)) throw new Error('Choose a decade from the eight available eras.');
-  return { v: VERSION, seed: s, D, cap, phase: 'manager', managerRoll: 0, manager: null, spin: 0, picked: 0,
+  return { v: VERSION, seed: s, D, cap, phase: 'manager', managerRoll: 0, manager: null, f: null, spin: 0, picked: 0,
     squadReroll: 0, combo: null, slots: Array(15).fill(null), history: [], season: false };
 }
 
+// Team options: five managers drawn uniformly (a seeded shuffle of those with a spell at an archive
+// club), then one of each one's archive spells uniformly. A spell is [club, first season, last season],
+// in season starts. The keys n:team:k never meet the squad draws (n:squad:...).
 export function opts(G, s) {
+  const M = sh(mk(hs(`${s.seed}:team:${s.managerRoll}`)), G.managers.filter(m => m.t?.some(([q]) => G.clubs[q])));
+  if (M.length < 5) throw new Error('The manager pool needs at least five managers with a club in the archive.');
+  return M.slice(0, 5).map(m => {
+    const T = m.t.filter(([q]) => G.clubs[q]), [q, a, b] = T[Math.floor(mk(hs(`${s.seed}:team:${s.managerRoll}:${m.nm}`))() * T.length)];
+    return { nm: m.nm, q, a, b };
+  });
+}
+
+// Version 2 options, (manager, formation) pairs: they validate saves made before club spells.
+export function opts2(G, s) {
   const Q = G.managers.flatMap(m => m.f.filter(f => G.formations[f]).map(f => ({ nm: m.nm, f })));
   const r = mk(hs(`${s.seed}:manager:${s.managerRoll}`));
   const U = sh(r, Q), I = new Set(), O = [];
@@ -38,11 +52,24 @@ export function opts(G, s) {
   return O;
 }
 
-export function choose(G, s, i) {
+// The team sets grades and signature players; f, his first recorded formation unless named, is free later.
+export function choose(G, s, i, f) {
   if (s.phase !== 'manager') throw new Error('The manager is already chosen.');
-  const m = opts(G, s)[i];
-  if (!m) throw new Error('Choose one of the five manager options.');
-  return { ...s, phase: 'draft', manager: m };
+  const o = opts(G, s)[i];
+  if (!o) throw new Error('Choose one of the five manager options.');
+  const F = f ?? G.managers.find(m => m.nm === o.nm).f.find(f => G.formations[f]);
+  shape(G, F);
+  return { ...s, phase: 'draft', manager: { nm: o.nm, q: o.q, a: o.a }, f: F };
+}
+
+// Formation change before kick-off: the same fifteen cards and counters; starters move by move(), the
+// bench stays. Draws never read s.f, so later spins are unchanged.
+export function form(G, s, f) {
+  if (!['draft', 'review'].includes(s.phase)) throw new Error(s.phase === 'manager' ? 'Choose a manager first.' : 'The formation is locked after kick-off.');
+  const B = shape(G, f), o = move(s.slots.slice(0, 11).map(c => hydrate(G, c)), shape(G, s.f), B, s.D);
+  const slots = [...Array(11).fill(null), ...s.slots.slice(11)];
+  o.forEach((j, i) => { if (j >= 0) slots[j] = s.slots[i]; });
+  return { ...s, f, slots };
 }
 
 export function reroll(s) {
@@ -154,12 +181,12 @@ export function team(G, s) {
   if (!s.manager) return null;
   const m = G.managers.find(m => m.nm === s.manager.nm);
   const Q = s.slots.map(c => hydrate(G, c));
-  return { m, S: shape(G, s.manager.f), xi: Q.slice(0, 11), bn: Q.slice(11) };
+  return { m, S: shape(G, s.f), xi: Q.slice(0, 11), bn: Q.slice(11) };
 }
 
 export function preview(G, s, p, i) {
   const c = hydrate(G, { k: s.combo, p: p });
-  const u = i < 11 ? shape(G, s.manager.f)[i].s : 'BENCH';
+  const u = i < 11 ? shape(G, s.f)[i].s : 'BENCH';
   const f = i < 11 ? ft(c, u) : { f: 0, lab: 'Bench' };
   const e = em(c.D, s.D, c.tg?.tl || 0);
   const slots = s.slots.slice(); slots[i] = { k: s.combo, p };
@@ -168,7 +195,12 @@ export function preview(G, s, p, i) {
   return { c, slot: u, ...f, e, a: v.a, b: v.b || 0, up: Q.up, gA: Q.gA, gD: Q.gD, ovr: Q.ovr, da: Q.ovr - R.ovr };
 }
 
-export function valid(G, s) {
+// A version 2 save chose a (manager, formation) pair: it keeps the pair as a legacy team
+// {nm, q: null, a: null, f0} and plays f0.
+const up = s => (s?.v === 2 ? { ...s, v: VERSION, manager: s.manager && { nm: s.manager.nm, q: null, a: null, f0: s.manager.f }, f: s.manager?.f ?? null } : s);
+
+export function valid(G, s0) {
+  const s = up(s0);
   if (!s || s.v !== VERSION) throw new Error('This saved run uses a different game version.');
   const n = seed(s.seed);
   if (s.cap !== undefined && typeof s.cap !== 'boolean') throw new Error('The saved draft cap is invalid.');
@@ -186,12 +218,16 @@ export function valid(G, s) {
     ids.add(c.p);
   }
   if (ids.size !== s.spin * 3 + s.picked) throw new Error('The saved squad does not match its draft progress.');
+  let t = null;
   if (s.phase === 'manager') {
-    if (s.manager || ids.size || s.combo || s.spin) throw new Error('The saved manager stage is invalid.');
+    if (s.manager || s.f || ids.size || s.combo || s.spin) throw new Error('The saved manager stage is invalid.');
   } else {
-    const m = G.managers.find(m => m.nm === s.manager?.nm);
-    if (!m || !m.f.includes(s.manager.f) || !G.formations[s.manager.f]) throw new Error('The saved manager or formation is unavailable.');
-    if (!opts(G, s).some(o => o.nm === s.manager.nm && o.f === s.manager.f)) throw new Error('The saved manager was not in this spin.');
+    const x = s.manager, m = G.managers.find(m => m.nm === x?.nm);
+    if (!m) throw new Error('The saved manager is unavailable.');
+    t = x.f0 !== undefined ? { nm: m.nm, q: null, a: null, f0: x.f0 } : { nm: m.nm, q: x.q, a: x.a };
+    if (t.f0 !== undefined ? !opts2(G, s).some(o => o.nm === m.nm && o.f === t.f0) : !opts(G, s).some(o => o.nm === m.nm && o.q === t.q && o.a === t.a)) throw new Error('The saved manager was not in this spin.');
+    if (typeof s.f !== 'string' || !Object.hasOwn(G.formations, s.f)) throw new Error('The saved formation is unavailable.');
+    shape(G, s.f);
   }
   if (s.combo && !G.cards[s.combo]) throw new Error('The saved club squad is unavailable.');
   if (s.skip !== undefined && (typeof s.skip !== 'string' || !G.cards[s.skip] || s.squadReroll !== 1)) throw new Error('The saved discarded club is invalid.');
@@ -206,10 +242,10 @@ export function valid(G, s) {
   for (const [k, n] of E) if ((A.get(k) || 0) !== n) throw new Error('The saved club picks are incomplete.');
   const md = s.mode || {}, rn = md.run;
   if (md.ci !== undefined && (!Number.isInteger(md.ci) || md.ci < 10 || md.ci > 20)) throw new Error('The saved circuit length is invalid.');
-  const run = rn !== undefined ? validRun(G, rn, s.manager, !!s.cap) : undefined;
+  const run = rn !== undefined ? validRun(G, rn, t, !!s.cap) : undefined;
   if ((md.ci !== undefined || rn !== undefined) && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
   if (s.wk !== undefined && !/^\d{4}-W\d{2}$/.test(s.wk)) throw new Error('The saved weekly challenge is invalid.');
-  return { v: VERSION, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: s.manager,
+  return { v: VERSION, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: t, f: t ? s.f : null,
     spin: s.spin, picked: s.picked, squadReroll: s.squadReroll, combo: s.combo,
     slots: s.slots.map(c => c ? { k: c.k, p: c.p } : null), history: s.history.slice(),
     ...(s.skip ? { skip: s.skip } : {}),

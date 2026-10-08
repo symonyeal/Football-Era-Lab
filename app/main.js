@@ -1,5 +1,5 @@
 import * as E from './engine/index.js';
-import { STORE, DECADES, start, opts, choose, reroll, spin, place, swap, team, preview, valid, used, room, can } from './draft.js';
+import { STORE, DECADES, start, opts, choose, reroll, spin, place, swap, form, team, preview, valid, used, room, can } from './draft.js';
 import { TI, CAP, ct, fits } from './cap.js';
 import { fields } from './data.js';
 import * as Rn from './run.js';
@@ -121,7 +121,7 @@ function managers() {
     return `<article class="manager-card" style="animation-delay:${i * 45}ms"><span class="manager-number">OPTION / 0${i + 1}</span>
       <div class="manager-glyph" aria-hidden="true">${esc(m.nm.split(' ').map(n => n[0]).slice(0, 2).join(''))}</div>
       <h2>${esc(m.nm)}</h2><p class="tenure">${esc(tenure(m) || 'Clubs outside this archive')}</p>
-      <div class="formation-name">${esc(o.f)}</div><div class="grades"><span>ATTACK <b>${m.ga}</b></span><span>DEFENCE <b>${m.gd}</b></span></div>
+      <p class="tenure">${esc(G.clubs[o.q].nm)} ${o.a}/${String(o.a + 1).slice(2)}–${o.b}/${String(o.b + 1).slice(2)}</p><div class="formation-name">${esc(m.f.join(' · '))}</div><div class="grades"><span>ATTACK <b>${m.ga}</b></span><span>DEFENCE <b>${m.gd}</b></span></div>
       <p class="signature">SIGNATURE PLAYERS<br>${esc(sig.length ? sig.slice(0, 3).join(' · ') : 'None in this archive')}</p>
       <button class="button" data-manager="${i}">Choose manager ↗</button></article>`;
   }).join('')}</section>`;
@@ -149,7 +149,7 @@ function lineup() {
     : sw !== null ? 'Choose another slot to swap with, or the same slot to cancel.'
       : lock ? 'Your final squad. The lineup is locked after kick-off.' : 'Select a roster player, then an empty slot. Select two filled slots to swap them.';
   const em = n === 0;
-  return `<aside class="lineup-panel" aria-label="Your lineup"><div class="lineup-topline"><span>${esc(S.manager.nm)} / ${esc(S.manager.f)}</span><span>${n} / 15 PLAYERS</span></div>
+  return `<aside class="lineup-panel" aria-label="Your lineup"><div class="lineup-topline"><span>${esc(S.manager.nm)} / <label><span class="sr-only">Formation</span><select id="formation" ${lock ? 'disabled' : ''}>${Object.keys(G.formations).map(f => `<option ${f === S.f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></label></span><span>${n} / 15 PLAYERS</span></div>
     ${budget(S)}
     <div class="pitch" id="pitch"><div class="pitch-lines"><div class="penalty-box penalty-box--top"></div><div class="penalty-box penalty-box--bottom"></div></div>${pos}</div>
     <div class="bench">${bench}</div><div class="lineup-instruction" id="lineup-instruction" role="status">${ins}</div>
@@ -255,7 +255,7 @@ function results() {
     gauntlet, more }[tab] || (() => '');
   return `${progress(3)}<section class="result-hero"><div><span class="eyebrow">THE ${S.D}s SEASON IS IN THE BOOKS</span>
       <h1>${i === 0 && cup ? 'A TEAM FOR THE AGES.' : i === 0 ? 'TOP OF THE LEAGUE.' : cup ? 'KINGS OF EUROPE.' : 'YOUR ERA. YOUR STORY.'}</h1>
-      <p>${rules(S)} · ${esc(S.manager.nm)}'s ${esc(S.manager.f)} finished ${ord(i + 1)} of 20. ${cup ? 'Your fifteen won the European Cup.' : `The European Cup went to ${esc(R.K.champN)}.`}</p>
+      <p>${rules(S)} · ${esc(S.manager.nm)}'s ${esc(S.f)} finished ${ord(i + 1)} of 20. ${cup ? 'Your fifteen won the European Cup.' : `The European Cup went to ${esc(R.K.champN)}.`}</p>
       <div class="honours">${hon.map(h => `<span class="honour">${esc(h)}</span>`).join('')}</div></div>
     <div class="result-metrics"><div><span>League place</span><b>${i + 1}<small> / 20</small></b></div><div><span>Points</span><b>${t.Pts}</b></div><div><span>Won · drawn · lost</span><b class="wdl">${t.W}·${t.D}·${t.L}</b></div><div><span>Best unbeaten run</span><b>${R.L.unbeaten}<small> games</small></b></div></div></section>
   <div class="results-tabs" role="tablist" aria-label="Season results">${T.map(([v, l]) => `<button role="tab" data-tab="${v}" aria-selected="${tab === v}" aria-controls="result-panel" id="tab-${v}">${l}</button>`).join('')}</div>
@@ -416,7 +416,7 @@ async function play() {
 }
 function share() {
   const i = R.L.tab.findIndex(c => c.me), t = R.L.tab[i];
-  return `Football Era Lab · ${S.wk ? `Weekly ${S.wk} · ` : ''}${rules(S)} · ${S.D}s\n${ord(i + 1)} / 20 · ${t.Pts} points · ${t.W}W ${t.D}D ${t.L}L\nEuropean Cup: ${R.K.champ === 'your-club' ? 'WINNERS' : R.K.champN}\n${S.manager.nm} · ${S.manager.f}\nSeed ${S.seed} · ${location.href.split('?')[0]}?seed=${S.seed}&era=${S.D}&cap=${S.cap ? 1 : 0}`;
+  return `Football Era Lab · ${S.wk ? `Weekly ${S.wk} · ` : ''}${rules(S)} · ${S.D}s\n${ord(i + 1)} / 20 · ${t.Pts} points · ${t.W}W ${t.D}D ${t.L}L\nEuropean Cup: ${R.K.champ === 'your-club' ? 'WINNERS' : R.K.champN}\n${S.manager.nm} · ${S.f}\nSeed ${S.seed} · ${location.href.split('?')[0]}?seed=${S.seed}&era=${S.D}&cap=${S.cap ? 1 : 0}`;
 }
 function download() {
   const b = new Blob([JSON.stringify({ game: 'Football Era Lab', data: G.meta.v, draft: S, result: share() }, null, 2)], { type: 'application/json' });
@@ -437,7 +437,7 @@ async function card() {
   tx(`${ord(i + 1)} / 20`, 53, 260, 94, '#152e28', 'Impact', 390); tx('LEAGUE FINISH', 58, 293, 18, '#67776a', 'Consolas');
   tx(`${t.Pts} POINTS`, 490, 216, 44, '#152e28', 'Impact'); tx(`${t.W} WINS · ${t.D} DRAWS · ${t.L} LOSSES`, 490, 257, 21);
   tx(R.K.champ === 'your-club' ? 'EUROPEAN CUP WINNERS' : `CUP WINNERS: ${R.K.champN}`, 490, 295, 25, '#152e28', 'Impact', 650);
-  tx(`${S.manager.nm} / ${S.manager.f}`, 55, 364, 29, '#152e28', 'Georgia', 1090);
+  tx(`${S.manager.nm} / ${S.f}`, 55, 364, 29, '#152e28', 'Georgia', 1090);
   tx('STARTING ELEVEN', 55, 412, 18, '#67776a', 'Consolas'); tx('THE BENCH', 705, 412, 18, '#67776a', 'Consolas');
   const TC = { S: '#6b3fd6', A: '#946a06', B: '#1f7a49', C: '#2c5fa8', D: '#94501a' };
   Q.xi.forEach((p, j) => { const t = TI(p.c.r); tx(p.s, 55, 449 + j * 30, 18, '#67776a', 'Consolas'); tx(p.c.nm, 125, 449 + j * 30, 23, '#152e28', 'Georgia', 450); tx(Math.round(p.a), 590, 449 + j * 30, 25, TC[t], 'Impact'); tx(t, 630, 449 + j * 30, 16, TC[t], 'Consolas'); });
@@ -466,6 +466,7 @@ root.addEventListener('change', async e => {
   if (e.target.name === 'draft-rules') cap = e.target.value === 'cap';
   if (e.target.id === 'roster-sort') { sort = e.target.value; $('#roster-list').innerHTML = rows(); }
   if (e.target.id === 'circuit-events') ev = Number(e.target.value);
+  if (e.target.id === 'formation') { try { change(form(G, S, e.target.value), `Formation ${e.target.value}.`); } catch (x) { notice(x.message, true); } }
   if (e.target.dataset.fa !== undefined) {
     const j = Number(e.target.dataset.fa), s = S.mode.run, x = signing(s, Rn.offers(G, F, s)[j], Number($(`#fa-pick-${j}`).value), Number($(`#fa-slot-${j}`).value));
     $(`#fa-price-${j}`).textContent = x.tx; $(`[data-take="${j}"]`).disabled = !x.ok;
