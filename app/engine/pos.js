@@ -54,6 +54,10 @@ const lb = f => (f <= 0.02 ? 'Natural' : f < 0.075 ? `Adapted -${Math.round(f * 
 
 export const VS = [1, 0.5, 0];
 
+// r <- r + d, preserving sr_j/r and hence position fit.
+export const shift = (c, d) => d ? { ...c, r: c.r + d,
+  ...(c.sr ? { sr: c.sr.map(a => a * (c.r + d) / c.r) } : {}) } : c;
+
 const ft0 = (c, s) => {
   const j = SL.indexOf(s);
   if (c && Array.isArray(c.sr) && c.sr.length === SL.length && j >= 0 && c.r > 0) {

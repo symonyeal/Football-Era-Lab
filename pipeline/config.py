@@ -22,9 +22,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WORK = ROOT.parents[2] / "Claude Func Folder" / "football-v2"
-if not WORK.parent.exists():
-    WORK = ROOT / "work" / "pipeline"
+WORK = ROOT / "work" / "pipeline"
 CACHE = Path(os.environ.get("FEL_CACHE", WORK / "cache"))
 INP = Path(os.environ.get("FEL_INPUTS", WORK / "inputs"))
 OUT = ROOT / "data"

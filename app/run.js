@@ -1,4 +1,4 @@
-import { mk, hs, sh, play, P, tie } from './engine/index.js';
+import { mk, hs, sh, play, P, tie, shift } from './engine/index.js';
 import { hydrate, shape, draw, key } from './draft.js';
 import { TI, GCAP, fits, ck } from './cap.js';
 export { TI, CAP, GCAP } from './cap.js';
@@ -111,7 +111,7 @@ export function runTeam(G, s) {
   const Q = s.slots.map((r, i) => {
     const c = hydrate(G, r), t = s.tags[r.p], d = (s.mv?.[r.p] || 0) + term(s, r.p, i);
     const x = t ? { ...c, tg: { ...c.tg, ...t } } : c;
-    return d ? { ...x, r: x.r + d, ...(x.sr ? { sr: x.sr.map(a => a * (x.r + d) / x.r) } : {}) } : x;
+    return shift(x, d);
   });
   return { m, S: shape(G, s.m.f), xi: Q.slice(0, 11), bn: Q.slice(11), lk: s.badge?.glue ? 1.5 : 1, gs: s.badge?.mgr || 0 };
 }

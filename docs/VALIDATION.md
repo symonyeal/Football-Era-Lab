@@ -41,7 +41,7 @@ node tests/browser/acceptance.cjs --output /path/to/persistent/results --url htt
 
 If Playwright is installed elsewhere, add `--playwright /path/to/playwright`. To use installed Microsoft Edge, add `--channel msedge`. The chosen output folder receives `acceptance.json`, screenshots, replays and result images. GitHub's workflow runs the same checks in Chromium and preserves those outputs as the `browser-checks` artifact. The harness can test the public site by changing `--url` to `https://symonyeal.github.io/Football-Era-Lab/`.
 
-On the Windows development machine, output and browser scratch belong in `Claude Func Folder\football-v2\`. Set `TEMP` and `TMP` to a persistent subfolder there before launching the browser.
+Choose an output folder outside the tracked source tree, or inside the ignored `work/` folder.
 
 ## The goal model beats a home-and-away average
 
@@ -146,7 +146,7 @@ Capped runs earn 1.5 times the score, as in Eraball. The opening capped draft ca
 
 [validation.json](../data/validation.json) names the exact bundle by its SHA-256 file fingerprint. [manifest.json](../data/manifest.json) records attribution and unresolved links, and [calibration.json](../data/calibration.json) records the goal fit and fixture coverage. The notebook calculates its counts and hash from the file it loads.
 
-Development browser evidence is kept in `Claude Func Folder\football-v2\cap-resume-20261007\browser\`; the balance outputs are `cap-resume-20261007\final-*.txt` and the setting comparison `sweep-*.txt`. Those local artifacts are not supplied with the repository. The portable commands above generate fresh records in the output folder you choose.
+The browser workflow preserves fresh records in its `browser-checks` artifact. The portable commands above generate local records in the output folder you choose; machine-specific development artifacts are not part of the repository.
 
 Early-era estimates extend a model fitted to engine-rated cards from 1989 to 2025. Their errors measure resemblance to those games' ratings, not real historical ability. Missing squad members, incorrect club-name joins, decade-wide membership and estimated positions can affect results. The shipped bundle retains the nearby-source boundary rule described in [DATA.md](DATA.md#the-source-label-explains-what-rated-a-card); the pipeline now measures distance from the full spell interval for future rebuilds. The regressions establish that selection rule, not a change to the bundled cards. Additional unmeasured effects are listed in [MODEL.md](MODEL.md#what-the-model-leaves-out).
 

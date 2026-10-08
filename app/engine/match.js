@@ -23,6 +23,7 @@ import { poi } from './rng.js';
 import { rate, W, wK } from './rate.js';
 import { av } from './xi.js';
 import { DS } from './era.js';
+import { shift } from './pos.js';
 
 export const P = {
   be: 0.55, ka: 0.25, h: 0.12, pa: 0.05, fat: 0.04, m1: 60, m2: 75, ns: 3,
@@ -76,11 +77,7 @@ export const avail = (r, T, Ds, id = 'team') => {
 };
 
 export const SS = [0, 3, 5];
-const ssOn = c => {
-  if (!c?.tg?.ss) return c;
-  const r = c.r + SS[c.tg.ss];
-  return { ...c, r, ...(c.sr ? { sr: c.sr.map(a => a * r / c.r) } : {}) };
-};
+const ssOn = c => c?.tg?.ss ? shift(c, SS[c.tg.ss]) : c;
 
 export const sub = (T, R, Ds, n = P.ns, m = P.m1) => {
   const xi = T.xi.slice(), bn = T.bn.slice(), ev = [];

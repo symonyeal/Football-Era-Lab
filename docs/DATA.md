@@ -106,7 +106,7 @@ The published browser game uses the supplied data. Rebuilding requires the Pytho
 python -m pip install -r requirements-analytics.txt
 ```
 
-Set `FEL_INPUTS` to the persistent raw-input folder and `FEL_CACHE` to the persistent source and build cache. The development machine uses `Claude Func Folder\football-v2\inputs` and `Claude Func Folder\football-v2\cache` under the shared workspace. Elsewhere, the default is the repository's ignored `work/pipeline/` folder. Keep raw archives, cached pickle files and secrets out of commits. Read only pickle caches you trust.
+The default raw-input and cache folders are `work/pipeline/inputs/` and `work/pipeline/cache/`, both ignored by Git. Set `FEL_INPUTS` or `FEL_CACHE` to use an existing persistent folder elsewhere. Keep raw archives, cached pickle files and secrets out of commits. Read only pickle caches you trust.
 
 | File under `FEL_INPUTS` | Required contents |
 | --- | --- |
