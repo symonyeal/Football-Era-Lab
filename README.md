@@ -1,16 +1,16 @@
 # Football Era Lab
 
-Football Era Lab is a draft game about building a team across generations. Maradona's Napoli card can play alongside Messi's Barcelona card, but you still have to find a goalkeeper, fill the manager's formation, leave four useful substitutes on the bench and stay inside a salary cap that allows only two S-tier stars. The team then plays a season against the leading club squads of your chosen decade.
+Football Era Lab is a draft game about building a team across generations. Maradona's Napoli card can play alongside Messi's Barcelona card, but you still have to find a goalkeeper, fill your chosen formation, leave four useful substitutes on the bench and stay inside a salary cap that allows only two S-tier stars. The team then plays a season against the leading club squads of your chosen decade.
 
 [Play in your browser](https://symonyeal.github.io/Football-Era-Lab/). The game uses bundled data and needs no account, API key, package installation or separate source downloads.
 
-![A capped draft's fourth squad: Manchester United's 1970s roster with George Best, Bobby Charlton and Denis Law blocked because the S-tier and A-tier places are full, beside a mixed-era team in Don Revie's 4-4-2.](docs/images/football-era-lab.png)
+![Lineup review before kick-off: fifteen drafted players, salary-cap allowances and formation controls.](docs/images/football-era-lab.png)
 
 ## Five clubs supply your fifteen players
 
 Start by choosing where the season takes place: one of eight decades from the 1950s to the 2020s. This sets the opposition and the conditions your players will face. It leaves the draft open to every era.
 
-The first draw gives you five manager and formation combinations. You can re-spin twice before keeping one. The formation fixes the eleven starting positions you must fill; the manager also has attacking and defensive grades, and selecting one of his signature players improves those grades.
+The first draw gives you five managers, each paired with a recorded spell at a club. You can re-spin twice before keeping one. Choose the formation independently and change it during the draft or before kick-off; it sets the eleven starting positions you must fill. The manager has attacking and defensive grades, and selecting one of his signature players improves those grades.
 
 Then you draw five club squads and choose three players from each. A squad belongs to a club and a decade, such as Napoli in the 1980s. Every available player from that squad appears in the roster. Click a player, then an empty place on the pitch or bench. You have one squad re-spin for the whole draft, usable before making a pick from that draw.
 
@@ -22,11 +22,11 @@ A footballer may have several cards at different clubs or ages. Those cards are 
 
 A new draft uses a salary cap modelled on Eraball's Salary Cap Draft. Every card has a tier set by its base rating: S at 90 or above, A from 85, B from 80, C from 75 and D below that. Your fifteen must finish with exactly two S-tier players, four A, four B, three C and two D. Substitutes count, so a star cannot be parked on the bench for free. Eraball fills nine places with two S, two A, two B, two C and one D; the fifteen-place version is this game's adaptation.
 
-In the picture above, the fourth draw is Manchester United in the 1970s, with George Best rated 90 and Bobby Charlton and Denis Law at A tier. This team spent its two S places on Zidane and Lizarazu and already has four A-tier players, so all three United greats are blocked, and the roster says why.
+For example, Manchester United's 1970s squad includes George Best rated 90 and Bobby Charlton and Denis Law at A tier. If your two S and four A places are already full, all three are blocked, and the roster says why.
 
 As in Eraball, every squad offers a player from the best tier you still need, starting with S, whenever a club you have not drafted from has one. A card is also blocked if taking it would leave too few affordable players at that club to finish your three picks from it. Test drafts that saved the S places for last, or took the cheapest players first, always finished.
 
-The cap makes the modern decades hard to win. In testing, an automatic drafting policy won 7.2% of capped seasons, and every one of those titles came in a season set in the 1950s to 1970s. Classic, which removes the tier limits but keeps the same draws, won 12.8%. The [model document](docs/MODEL.md#the-salary-cap-limits-stars-across-the-whole-squad) gives the full cap rules, and [validation](docs/VALIDATION.md#draft-difficulty-varies-by-decade) the results decade by decade.
+In testing over 800 seasons per set of rules, an automatic drafting policy using each manager's initial formation won 6.8% under the cap and 13.1% under Classic, which removes tier limits but keeps the same draws. Choosing the formation with the highest squad overall after drafting raised those rates to 7.5% and 14.9%. These rates measure one automatic policy. The [model document](docs/MODEL.md#the-salary-cap-limits-stars-across-the-whole-squad) gives the full cap rules, and [validation](docs/VALIDATION.md#draft-difficulty-varies-by-decade) the results decade by decade.
 
 ## The card belongs to a player, a club and a decade
 
@@ -60,7 +60,7 @@ The board starts with 8 patience, with a maximum of 20. Good rounds earn more; p
 
 Rewards offer free agents, player or team development, and rest. A prime-card boost upgrades an existing player to that same person's highest-rated card in the archive. Development can improve the manager, strengthen teammate links, reduce position or era losses, or train a player's role. Ordinary prices rise as the run advances; below 5 patience, cut-price stars may offer a way back. Rest recovers 2 patience, then 1, then none when repeated.
 
-After each boss win before the final decade, a free transfer window offers players from the decade you leave and the one you enter. Sign two from each, release four different squad members, then rearrange the lineup before continuing. A capped run allows at most two S-tier and four A-tier charges across the fifteen; a boosted player keeps his original tier charge. The final score rewards cleared decades, round results and remaining patience, with a 1.5 multiplier under the cap. [MODEL.md](docs/MODEL.md#era-gauntlet) gives the prices, development catalogue, negotiation terms and score calculation.
+After each boss win before the final decade, a free transfer window offers players from the decade you leave and the one you enter. Sign two from each, release four different squad members, then change formation or rearrange the lineup before continuing. Formation changes in the Gauntlet are available only at this stage between decades. A capped run allows at most two S-tier and four A-tier charges across the fifteen; a boosted player keeps his original tier charge. The final score rewards cleared decades, round results and remaining patience, with a 1.5 multiplier under the cap. [MODEL.md](docs/MODEL.md#era-gauntlet) gives the prices, development catalogue, negotiation terms and score calculation.
 
 ## Take the same squad into other competitions
 
@@ -132,4 +132,4 @@ GitHub's workflow also executes the notebook. Browser checks and balance command
 
 The [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1) preserves the earlier Python game, notebook, career, rooms, mini-games and reports. Its saves and competitive profiles have a different format and no automatic migration. Its test commands apply to that version.
 
-The [code licence](LICENSE) is MIT. Source data retains its own terms; [DATA.md](docs/DATA.md#source-attribution-and-terms) and [data/manifest.json](data/manifest.json) record them. Raw rating archives, CM databases and GPL results files remain local. Publisher declarations do not establish rights to every underlying game asset. No player portraits, card artwork or club badges are bundled. This independent project is unaffiliated with Eraball, EA, FIFA, Konami, Wikidata or the data publishers.
+The [code licence](LICENSE) is MIT. Bundled Barlow fonts use the [SIL Open Font License](app/fonts/OFL.txt). Source data retains its own terms; [DATA.md](docs/DATA.md#source-attribution-and-terms) and [data/manifest.json](data/manifest.json) record them. Raw rating archives, CM databases and GPL results files remain local. Publisher declarations do not establish rights to every underlying game asset. No player portraits, card artwork or club badges are bundled. This independent project is unaffiliated with Eraball, EA, FIFA, Konami, Wikidata or the data publishers.

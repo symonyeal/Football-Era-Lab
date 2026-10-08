@@ -1,9 +1,10 @@
 // Balance measurement (not part of the test suite): sensible drafts play seasons or whole Gauntlet runs.
-//   node tests/balance.mjs season [drafts per decade=40] [cap|classic]
-//   node tests/balance.mjs gauntlet [runs=40] [keep=5] [cap|classic] [map=original]
+//   node tests/balance.mjs season [drafts per decade=40] [cap|classic] [free]
+//   node tests/balance.mjs gauntlet [runs=40] [keep=5] [cap|classic] [free] [map=original]
 // A sensible draft takes the best-graded of the five managers, then for each pick the legal card and
 // open slot with the highest slot-rated, era-adjusted value plus the club links it would earn. Rules
-// default to Salary cap, the browser default. In the Gauntlet it takes a boost card only when at
+// default to Salary cap, the browser default. With `free`, the finished draft moves to the formation
+// that maximises its overall (Dr.form keeps every card and the bench). In the Gauntlet it takes a boost card only when at
 // least `keep` patience remains after paying, else rests or takes affordable development. Transfers
 // choose the two lowest-rated offers from each decade, releasing cap charges as required.
 import { readFileSync } from 'node:fs';
@@ -16,8 +17,9 @@ import { ct, TI, GCAP } from '../app/cap.js';
 const G = JSON.parse(readFileSync(new URL('../data/game.json', import.meta.url), 'utf8'));
 if (G.params) E.cfg(G.params);
 const F = fields(G), GR = { S: 0.04, A: 0.03, B: 0.015, C: 0, D: -0.015, F: -0.03 };
-const A = process.argv.slice(2), cap = !A.includes('classic'), rules = cap ? 'Salary cap' : 'Classic';
-const [mode = 'season', a1, a2, map = 'original'] = A.filter(x => !['cap', 'classic'].includes(x));
+const A = process.argv.slice(2), cap = !A.includes('classic'), free = A.includes('free');
+const rules = `${cap ? 'Salary cap' : 'Classic'}${free ? ', free formation' : ''}`;
+const [mode = 'season', a1, a2, map = 'original'] = A.filter(x => !['cap', 'classic', 'free'].includes(x));
 const q = (a, f) => a.slice().sort((x, y) => x - y)[Math.floor(f * (a.length - 1))];
 
 function draft(seed, D) {
@@ -42,7 +44,9 @@ function draft(seed, D) {
       s = Dr.place(G, s, b.p, b.i);
     }
   }
-  return s;
+  if (!free) return s;
+  const v = t => E.rate(Dr.team(G, t), D).ovr;
+  return Object.keys(G.formations).map(f => Dr.form(G, s, f)).reduce((a, b) => (v(b) > v(a) ? b : a));
 }
 
 if (mode === 'season') {

@@ -4,7 +4,7 @@ The checks answer several different questions: whether the game follows its rule
 
 ## The rules are checked automatically
 
-The release passed 85 Node tests and 30 Python tests: 23 pipeline tests, 3 identity-batch tests and 4 calibration tests, with four additional pipeline subtests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet maps, four-round acts, rewards, same-person boosts, two-legged boss ties, retries, transfers, development and valid or malformed saved runs.
+The release passed 108 Node tests and 30 Python tests: 23 pipeline tests, 3 identity-batch tests and 4 calibration tests, with four additional pipeline subtests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet maps, four-round acts, rewards, same-person boosts, two-legged boss ties, retries, transfers, development and valid or malformed saved runs. Formation tests require changes to preserve cards, the bench and future draws; manager tests retain exact club spells and accept legacy saves and team codes. Interface tests check surname particles and text and focus contrast against the declared surfaces.
 
 The salary-cap tests check the exact tier boundaries, that a third S-tier card is refused even on the bench, that every allowed pick leaves the club's three picks completable, and that saves, replays, team codes and Gauntlet signings keep the rule. Drafts on the bundled data finish with exactly 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs in every decade. Other tests require draws to follow the declared weights, every club to remain drawable, a squad to offer the best tier still needed, a ruled-out club to leave every other draw on the same seed unchanged, and each hard end-of-draft need to have more supplier clubs than a draft can rule out.
 
@@ -27,11 +27,13 @@ The data validator reported zero failures for its structural rules. The export h
 
 ## The browser checks cover a complete playthrough
 
-Desktop at 1440 × 900 and mobile at 390 × 844 passed 44 checks, 22 at each size, with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
+Desktop at 1440 × 900, mobile at 390 × 844, tablet at 768 × 1024 and reduced motion passed 56 checks: 27 desktop playthrough checks, 25 mobile, one tablet, one reduced-motion and two additional regressions. No run reported a page or console error, failed HTTP response or horizontal page overflow.
 
-Each confirmed that the salary cap is selected by default and that the rules choice survives an era change. Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, four Gauntlet rounds, rewards and a two-legged boss. The capped draft finished with 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs, the tier counts survived a reload, and blocked cards showed their reasons. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft. Head to Head refused a Classic code against a capped team, a Classic replay link started a Classic draft, and the Weekly Challenge started under the salary cap even after Classic had been chosen.
+The desktop and mobile playthroughs confirmed that the salary cap is selected by default and that the rules choice survives an era change. Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, four Gauntlet rounds, rewards and a two-legged boss. The capped draft finished with 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs, the tier counts survived a reload, and blocked cards showed their reasons. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft. Head to Head refused a Classic code against a capped team, a Classic replay link started a Classic draft, and the Weekly Challenge started under the salary cap even after Classic had been chosen.
 
-Both runs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These local runs cover Microsoft Edge at two screen sizes, not every browser or every possible sequence of choices.
+Both playthroughs changed formation mid-batch, applied the preview, undid and redid it, and resumed with identical cards, bench and counters. Gauntlet controls changed formation between decades and retained every card. The extra regressions require resolving a formation preview before kick-off and allow a phone keyboard to select and place a substitute when all eleven starting places are filled; the fit filter retains cards that fit the empty bench. Desktop checks keep the manager name, club spell and grades inside their panel. Tablet checks place a card through its sheet without covering the pitch or bench. Reduced motion reveals a squad immediately and removes the reveal animation.
+
+Both playthroughs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These local runs cover Microsoft Edge at three screen sizes, not every browser or every possible sequence of choices.
 
 To reproduce them, serve the repository root, install Playwright and Chromium, and run:
 
@@ -66,48 +68,62 @@ Club-name matches restrict fixture coverage. Unmatched fixtures are excluded fro
 
 ## Draft difficulty varies by decade
 
-One automatic drafting policy played forty seeds per decade, 1000 through 1039, under each set of rules, with `tau=20` and `rho=1.5`. It kept the best-graded manager among the five offered. At each pick it selected, among the cards the rules allowed, the highest position- and era-adjusted value in an open place, adding the nearby same-club points it would gain; bench candidates received a 0.92 weight.
+One automatic drafting policy played one hundred seeds per decade, 1000 through 1099, under each set of rules, with `tau=20` and `rho=1.5`. It kept the best-graded manager among the five offered and his first recorded formation. At each pick it selected, among the cards the rules allowed, the highest position- and era-adjusted value in an open place, adding the nearby same-club points it would gain; bench candidates received a 0.92 weight.
 
 This is a declared computer policy, not a measurement of human players. It does not plan ahead for the cap, optimize manager re-spins, squad re-spins or duo partnerships. Reproduce it with:
 
 ```text
-node tests/balance.mjs season 40 cap
-node tests/balance.mjs season 40 classic
+node tests/balance.mjs season 100 cap
+node tests/balance.mjs season 100 classic
 ```
 
 Under the salary cap:
 
-| Decade | Median finish | Titles / 40 | Top four / 40 | Median points | Unbeaten / 40 |
+| Decade | Median finish | Titles / 100 | Top four / 100 | Median points | Unbeaten / 100 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 1950s | 3 | 11 | 33 | 85 | 1 |
-| 1960s | 3 | 8 | 27 | 77 | 0 |
-| 1970s | 4 | 4 | 20 | 70 | 0 |
-| 1980s | 6 | 0 | 12 | 65 | 0 |
-| 1990s | 8 | 0 | 3 | 62 | 0 |
-| 2000s | 14 | 0 | 0 | 45 | 0 |
-| 2010s | 12 | 0 | 0 | 52 | 0 |
-| 2020s | 10 | 0 | 0 | 55 | 0 |
+| 1950s | 2 | 32 | 87 | 87 | 0 |
+| 1960s | 4 | 9 | 54 | 74 | 0 |
+| 1970s | 5 | 12 | 44 | 70 | 0 |
+| 1980s | 7 | 1 | 17 | 63 | 0 |
+| 1990s | 9 | 0 | 2 | 58 | 0 |
+| 2000s | 14 | 0 | 0 | 44 | 0 |
+| 2010s | 11 | 0 | 1 | 52 | 0 |
+| 2020s | 9 | 0 | 0 | 54 | 0 |
 
 Under Classic:
 
-| Decade | Median finish | Titles / 40 | Top four / 40 | Median points | Unbeaten / 40 |
+| Decade | Median finish | Titles / 100 | Top four / 100 | Median points | Unbeaten / 100 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 1950s | 2 | 16 | 37 | 87 | 1 |
-| 1960s | 3 | 10 | 31 | 79 | 0 |
-| 1970s | 4 | 11 | 26 | 77 | 0 |
-| 1980s | 5 | 3 | 17 | 71 | 0 |
-| 1990s | 7 | 0 | 7 | 68 | 0 |
-| 2000s | 12 | 1 | 6 | 53 | 0 |
-| 2010s | 9 | 0 | 10 | 58 | 0 |
-| 2020s | 7 | 0 | 3 | 64 | 0 |
+| 1950s | 2 | 45 | 94 | 91 | 2 |
+| 1960s | 3 | 26 | 74 | 79 | 0 |
+| 1970s | 3 | 26 | 66 | 78 | 0 |
+| 1980s | 5 | 5 | 45 | 71 | 0 |
+| 1990s | 6 | 1 | 21 | 68 | 0 |
+| 2000s | 12 | 1 | 5 | 52 | 0 |
+| 2010s | 9 | 0 | 18 | 59 | 0 |
+| 2020s | 7 | 1 | 12 | 64 | 0 |
 
-The policy won 23 of 320 capped seasons, or 7.2%, and 41 of 320 Classic seasons, or 12.8%. Both aggregates are within the chosen 5% to 15% title target; the previous release, with Classic rules only, measured 42 of 320. Each rule set produced one unbeaten season, both in the 1950s. For forty runs, the harness reports the lower of the two middle observations in the sorted list as its median.
+The policy won 54 of 800 capped seasons, or 6.8%, and 105 of 800 Classic seasons, or 13.1%. Both aggregates are within the chosen 5% to 15% title target. Classic produced two unbeaten seasons in the 1950s; the capped policy produced none. With an even sample size, the harness reports the lower of the two middle observations in the sorted list as its median.
 
-The cap's titles all came in the 1950s to 1970s. The capped squad's median rating stayed between 85.0 and 86.2 in every decade, while the median of the nineteen opponents rose from 79.7 in the 1950s to 85.5 to 90.6 from the 1980s onwards. Classic squads reached 86.3 to 88.4. Zero titles in forty drafts of a decade does not establish that the decade cannot be won. Better selections, deliberate partnerships or use of re-spins remain outside what this policy measures.
+All but one capped title came in the 1950s to 1970s; the remaining title came in the 1980s. The capped squad's median rating stayed between 84.8 and 85.9 in every decade, while the median of the nineteen opponents rose from 79.7 in the 1950s to 85.5 to 90.6 from the 1980s onwards. Classic squads reached 86.7 to 88.2. Zero titles in one hundred drafts of a decade does not establish that the decade cannot be won. Better selections, deliberate partnerships or use of re-spins remain outside what this policy measures.
+
+Repeating the same seeds with `free` chooses the highest-overall formation after drafting. Every candidate is applied through the game's formation function, which keeps all fifteen cards and the bench. It does not optimize picks for a future formation or choose by season outcome.
+
+```text
+node tests/balance.mjs season 100 cap free
+node tests/balance.mjs season 100 classic free
+```
+
+| Rules | Initial formation, titles / 800 | Free formation, titles / 800 |
+| --- | ---: | ---: |
+| Salary cap | 54 (6.8%) | 60 (7.5%) |
+| Classic | 105 (13.1%) | 119 (14.9%) |
+
+Free formation raised median squad overall by 0.0 to 0.3 points across the decades. The title rates stayed within the chosen target without changing engine parameters. This comparison measures this policy on these seeds, not the best possible play.
 
 ## The spin settings trade variety against strength
 
-Lower `tau` sends more spins to the strongest squads, which makes a team stronger and the draws more repetitive. The tier guarantee keeps stars within reach when the weighting is flatter. Each row below is the same policy over 160 drafts, twenty seeds per decade:
+Lower `tau` sends more spins to the strongest squads, which makes a team stronger and the draws more repetitive. The tier guarantee keeps stars within reach when the weighting is flatter. The following earlier experiment used the manager-and-formation draw before club spells became the manager choices. Each row below is the same policy over 160 drafts, twenty seeds per decade:
 
 | Draw rule | Capped titles | Classic titles | Clubs seen, capped | Most frequent club, capped |
 | --- | ---: | ---: | ---: | --- |
@@ -135,10 +151,10 @@ The final argument selects the map; `back`, `odyssey` and `reverse` are also sup
 
 | Decades cleared | 0 | 1 | 2 | 3 |
 | --- | ---: | ---: | ---: | ---: |
-| Salary cap runs | 8 | 26 | 6 | 0 |
-| Classic runs | 4 | 33 | 3 | 0 |
+| Salary cap runs | 16 | 22 | 1 | 1 |
+| Classic runs | 6 | 32 | 1 | 1 |
 
-Both rule sets cleared a median of one decade and played a median of three boss ties. Median points per six-match round were ten under the salary cap and eleven under Classic. No run under either rule set cleared all three decades.
+Both rule sets cleared a median of one decade and played a median of three boss ties. Median points per six-match round were ten under the salary cap and eleven under Classic. One run under each rule set cleared all three decades.
 
 Capped runs earn 1.5 times the score, as in Eraball. The opening capped draft carries three C-tier and two D-tier players; later signings can change those counts within the S- and A-tier limits. Fatigue and absences bring substitutes into matches. These results describe one reward and transfer policy on the shortest three-decade map under the current patience and opposition rules. They do not establish human success rates, the difficulty of the other maps, or the results of planning transfers, rearranging the lineup or choosing different rewards.
 

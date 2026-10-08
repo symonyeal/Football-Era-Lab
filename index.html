@@ -2,26 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#102823">
-  <meta name="description" content="Draft footballers across eight decades, place your fifteen, and take on the strongest club squads of your era in a league, a European Cup and the Era Gauntlet.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070B14">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Choose a manager at one of his clubs, draft fifteen players from five historical club squads across eight decades, set any formation, and play a season against the strongest clubs of your era.">
   <title>Football Era Lab</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23102823'/%3E%3Ctext x='32' y='48' text-anchor='middle' font-size='48' fill='%23d7f86c'%3E✦%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070B14'/%3E%3Ccircle cx='32' cy='32' r='16' fill='%23FFE9A8'/%3E%3Ccircle cx='27' cy='27' r='6' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preload" href="./app/fonts/barlow-condensed-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./app/fonts/barlow-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./app/style.css">
 </head>
 <body>
-  <a class="skip-link" href="#game">Skip to game</a>
-  <header class="masthead">
-    <a class="brand" href="./" aria-label="Football Era Lab home"><span class="brand-ball" aria-hidden="true">✦</span><span>FOOTBALL<br><b>ERA LAB</b></span></a>
-    <span class="masthead-caption">THE BEAUTIFUL GAME.<br>EIGHT DECADES. YOUR ELEVEN.</span>
-    <div class="masthead-tools"><button class="text-button" id="about-open">How it works</button><button class="text-button" id="reset-open" hidden>New draft ↻</button></div>
+  <a class="skip" href="#game">Skip to the game</a>
+  <header class="bar">
+    <a class="brand" href="./" aria-label="Football Era Lab home"><span class="orb" aria-hidden="true"></span><span>Football Era Lab</span></a>
+    <nav id="steps" class="steps" aria-label="Draft progress"></nav>
+    <div class="bar-tools"><span id="run-meta" class="run-meta"></span>
+      <button class="btn q sm" type="button" id="undo" hidden disabled aria-keyshortcuts="Control+Z">Undo</button>
+      <button class="btn q sm" type="button" id="redo" hidden disabled aria-keyshortcuts="Control+Shift+Z">Redo</button>
+      <button class="btn q sm" type="button" id="about-open">How it works</button>
+      <button class="btn q sm" type="button" id="reset-open" hidden>New draft</button></div>
   </header>
-  <div class="status-band"><span><i class="status-dot"></i> HISTORICAL SQUADS · REAL CHOICES</span><span id="data-status">LOADING THE ARCHIVE</span></div>
-  <main id="game" tabindex="-1"><div class="loading"><span class="loading-ball" aria-hidden="true">✦</span><h1>Opening the archive…</h1><p>Football history is on its way.</p></div></main>
+  <main id="game" tabindex="-1"><div class="loading"><span class="orb big" aria-hidden="true"></span><h1>Opening the archive</h1><p>52,976 cards from eight decades are on their way.</p></div></main>
   <div id="notice" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="about-dialog" class="dialog"><form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form><div id="about-content"></div></dialog>
-  <dialog id="reset-dialog" class="dialog"><h2>Start a new draft?</h2><p>Your current run is saved in this browser. Starting again replaces it.</p><div class="actions"><button id="reset-confirm" class="button">Start again</button><button id="reset-cancel" class="button button--quiet">Keep this run</button></div></dialog>
-  <footer class="footer"><span>FOOTBALL ERA LAB</span><span>Ratings come from EA and Championship Manager data where it exists; results are simulated.</span><a href="https://github.com/symonyeal/Football-Era-Lab/blob/main/docs/DATA.md">Sources &amp; coverage ↗</a></footer>
+  <dialog id="reset-dialog" class="dialog"><h2>Start a new draft?</h2><p>Your current run is saved in this browser. Starting again replaces it.</p><div class="row"><button id="reset-confirm" class="btn" type="button">Start again</button><button id="reset-cancel" class="btn q" type="button">Keep this run</button></div></dialog>
+  <footer class="footer"><span id="data-status">Loading the archive</span><span>Ratings come from EA and Championship Manager data where it exists; results are simulated.</span><a href="https://github.com/symonyeal/Football-Era-Lab/blob/main/docs/DATA.md">Sources and coverage ↗</a></footer>
   <script type="module" src="./app/main.js"></script>
 </body>
 </html>

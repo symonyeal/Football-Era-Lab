@@ -68,6 +68,8 @@ Timeless I applies one quarter of the ordinary loss, and Timeless II applies hal
 
 ## Teammates, formation and the manager
 
+The manager draw offers five managers, each paired with a recorded spell at a club. Choose any of the seventeen catalogue formations independently; the default is the manager's first recorded formation. During the draft and lineup review, a formation change previews the new placement before applying it. Applying keeps every card, the four bench places, the cap charges and the seeded draws. Undo and redo restore the formation and placement together. Kick-off requires applying or cancelling the preview and locks the formation for the season.
+
 Each starter's contribution begins with:
 
 ```text
@@ -234,7 +236,7 @@ An S market signing costs 1 less if he starts. An A or S signing without Europea
 
 A won boss tie gives its recorded MVP a persistent +1 rating; a lost tie gives the highest-rated outfielder with neither a goal nor an assist −1. These changes and signing terms preserve each card's relative position ratings.
 
-The transfer window offers five players from the departing decade and five from the next, one per position line and club where available. Sign two from each pool for free, releasing four distinct players. If a pool has fewer than two, take all its available offers. The new squad must satisfy its cap. Rearrange any two squad places before entering the next decade.
+The transfer window offers five players from the departing decade and five from the next, one per position line and club where available. Sign two from each pool for free, releasing four distinct players. If a pool has fewer than two, take all its available offers. The new squad must satisfy its cap. Change formation or rearrange any two squad places before entering the next decade. Formation changes at this stage retain every card, the bench and cap charges; they are unavailable during rounds or boss ties.
 
 Run score sums `(10 + 5 × act index) / (1 + lost ties in that act)` over cleared acts. Multiply by `0.5 + round win rate`, counting draws as half wins; by 1.5 under the salary cap; and by `1 + 0.2 × patience / 20 + 0.15` when no boss tie was lost, omitting the last bonus otherwise. Scores are local, unauthenticated game results.
 
@@ -258,7 +260,7 @@ Install Node 20 or later and Python 3.11 or later, then follow the commands in t
 | `decade` | The season decade's start: 1950 through 2020, in steps of ten. |
 | `cap` | `True` drafts under the salary cap, as the notebook's settings and the browser do, and checks fifteen supplied players against it; `False`, or leaving it out, is Classic. |
 | `manager` | A name from the printed catalogue, or `None` for the seeded demonstration choice. |
-| `formation` | A catalogue formation, or `None` to use the selected manager option's formation. |
+| `formation` | Any catalogue formation, independently of the manager, or `None` for the manager's first recorded formation. |
 | `person_ids` | Fifteen distinct Wikidata person IDs. An empty list requests the automatic demonstration. |
 | `source_cards` | Fifteen exact `{k, p}` card records. These take precedence over `person_ids`. |
 | `placement` | `best` assigns the starting eleven; `ordered` retains eleven formation slots followed by four substitutes. |
