@@ -76,7 +76,11 @@ export const avail = (r, T, Ds, id = 'team') => {
 };
 
 export const SS = [0, 3, 5];
-const ssOn = c => (c?.tg?.ss ? { ...c, r: c.r + SS[c.tg.ss] } : c);
+const ssOn = c => {
+  if (!c?.tg?.ss) return c;
+  const r = c.r + SS[c.tg.ss];
+  return { ...c, r, ...(c.sr ? { sr: c.sr.map(a => a * r / c.r) } : {}) };
+};
 
 export const sub = (T, R, Ds, n = P.ns, m = P.m1) => {
   const xi = T.xi.slice(), bn = T.bn.slice(), ev = [];

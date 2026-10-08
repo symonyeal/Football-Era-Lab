@@ -90,8 +90,13 @@ export function runNew(seed, draft, map = 'original') {
 // its current act (or at its boss), keeping squad, tags, upgrades, patience and history.
 export function migrate(r) {
   if (r?.v !== 1 || !Array.isArray(r.log)) return r;
+  if (!Number.isInteger(r.seg) || r.seg < 0 || r.seg > 2 || !['seg', 'reward', 'boss', 'done', 'fired'].includes(r.ph) ||
+    (r.cap !== undefined && typeof r.cap !== 'boolean') || (r.ph === 'seg' && r.seg >= 2) ||
+    (r.ph === 'reward' && r.seg === 0) || (r.ph === 'boss' && r.seg !== 2) || (r.ph === 'done' && r.seg !== 0)) {
+    throw new Error('The saved Gauntlet run is invalid.');
+  }
   const ph = r.ph === 'seg' || r.ph === 'reward' ? 'rd' : r.ph;
-  return { v: 2, seed: r.seed, cap: !!r.cap, map: 'odyssey', m: r.m, slots: r.slots, act: r.act, rd: ph === 'boss' ? N_RD : 0, ph,
+  return { v: 2, seed: r.seed, cap: !!r.cap, map: 'odyssey', m: r.m, slots: r.slots, act: r.act, rd: ['boss', 'done'].includes(ph) ? N_RD : 0, ph,
     pat: r.pat, rest: r.rest, tries: r.tries, lost: r.log.filter(e => e?.t === 'boss' && !e.won).length,
     boss: bossAt(r.seed, r.act, Array.isArray(r.tries) ? r.tries[r.act] || 0 : 0, -1), tags: r.tags, up: r.up, mv: {}, neg: {},
     badge: { glue: 0, mgr: 0 }, last: [], fa: 0, prem: 0, log: r.log };
@@ -106,7 +111,7 @@ export function runTeam(G, s) {
   const Q = s.slots.map((r, i) => {
     const c = hydrate(G, r), t = s.tags[r.p], d = (s.mv?.[r.p] || 0) + term(s, r.p, i);
     const x = t ? { ...c, tg: { ...c.tg, ...t } } : c;
-    return d ? { ...x, r: x.r + d } : x;
+    return d ? { ...x, r: x.r + d, ...(x.sr ? { sr: x.sr.map(a => a * (x.r + d) / x.r) } : {}) } : x;
   });
   return { m, S: shape(G, s.m.f), xi: Q.slice(0, 11), bn: Q.slice(11), lk: s.badge?.glue ? 1.5 : 1, gs: s.badge?.mgr || 0 };
 }
@@ -242,8 +247,11 @@ export function offers(G, F, s) {
   const D = D_of(s), tag = `${s.seed}:node:${s.act}:${s.rd}:${s.tries[s.act]}`, out = [];
   const fa = market(G, s, D, mk(hs(`${tag}:fa:${s.fa}`)), s.prem ? 'A' : 'C', 3);
   if (fa.length) out.push({ kind: 'market', list: fa, re: !s.fa });
-  const dv = devs(G, s), fresh = dv.filter(d => !s.last.includes(d.id)), L = (fresh.length ? fresh : dv).slice(), r = mk(hs(`${tag}:dev`));
-  for (let n = s.pat >= PAT_MAX ? 2 : 1; n > 0 && L.length; n--) out.push(L.splice(Math.floor(r() * L.length), 1)[0]);
+  const L = devs(G, s), r = mk(hs(`${tag}:dev`));
+  for (let n = s.pat >= PAT_MAX ? 2 : 1; n > 0 && L.length; n--) {
+    const fresh = L.filter(d => !s.last.includes(d.id)), Q = fresh.length ? fresh : L, d = Q[Math.floor(r() * Q.length)];
+    out.push(d); L.splice(L.indexOf(d), 1);
+  }
   if (s.pat < PAT_MAX) out.push({ kind: 'rest', gain: REST[Math.min(2, s.rest)] });
   if (s.pat < DESP) {
     const z = mk(hs(`${tag}:desp`)), a = market(G, s, D, z, 'S', 1);
@@ -407,12 +415,12 @@ export function validRun(G, r0, manager, cap) {
     new Set(r.slots.map(c => c.p)).size === 15 && int(r.act, 0, M.D.length - 1) && int(r.rd, 0, N_RD) && PH.includes(r.ph) &&
     int(r.pat, 0, PAT_MAX) && int(r.rest) && Array.isArray(r.tries) && r.tries.length === M.D.length && r.tries.every(x => int(x)) &&
     int(r.lost) && int(r.boss, 0, 2) && obj(r.tags) && Object.entries(r.tags).every(([p, t]) => person(p) && obj(t) && Object.entries(t).every(([k, v]) => tg(k, v))) &&
-    obj(r.up) && Object.entries(r.up).every(([p, k]) => ref(k, p)) && obj(r.mv) && Object.entries(r.mv).every(([p, v]) => person(p) && int(v, -20, 20)) &&
+    obj(r.up) && Object.entries(r.up).every(([p, k]) => ref(k, p)) && obj(r.mv) && Object.entries(r.mv).every(([p, v]) => person(p) && int(v, -Number.MAX_SAFE_INTEGER)) &&
     obj(r.neg) && Object.entries(r.neg).every(([p, v]) => person(p) && ['S', 'C'].includes(v)) &&
     obj(r.badge) && int(r.badge.glue, 0, DEV.glue.mx) && int(r.badge.mgr, 0, DEV.mgr.mx) && Object.keys(r.badge).every(k => ['glue', 'mgr'].includes(k)) &&
     Array.isArray(r.last) && r.last.every(id => id === 'upg' || Object.hasOwn(DEV, id)) && int(r.fa, 0, 1) && int(r.prem, 0, 1) && r.prem <= r.fa &&
     Array.isArray(r.log) && r.log.every(log) &&
-    (r.ph === 'fired' ? r.pat === 0 : r.pat > 0) && (!['rd', 'node'].includes(r.ph) || r.rd < N_RD) && (r.ph !== 'boss' || r.rd === N_RD) &&
+    (r.ph === 'fired' ? r.pat === 0 : r.pat > 0) && (!['rd', 'node'].includes(r.ph) || r.rd < N_RD) && (!['boss', 'hop', 'repo', 'done'].includes(r.ph) || r.rd === N_RD) &&
     (!['hop', 'repo'].includes(r.ph) || r.act < M.D.length - 1) && (r.ph !== 'done' || r.act === M.D.length - 1);
   if (!ok) throw new Error('The saved Gauntlet run is invalid.');
   if (r.cap !== cap) throw new Error('The saved Gauntlet cap does not match the draft.');

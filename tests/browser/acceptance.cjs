@@ -1,5 +1,5 @@
 /* Browser acceptance: every control a player uses, on desktop and mobile, through a real browser.
-   node tests/browser/acceptance.cjs --output <folder> [--url http://127.0.0.1:8765/] [--playwright <path>]
+   node tests/browser/acceptance.cjs --output <folder> [--url http://127.0.0.1:8765/] [--playwright <path>] [--channel msedge]
    Serve the repository root first (python -m http.server 8765). Writes acceptance.json and screenshots. */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,7 +20,7 @@ const settle = p => p.waitForFunction(() => document.body.getAttribute('aria-bus
 const wide = async (p, n) => assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, `${n}: page wider than the viewport`);
 
 async function page(kind) {
-  const b = await chromium.launch({ headless: true, downloadsPath: path.join(out, 'downloads') });
+  const b = await chromium.launch({ headless: true, channel: arg('--channel'), downloadsPath: path.join(out, 'downloads') });
   const ctx = await b.newContext({ viewport: kind === 'mobile' ? { width: 390, height: 844 } : { width: 1440, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
   p.on('pageerror', e => errors.push(`${kind}: ${e.message}`));
@@ -63,6 +63,96 @@ async function pick(p, prefer) {
   if (i < 11) assert.match(await p.locator(`[data-slot="${i}"]`).getAttribute('aria-label'), /links.*Squad overall/);
   await p.click(`[data-slot="${i}"]`); await settle(p);
   assert.equal((await st(p)).slots[i].p, c.p);
+}
+
+async function stageRun(p, target) {
+  const a = await p.evaluate(async ({ key, target }) => {
+    const R = await import(new URL('./app/run.js', location.href)), D = await import(new URL('./app/draft.js', location.href));
+    const { fields } = await import(new URL('./app/data.js', location.href));
+    const g = await (await fetch(new URL('./data/game.json', location.href))).json(), F = fields(g), draft = JSON.parse(localStorage.getItem(key));
+    for (let seed = 1; seed <= 100; seed++) {
+      let s = { ...R.runNew(seed, draft), pat: 20 };
+      if (target === 'hop') {
+        for (let rd = 0; rd < 4; rd++) {
+          s = R.runRound(g, F, s);
+          const O = R.offers(g, F, s), rest = O.findIndex(o => o.kind === 'rest');
+          const j = rest >= 0 ? rest : O.findIndex(o => o.kind === 'dev' && o.id !== 'upg' && s.pat > o.cost);
+          if (j < 0) break;
+          s = R.take(g, F, s, j);
+        }
+        if (s.ph !== 'boss') continue;
+        s = R.runPlayBoss(g, F, s);
+        if (s.ph !== 'hop') continue;
+      } else {
+        s = R.runRound(g, F, s);
+        if (!R.offers(g, F, s).some(o => target === 'upg' ? o.id === 'upg' && o.list.some(u => u.cost < s.pat) : o.kind === 'market')) continue;
+      }
+      localStorage.setItem(key, JSON.stringify(D.valid(g, { ...draft, mode: { run: s } })));
+      return s;
+    }
+    throw new Error(`No real ${target} fixture found.`);
+  }, { key: KEY, target });
+  await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
+  return a;
+}
+
+async function runControls(p, kind) {
+  let s = await stageRun(p, 'market');
+  await p.click('[data-respin="scout"]'); await settle(p);
+  s = (await st(p)).mode.run;
+  assert.equal(s.fa, 1); assert.equal(await p.locator('[data-respin]').count(), 0);
+  const f = await p.evaluate(async key => {
+    const R = await import('./app/run.js'), { fits } = await import('./app/cap.js');
+    const g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.run, O = R.offers(g, {}, s);
+    const j = O.findIndex(o => o.kind === 'market');
+    for (let pick = 0; pick < O[j].list.length; pick++) for (let slot = 0; slot < 15; slot++) {
+      const f = O[j].list[pick];
+      if (s.pat > R.price(g, s, f, slot) && fits(g, R.bill(g, s), slot, f, R.GCAP)) return { j, pick, slot, p: f.p };
+    }
+    throw new Error('No affordable signing.');
+  }, KEY);
+  await p.selectOption(`#fa-pick-${f.j}`, String(f.pick)); await p.selectOption(`#fa-slot-${f.j}`, String(f.slot));
+  assert.match(await p.locator(`#fa-price-${f.j}`).innerText(), /Costs.*patience/);
+  await p.click(`[data-take="${f.j}"]`); await settle(p);
+  assert.equal((await st(p)).mode.run.slots[f.slot].p, f.p);
+  ok(`${kind}: scouting changes the market once and a quoted signing replaces the selected player`);
+  s = await stageRun(p, 'upg');
+  const up = await p.evaluate(async key => {
+    const R = await import('./app/run.js'), g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.run;
+    const O = R.offers(g, {}, s), j = O.findIndex(o => o.id === 'upg'), pick = O[j].list.findIndex(u => u.cost < s.pat);
+    return { j, pick, ...O[j].list[pick] };
+  }, KEY);
+  await p.selectOption(`#up-pick-${up.j}`, String(up.pick)); await p.click(`[data-take="${up.j}"]`); await settle(p);
+  s = (await st(p)).mode.run;
+  assert.equal(s.slots[up.i].k, up.to.k); assert.equal(s.up[up.to.p], up.from.k);
+  ok(`${kind}: a selected prime upgrade changes the card and preserves its original cap charge`);
+  s = await stageRun(p, 'hop');
+  assert.equal(await p.locator('[data-hop-pick]').count(), 10);
+  await p.click('#run-hop'); await settle(p);
+  assert.equal((await st(p)).mode.run.ph, 'hop', 'incomplete transfers must preserve the run');
+  const h = await p.evaluate(async key => {
+    const R = await import('./app/run.js'), { ct, TI } = await import('./app/cap.js'), { hydrate } = await import('./app/draft.js');
+    const g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.run, H = R.hopPools(g, s);
+    const low = L => L.map((f, i) => i).sort((i, j) => L[i].r - L[j].r).slice(0, 2), old = low(H.old), neu = low(H.neu);
+    const ins = [...old.map(i => H.old[i]), ...neu.map(i => H.neu[i])], Q = R.bill(g, s), C = ct(g, Q), out = [];
+    for (const t of ['S', 'A']) out.push(...Q.map((f, i) => i).filter(i => TI(hydrate(g, Q[i]).r) === t).slice(0, Math.max(0, C[t] + ins.filter(f => TI(f.r) === t).length - R.GCAP[t])));
+    out.push(...Q.map((f, i) => i).filter(i => !out.includes(i)).slice(0, 4 - out.length));
+    return { old, neu, out, people: ins.map(f => f.p) };
+  }, KEY);
+  let n = 0;
+  for (const k of ['old', 'neu']) for (const i of h[k]) {
+    await p.check(`[data-hop-pick="${k}"][value="${i}"]`); await p.selectOption(`#hop-out-${k}-${i}`, String(h.out[n++]));
+  }
+  await wide(p, 'transfers'); await p.click('#run-hop'); await settle(p);
+  s = (await st(p)).mode.run; assert.equal(s.ph, 'repo');
+  assert.deepEqual(h.out.map(i => s.slots[i].p), h.people);
+  await p.selectOption('#run-swap-a', '0'); await p.selectOption('#run-swap-b', '11'); await p.click('#run-swap'); await settle(p);
+  assert.equal((await st(p)).mode.run.slots[11].p, s.slots[0].p);
+  await p.click('#run-next'); await settle(p);
+  assert.equal((await st(p)).mode.run.act, 1); assert.equal((await st(p)).mode.run.ph, 'rd');
+  await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
+  assert.equal(await p.locator('#run-round').count(), 1);
+  ok(`${kind}: four transfers, a lineup swap and the next decade survive a reload`);
 }
 
 async function capState(p) {
@@ -150,11 +240,19 @@ async function full(kind) {
     assert.deepEqual([...fs.readFileSync(png).subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
     ok(`${kind}: replay and result image downloads contain the completed team`);
     await wide(p, 'results'); await p.screenshot({ path: path.join(out, `${kind}-results.png`), fullPage: true });
-    await p.click('[data-tab="gauntlet"]'); await settle(p); await p.click('#run-start'); await settle(p);
-    for (let k = 0; k < 5; k++) {
+    await p.click('[data-tab="gauntlet"]'); await settle(p);
+    assert.equal(await p.locator('#run-map option').count(), 4);
+    await p.selectOption('#run-map', 'original'); await p.click('#run-start'); await settle(p);
+    assert.equal((await st(p)).mode.run.map, 'original');
+    assert.equal(await p.locator('#run-round').count(), 1);
+    for (let k = 0; k < 9; k++) {
       const r = (await st(p)).mode.run;
-      if (r.ph === 'seg') await p.click('#run-seg');
-      else if (r.ph === 'reward') await p.locator('[data-take]').last().click();
+      if (r.ph === 'rd') await p.click('#run-round');
+      else if (r.ph === 'node') {
+        const rest = p.locator('[data-rest]');
+        if (await rest.count()) await rest.click();
+        else await p.locator('[data-take]:not([disabled])').first().click();
+      }
       else if (r.ph === 'boss') await p.click('#run-boss');
       else break;
       await settle(p);
@@ -164,8 +262,9 @@ async function full(kind) {
     assert.ok(r.log.some(e => e.t === 'seg') && r.log.some(e => e.t === 'boss'), 'the run must reach a boss');
     await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
     assert.deepEqual((await st(p)).mode.run.log.length, r.log.length);
-    ok(`${kind}: the Era Gauntlet plays segments, a reward and a boss, and survives a reload`);
+    ok(`${kind}: a selected Gauntlet map plays four rounds, rewards and a two-legged boss, and survives a reload`);
     await wide(p, 'gauntlet'); await p.screenshot({ path: path.join(out, `${kind}-gauntlet.png`), fullPage: true });
+    await runControls(p, kind);
     await p.click('[data-tab="more"]'); await settle(p);
     await p.selectOption('#circuit-events', '10'); await p.click('#circuit-start'); await settle(p);
     assert.equal(await p.locator('#circuit-events').inputValue(), '10'); assert.ok(await p.locator('.mode-event').count() >= 10);

@@ -473,3 +473,7 @@ td:first-child,th:first-child{text-align:left}
   .gem-sparks i{opacity:.75}
 }
 .results-layout > *{min-width:0}
+.run select,.reward select,.challenge-card select{width:100%;max-width:100%;margin-bottom:12px}
+.run-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.transfer-pick{padding:12px 0;border-bottom:1px solid var(--line)}
+.transfer-pick label{overflow-wrap:anywhere}

@@ -3,8 +3,9 @@ estimated only where none does.
 
 Order of evidence for a card: f (EA rows at this club inside the stint) > c (Championship Manager
 records at this club inside the stint) > i (EA Icon/Hero card) > n (nearest EA row within d_near
-seasons, any club, age-shifted) > m (nearest CM record, same rule) > e (model estimate). A card keeps
-the slot ratings, face stats and natural slots of the snapshot that rated it.
+seasons of the full stint interval, any club, age-shifted) > m (nearest CM record, same rule) >
+e (model estimate). A card keeps the slot ratings, face stats and natural slots of the snapshot
+that rated it.
 
 Legend
   Q      squad rows: qid, D, p, n (apps in D), g (goals), k (seasons in D at club), s0, s1, x
@@ -70,7 +71,7 @@ def _in(g, s0, s1, q, k):
 
 
 def _near(g, s0, s1, a_card, b):
-    d = np.minimum((g.s - s0).abs(), (g.s - s1).abs())
+    d = (g.s - g.s.clip(s0, s1)).abs()
     i = d.idxmin()
     if d[i] > d_near:
         return np.nan, None

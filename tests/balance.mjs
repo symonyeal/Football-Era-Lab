@@ -1,21 +1,23 @@
 // Balance measurement (not part of the test suite): sensible drafts play seasons or whole Gauntlet runs.
 //   node tests/balance.mjs season [drafts per decade=40] [cap|classic]
-//   node tests/balance.mjs gauntlet [runs=40] [keep=5] [cap|classic]
+//   node tests/balance.mjs gauntlet [runs=40] [keep=5] [cap|classic] [map=original]
 // A sensible draft takes the best-graded of the five managers, then for each pick the legal card and
 // open slot with the highest slot-rated, era-adjusted value plus the club links it would earn. Rules
 // default to Salary cap, the browser default. In the Gauntlet it takes a boost card only when at
-// least `keep` patience remains after paying, else rests.
+// least `keep` patience remains after paying, else rests or takes affordable development. Transfers
+// choose the two lowest-rated offers from each decade, releasing cap charges as required.
 import { readFileSync } from 'node:fs';
 import * as E from '../app/engine/index.js';
 import * as Dr from '../app/draft.js';
 import * as Rn from '../app/run.js';
 import { fields } from '../app/data.js';
+import { ct, TI, GCAP } from '../app/cap.js';
 
 const G = JSON.parse(readFileSync(new URL('../data/game.json', import.meta.url), 'utf8'));
 if (G.params) E.cfg(G.params);
 const F = fields(G), GR = { S: 0.04, A: 0.03, B: 0.015, C: 0, D: -0.015, F: -0.03 };
-const A = process.argv.slice(2), cap = A.at(-1) !== 'classic', rules = cap ? 'Salary cap' : 'Classic';
-const [mode = 'season', a1, a2] = A.filter(x => !['cap', 'classic'].includes(x));
+const A = process.argv.slice(2), cap = !A.includes('classic'), rules = cap ? 'Salary cap' : 'Classic';
+const [mode = 'season', a1, a2, map = 'original'] = A.filter(x => !['cap', 'classic'].includes(x));
 const q = (a, f) => a.slice().sort((x, y) => x - y)[Math.floor(f * (a.length - 1))];
 
 function draft(seed, D) {
@@ -63,17 +65,35 @@ if (mode === 'season') {
   const N = Number(a1 || 40), keep = Number(a2 || 5), acts = [], segs = [], boss = [];
   for (let k = 0; k < N; k++) {
     const seed = 500 + k;
-    let s = Rn.runNew(seed, draft(seed, Dr.DECADES[k % 8])), n = 0;
+    let s = Rn.runNew(seed, draft(seed, Dr.DECADES[k % 8]), map), n = 0;
     while (!['done', 'fired'].includes(s.ph) && n++ < 400) {
-      if (s.ph === 'seg') { s = Rn.runSegment(G, F, s); segs.push(s.log.at(-1).pts); }
-      else if (s.ph === 'reward') {
-        const O = Rn.offers(G, F, s), j = O.findIndex(o => o.kind === 'boost' && s.pat - o.cost >= keep);
-        s = Rn.take(G, F, s, j >= 0 ? j : O.length - 1);
-      } else s = Rn.runPlayBoss(G, F, s);
+      if (s.ph === 'rd') { s = Rn.runRound(G, F, s); segs.push(s.log.at(-1).pts); }
+      else if (s.ph === 'node') {
+        const O = Rn.offers(G, F, s), j = O.findIndex(o => o.id === 'upg' && o.list.some(u => s.pat - u.cost >= keep));
+        const rest = O.findIndex(o => o.kind === 'rest');
+        const dev = O.findIndex(o => o.kind === 'dev' && s.pat - o.cost >= 1);
+        const i = j >= 0 ? j : rest >= 0 ? rest : dev;
+        if (i < 0) throw new Error('The policy found no affordable reward.');
+        const pick = O[i].id === 'upg' ? O[i].list.findIndex(u => s.pat - u.cost >= (j >= 0 ? keep : 1)) : 0;
+        s = Rn.take(G, F, s, i, { pick });
+      } else if (s.ph === 'boss') s = Rn.runPlayBoss(G, F, s);
+      else if (s.ph === 'hop') {
+        const H = Rn.hopPools(G, s), low = L => L.map((f, i) => i).sort((i, j) => L[i].r - L[j].r).slice(0, Rn.HOP_N);
+        const old = low(H.old), neu = low(H.neu), ins = [...old.map(i => H.old[i]), ...neu.map(i => H.neu[i])];
+        const Q = Rn.bill(G, s), C = ct(G, Q), out = [];
+        for (const t of ['S', 'A']) {
+          const need = cap ? Math.max(0, C[t] + ins.filter(f => TI(f.r) === t).length - GCAP[t]) : 0;
+          out.push(...Q.map((r, i) => i).filter(i => TI(Dr.hydrate(G, Q[i]).r) === t).slice(0, need));
+        }
+        const lowOut = Q.map((r, i) => i).filter(i => !out.includes(i)).sort((i, j) => Dr.hydrate(G, Q[i]).r - Dr.hydrate(G, Q[j]).r);
+        out.push(...lowOut.slice(0, ins.length - out.length));
+        s = Rn.hop(G, s, { old, neu, out });
+      } else if (s.ph === 'repo') s = Rn.nextAct(s);
     }
+    if (!['done', 'fired'].includes(s.ph)) throw new Error('The policy exceeded 400 steps.');
     acts.push(s.log.filter(e => e.t === 'boss' && e.won).length); boss.push(s.log.filter(e => e.t === 'boss').length);
   }
   const h = {}; acts.forEach(a => { h[a] = (h[a] || 0) + 1; });
-  console.log(JSON.stringify({ rules, runs: N, keep, decadesCleared: h, medianDecades: q(acts, 0.5), fullClears: h[8] || 0,
+  console.log(JSON.stringify({ rules, map, runs: N, keep, decadesCleared: h, medianDecades: q(acts, 0.5), fullClears: h[Rn.MAPS[map].D.length] || 0,
     segmentPointsMedian: q(segs, 0.5), bossMatchesMedian: q(boss, 0.5) }));
 }

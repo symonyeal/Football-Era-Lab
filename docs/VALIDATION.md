@@ -4,21 +4,21 @@ The checks answer several different questions: whether the game follows its rule
 
 ## The rules are checked automatically
 
-The release passed 72 Node tests, 19 Python pipeline tests, 3 identity-batch tests and 4 calibration tests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet rewards, same-person boosts, boss retries and valid or malformed saved runs.
+The release passed 85 Node tests and 30 Python tests: 23 pipeline tests, 3 identity-batch tests and 4 calibration tests, with four additional pipeline subtests. The JavaScript tests cover the draft limits, one-person rule, position assignment, rating adjustments, complete leagues and Cups in all eight decades, substitutions and the agreement between match events and reported totals. They also cover repeatable results, the circuit, weekly seeds, team codes, Gauntlet maps, four-round acts, rewards, same-person boosts, two-legged boss ties, retries, transfers, development and valid or malformed saved runs.
 
 The salary-cap tests check the exact tier boundaries, that a third S-tier card is refused even on the bench, that every allowed pick leaves the club's three picks completable, and that saves, replays, team codes and Gauntlet signings keep the rule. Drafts on the bundled data finish with exactly 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs in every decade. Other tests require draws to follow the declared weights, every club to remain drawable, a squad to offer the best tier still needed, a ruled-out club to leave every other draw on the same seed unchanged, and each hard end-of-draft need to have more supplier clubs than a draft can rule out.
 
 Checks on the supplied data require the strongest rated squad to lead each selected opposition field. They also require the coverage report, manifest counts and embedded calibration settings to describe the exact bundle. A stale data hash fails that check.
 
-The pipeline tests exercise source selection, age adjustments, CM record layouts, attribute and position rules, allocation of club spells, statistic date boundaries and legend identity. They use small fixtures rather than downloading sources. The calibration tests use independently generated goal counts to check parameter recovery, probability calculations, rejected inputs and the training-only average used for comparison.
+The pipeline tests exercise source selection, age adjustments, CM record layouts, attribute and position rules, allocation of club spells, statistic date boundaries and legend identity. Nearby-source regressions cover EA and CM snapshots inside long club spells, their precedence over snapshots outside the spell, and the two-season cutoff outside the interval. They use small fixtures rather than downloading sources. The calibration tests use independently generated goal counts to check parameter recovery, probability calculations, rejected inputs and the training-only average used for comparison.
 
 Run these commands from the repository root with Node 20 or later and the Python analytics dependencies installed:
 
 ```text
 node --test tests/engine/*.test.mjs
-python -m unittest discover -s tests -p test_pipeline.py -v
-python -m unittest discover -s tests -p test_wikidata.py -v
-python -m pytest tests/test_calibration.py -q -p no:cacheprovider
+py -3.14 -m unittest discover -s tests -p test_pipeline.py -v
+py -3.14 -m unittest discover -s tests -p test_wikidata.py -v
+py -3.14 -m pytest tests/test_calibration.py -q -p no:cacheprovider
 ```
 
 GitHub's `Game checks` workflow also executes the notebook through Node. Gameplay has no frontend build or npm dependency installation. The notebook completed seven code cells without error outputs and checked repeatability for its selected settings and current data. That establishes the same result for those inputs, not a historically valid outcome. Windows can emit a Jupyter/ZeroMQ selector-thread warning during this successful execution.
@@ -27,11 +27,11 @@ The data validator reported zero failures for its structural rules. The export h
 
 ## The browser checks cover a complete playthrough
 
-Desktop at 1440 × 900 and mobile at 390 × 844 passed 38 checks, 19 at each size, with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
+Desktop at 1440 × 900 and mobile at 390 × 844 passed 44 checks, 22 at each size, with animations enabled. Neither run reported a page or console error, failed HTTP response or horizontal page overflow.
 
-Each confirmed that the salary cap is selected by default and that the rules choice survives an era change. Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, Gauntlet segments, a reward and a boss. The capped draft finished with 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs, the tier counts survived a reload, and blocked cards showed their reasons. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft. Head to Head refused a Classic code against a capped team, a Classic replay link started a Classic draft, and the Weekly Challenge started under the salary cap even after Classic had been chosen.
+Each confirmed that the salary cap is selected by default and that the rules choice survives an era change. Each completed manager selection, all five squad draws and fifteen placements, a swap, reload, the 38-match season, European Cup, four Gauntlet rounds, rewards and a two-legged boss. The capped draft finished with 2 S, 4 A, 4 B, 3 C and 2 D players from five different clubs, the tier counts survived a reload, and blocked cards showed their reasons. Each also played a ten-event circuit with all four player awards, a team-code Head to Head tie and a Weekly Challenge draft. Head to Head refused a Classic code against a capped team, a Classic replay link started a Classic draft, and the Weekly Challenge started under the salary cap even after Classic had been chosen.
 
-Both runs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These runs cover Chromium at two screen sizes, not every browser or every possible sequence of choices.
+Both runs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These local runs cover Microsoft Edge at two screen sizes, not every browser or every possible sequence of choices.
 
 To reproduce them, serve the repository root, install Playwright and Chromium, and run:
 
@@ -39,7 +39,7 @@ To reproduce them, serve the repository root, install Playwright and Chromium, a
 node tests/browser/acceptance.cjs --output /path/to/persistent/results --url http://127.0.0.1:8765/
 ```
 
-If Playwright is installed elsewhere, add `--playwright /path/to/playwright`. The chosen output folder receives `acceptance.json`, screenshots, replays and result images. The same harness can test the public site by changing `--url` to `https://symonyeal.github.io/Football-Era-Lab/`.
+If Playwright is installed elsewhere, add `--playwright /path/to/playwright`. To use installed Microsoft Edge, add `--channel msedge`. The chosen output folder receives `acceptance.json`, screenshots, replays and result images. GitHub's workflow runs the same checks in Chromium and preserves those outputs as the `browser-checks` artifact. The harness can test the public site by changing `--url` to `https://symonyeal.github.io/Football-Era-Lab/`.
 
 On the Windows development machine, output and browser scratch belong in `Claude Func Folder\football-v2\`. Set `TEMP` and `TMP` to a persistent subfolder there before launching the browser.
 
@@ -124,21 +124,23 @@ Four pick policies each completed 320 capped drafts, one per seed and decade: th
 
 ## Gauntlet survival depends on reward choices
 
-The same drafting policy played forty Gauntlets under each set of rules, using seeds 500 through 539 and cycling the draft decades. It took a prime-card boost only when at least five patience would remain after payment; otherwise it rested. It never signed a free agent or developed a tag. This is one conservative reward policy, not a test of every signing, development or boost strategy.
+The same drafting policy played forty Gauntlets under each set of rules, using seeds 500 through 539 and cycling the draft decades. Every run used Original Gauntlet, the default and shortest map: the 1960s, 1990s and 2010s. It took a prime-card boost only when at least five patience would remain after payment; otherwise it rested, or took an affordable development at full patience. After a won boss tie, it chose the two lowest-rated transfer offers from each decade. It released players as needed to free cap charges, then the lowest-rated remaining players, and never rearranged the lineup. It did not use free-agent rewards or market re-spins.
 
 ```text
-node tests/balance.mjs gauntlet 40 5 cap
-node tests/balance.mjs gauntlet 40 5 classic
+node tests/balance.mjs gauntlet 40 5 cap original
+node tests/balance.mjs gauntlet 40 5 classic original
 ```
 
-| Decades cleared | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Salary cap runs | 21 | 5 | 3 | 5 | 5 | 1 | 0 | 0 | 0 |
-| Classic runs | 13 | 4 | 2 | 12 | 6 | 0 | 3 | 0 | 0 |
+The final argument selects the map; `back`, `odyssey` and `reverse` are also supported. The measurements below concern only `original`.
 
-Under Classic the median run cleared three decades, earned thirteen points per six-match segment and played six boss matches; the previous release's policy also reached a median of three, with one full clear in forty. Under the salary cap, 21 of 40 runs ended in the 1950s, the median run cleared none, earned twelve points per segment and played three boss matches, and no run cleared more than five decades. No run under either rule set cleared all eight.
+| Decades cleared | 0 | 1 | 2 | 3 |
+| --- | ---: | ---: | ---: | ---: |
+| Salary cap runs | 8 | 26 | 6 | 0 |
+| Classic runs | 4 | 33 | 3 | 0 |
 
-The capped Gauntlet is the hard mode, as in Eraball, where capped runs earn 1.5 times the score. A capped squad must carry three C-tier and two D-tier players, and fatigue and absences bring substitutes into matches. This policy never replaces anyone; signing free agents is how a capped run can strengthen those places, and that was not measured. The results describe this policy under the current patience and opposition rules. They do not measure the success rate of a player who builds the team around future boss matches or chooses different rewards.
+Both rule sets cleared a median of one decade and played a median of three boss ties. Median points per six-match round were ten under the salary cap and eleven under Classic. No run under either rule set cleared all three decades.
+
+Capped runs earn 1.5 times the score, as in Eraball. The opening capped draft carries three C-tier and two D-tier players; later signings can change those counts within the S- and A-tier limits. Fatigue and absences bring substitutes into matches. These results describe one reward and transfer policy on the shortest three-decade map under the current patience and opposition rules. They do not establish human success rates, the difficulty of the other maps, or the results of planning transfers, rearranging the lineup or choosing different rewards.
 
 ## Identifying the evidence and its limits
 
@@ -146,6 +148,6 @@ The capped Gauntlet is the hard mode, as in Eraball, where capped runs earn 1.5 
 
 Development browser evidence is kept in `Claude Func Folder\football-v2\cap-resume-20261007\browser\`; the balance outputs are `cap-resume-20261007\final-*.txt` and the setting comparison `sweep-*.txt`. Those local artifacts are not supplied with the repository. The portable commands above generate fresh records in the output folder you choose.
 
-Early-era estimates extend a model fitted to engine-rated cards from 1989 to 2025. Their errors measure resemblance to those games' ratings, not real historical ability. Missing squad members, incorrect club-name joins, decade-wide membership and estimated positions can affect results. The nearby-source date-window limitation is documented in [DATA.md](DATA.md#the-source-label-explains-what-rated-a-card). Additional unmeasured effects are listed in [MODEL.md](MODEL.md#what-the-model-leaves-out).
+Early-era estimates extend a model fitted to engine-rated cards from 1989 to 2025. Their errors measure resemblance to those games' ratings, not real historical ability. Missing squad members, incorrect club-name joins, decade-wide membership and estimated positions can affect results. The shipped bundle retains the nearby-source boundary rule described in [DATA.md](DATA.md#the-source-label-explains-what-rated-a-card); the pipeline now measures distance from the full spell interval for future rebuilds. The regressions establish that selection rule, not a change to the bundled cards. Additional unmeasured effects are listed in [MODEL.md](MODEL.md#what-the-model-leaves-out).
 
 The tests and reports under the [v1 tag](https://github.com/symonyeal/Football-Era-Lab/tree/v1) concern that earlier implementation. They do not establish the behavior of this engine.

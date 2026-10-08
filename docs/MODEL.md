@@ -19,7 +19,7 @@ A card identifies one person at one club in one decade. The first available sour
 
 When several same-club seasons are available, the overall is the mean of the best three ratings, or fewer if fewer exist. Nearby editions and Icon cards receive an age adjustment: ages 25 to 30 keep the source rating; younger ages lose 0.8 points per year and older ages lose 1.2 points per year, with a maximum loss of 12. Final overall ratings are kept between 45 and 95.
 
-The nearby-edition rule currently compares dates with the two ends of a recorded spell. It can miss a snapshot from another club that sits well inside a long interval. Comparing with the whole interval is a pending correction to the data pipeline. The shipped bundle keeps the boundary rule; incorrect upstream club dates also need checking before another build.
+The shipped bundle compares nearby editions with the two ends of a recorded spell. This can miss an edition inside a long spell. The pipeline now measures distance from the full interval: an interior edition has distance zero, and the two-season cutoff applies outside it. Regression tests cover EA and CM interior editions and selection precedence. The bundled cards have not been rebuilt; incorrect upstream club dates also need checking before another build.
 
 CM uses an ability scale from 1 to 200. A conversion fitted on 6,954 player-seasons with both CM and EA ratings puts those values on EA's scale. The overlap uses CM's 2020-21 and 2021-22 community databases and FIFA 21 and FIFA 22. Ability 140 converts to about 76, 160 to 82, 180 to 88 and 195 to 92. On players excluded from the fit, the average absolute difference from EA is 2.43 points, compared with 4.91 when assigning everyone the average. The goalkeeper figures are 2.58 and 5.58.
 
@@ -185,30 +185,60 @@ The released game used `tau=3`, which gave the strongest few clubs most draws; o
 
 ## Era Gauntlet
 
-The run takes the drafted fifteen through each decade from the 1950s to the 2020s. A decade is an act: two six-match segments against its clubs, then one neutral knockout match against its highest-rated club in the selected nineteen-team field. Extra time and penalties decide a level boss match.
+The run takes the drafted fifteen through a selected map. Original Gauntlet, the default, visits the 1960s, 1990s and 2010s; Back in Time reverses that route. The Full Odyssey visits all eight decades in order; Odyssey in Reverse starts in the 2020s and ends in the 1950s.
 
-Board patience starts at 8 and is capped at 20. Each six-match segment changes it according to points earned:
+A decade is an act with four six-match rounds. The rounds draw from progressively stronger bands of the sixteen clubs below the field's three bosses. After each round, choose one reward. Then play home and away against a seeded boss from the strongest three clubs. There is no away-goals rule; extra time and penalties decide a level aggregate. A loss restarts all four rounds against a different boss. A non-final win opens the transfer window; beating the map's last boss ends the run.
+
+Board patience starts at 8 and is capped at 20. Each six-match round changes it according to points earned:
 
 | Event | Patience change |
 | --- | --- |
-| Segment with at least 13 points | +2 |
-| Segment with 9 to 12 points | 0 |
-| Segment with 5 to 8 points | -2 |
-| Segment with at most 4 points | -3 |
-| Boss won | +4 |
-| First boss loss in a decade | -4 |
-| Further boss loss in that decade | -6 |
+| 18 points | +3 |
+| 13 to 17 points | +2 |
+| 12 points | +1 |
+| 9 to 11 points | 0 |
+| 7 to 8 points | -2 |
+| 4 to 6 points | -3 |
+| 2 to 3 points | -4 |
+| 0 to 1 point | -5 |
+| Boss tie won | +4 |
+| First boss tie lost in the run | -4 |
+| Every later boss tie lost | -6 |
 
-A lost boss can be retried while patience remains. The run ends at zero patience or after the eighth boss falls. After each segment you choose one of up to three reward offers:
+The run ends at zero patience. Reward prices add an act surcharge: +1 per completed act on three-decade maps, or +1 per two completed acts on eight-decade maps. Purchases must leave at least 1 patience. Each round offers a transfer market, one development and rest. At maximum patience, a second development replaces rest. Developments avoid repeating the previous offer where another is eligible. Below 5 patience, desperation signings also appear.
 
 | Reward | What changes | Patience cost or gain |
 | --- | --- | --- |
-| Prime-card boost | An existing player becomes the same person's highest-rated club-and-decade card. On a capped run he keeps the tier of the card he replaced for the cap. | 1 within the same rating tier; 2 for one tier gained; 3 for two; 4 for three or more. Add 1 when reaching S from a lower tier. |
-| Free agent | Choose one of three players from a drawn club squad, and release one of your fifteen. | 2 for D, C or B; 3 for A; 4 for S. On a capped run a signing must leave at most two S-tier and four A-tier players; Classic runs have no limit. |
-| Develop | Add or develop a Talisman, Maestro or Rock tag. | 2. |
-| Rest | Recover patience. | +2, then +1, then zero for consecutive rests. Spending on another reward resets that sequence. |
+| Prime-card boost | Upgrade an existing player to that person's highest-rated card; retain his original cap charge. | 1 within a tier, 2 for one tier gained, 3 for two, 4 for more; add 1 for entering S, then cap the base price at 4. |
+| Transfer market | Choose one of up to three C-tier-or-better players from different clubs in this decade, and release one of your fifteen. | Base price 1 for C/B, 2 for A, 3 for S, with negotiation below. |
+| Development | Upgrade a player or the squad using the catalogue below. | Base price 2 to 4. |
+| Rest | Recover patience. | +2, then +1, then zero for consecutive rests; another reward resets the sequence. |
+| Desperation | Sign an offered A- or S-tier player, replacing one squad player. | 1 at 3 or 4 patience, free at 1 or 2; no act surcharge. |
 
-The rating tiers are the salary-cap tiers above: S at 90 or above, A at 85, B at 80, C at 75, and D below 75. A purchase must leave at least 1 patience. This follows Eraball's starting patience, patience maximum, boss consequences, upgrade costs, Gauntlet squad cap and rest rules. Eraball applies its Gauntlet cap of two S-tier and four A-tier players only when its salary cap is on, and so does this game: a capped draft starts a capped run, a Classic draft an uncapped one. Because a boost keeps the original tier for the cap, an earned upgrade never breaks it. The two six-match segments and their point thresholds are this game's football adaptation.
+The salary cap continues as at most two S-tier and four A-tier charges among all fifteen; B, C and D are unrestricted. Classic remains uncapped. A boost keeps the drafted or signed charge; releasing and re-signing that person establishes a new charge.
+
+An S market signing costs 1 less if he starts. An A or S signing without European Cups costs 1 less when at least five squad players have one. The negotiated base price is at least 1, before the surcharge. An S market signing plays 3 rating points below his card on the bench; a C signing plays 3 above when starting. Swapping places changes these terms. One market re-spin per reward costs 1 for scouting, or 5 for an A/S-only premium market, plus the surcharge. A re-spin requires enough patience for it and a subsequent signing.
+
+| Development | Levels | Base price | Effect |
+| --- | ---: | ---: | --- |
+| Dressing Room Glue | 1 | 2 | Multiply squad link points by 1.5. |
+| Manager Development | 2 | 4 | Raise both manager grades one step per level. |
+| European Pedigree | 3 | 2 | Add one European Cup per level for knockout strength. |
+| Timeless Training | 2 | 3 | Retain one-half, then one-quarter, of era loss. |
+| Versatility | 2 | 2 | Halve, then remove, outfield position loss; keeper penalties remain. |
+| Super Sub | 2 | 3 | Add 3, then 5, rating points when substituted on. |
+| Finishing Training | 2 | 4 | Develop Talisman for attackers and wide players. |
+| Defending Training | 2 | 4 | Develop Rock for defenders and keepers. |
+| Playmaking Training | 2 | 2 | Develop Maestro for midfield and wide players. |
+| Poacher Training | 2 | 2 | Develop Poacher for attackers and wide players. |
+
+A won boss tie gives its recorded MVP a persistent +1 rating; a lost tie gives the highest-rated outfielder with neither a goal nor an assist −1. These changes and signing terms preserve each card's relative position ratings.
+
+The transfer window offers five players from the departing decade and five from the next, one per position line and club where available. Sign two from each pool for free, releasing four distinct players. If a pool has fewer than two, take all its available offers. The new squad must satisfy its cap. Rearrange any two squad places before entering the next decade.
+
+Run score sums `(10 + 5 × act index) / (1 + lost ties in that act)` over cleared acts. Multiply by `0.5 + round win rate`, counting draws as half wins; by 1.5 under the salary cap; and by `1 + 0.2 × patience / 20 + 0.15` when no boss tie was lost, omitting the last bonus otherwise. Scores are local, unauthenticated game results.
+
+These rules adapt Eraball's maps, board patience, rewards and squad cap to football; the four six-match rounds are this game's scaling. Legacy Gauntlet saves migrate to the eight-decade Full Odyssey, retaining the squad, upgrades, patience and history. A partial old act restarts at its first round; an old boss stage resumes at the boss. Invalid legacy fields are rejected before migration.
 
 ## Circuit, Head to Head and Weekly Challenge
 
@@ -220,7 +250,7 @@ The Weekly Challenge chooses one seed and decade for the whole ISO week, Monday 
 
 ## Notebook settings
 
-Install Node 20 or later and Python 3.11 or later, then follow the commands in the [README](../README.md#project-files-and-running-your-own-copy). Open the notebook from the repository folder and run all cells. Set `NODE` in its setup cell if Node is not on PATH. On the development machine, Python is `C:\Python314\python.exe`.
+Install Node 20 or later and Python 3.11 or later, then follow the commands in the [README](../README.md#project-files-and-running-your-own-copy). Open the notebook from the repository folder and run all cells. Set `NODE` in its setup cell if Node is not on PATH. On the Windows development machine, use the system Python with `py -3.14`.
 
 | Setting | Meaning |
 | --- | --- |

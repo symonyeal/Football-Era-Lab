@@ -61,6 +61,18 @@ test('useful replacements can enter in both substitution windows without re-ente
   assert.ok(M.ev.every(e => e.sc && e.as !== e.sc));
 });
 
+test('a Super Sub can enter through his rating bonus even with EA slot ratings', () => {
+  const T = club('a').T, c = { ...cd('super', 'ST', 75), sr: E.SL.map(() => 75), tg: { ss: 2 } };
+  T.bn = [c, null, null, null];
+  const u = E.sub(T, E.rate(T, 1990), 1990, 1);
+  assert.equal(u.n, 1);
+  assert.equal(u.ev[0].on, 'super');
+  const p = u.T.xi.find(p => p.id === 'super');
+  assert.equal(E.av(p, u.ev[0].s, 1990), 80);
+  assert.equal(c.r, 75);
+  assert.ok(c.sr.every(r => r === 75));
+});
+
 test('invalid fixture fields fail clearly instead of hanging or emitting an incomplete cup', () => {
   assert.throws(() => E.rr(3), /even/i);
   assert.throws(() => E.cup(E.mk(2), field(15), 1990), /16/);

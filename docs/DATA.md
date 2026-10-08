@@ -44,7 +44,7 @@ The pipeline excludes people explicitly labelled female by Wikidata's sex-or-gen
 
 The table gives the source priority. Direct same-club EA or CM evidence averages the best three season ratings, or fewer if fewer exist. Position ratings come from the best snapshot used for that source and are scaled to the overall. The six displayed attributes keep that snapshot's values. A nearby or reconstructed card retains its own label, so it remains distinguishable from an in-period same-club rating.
 
-The nearby fallback compares with spell boundaries instead of the whole interval. It can therefore miss an interior snapshot from another club during a long recorded spell. That is a documented pipeline correction still to make, alongside checking unreliable source dates. [MODEL.md](MODEL.md#which-version-of-the-player-gets-rated) describes the current rule and conversion fits.
+The shipped bundle's nearby fallback compares with spell boundaries and can miss an interior snapshot from another club during a long recorded spell. The pipeline now measures distance from the full interval for future rebuilds; bundled cards remain unchanged. Unreliable source dates still need checking. [MODEL.md](MODEL.md#which-version-of-the-player-gets-rated) describes the rules and conversion fits.
 
 EA and CM profiles provide fifteen position ratings and six attributes where available. Natural positions use game profiles first, then EA legend data or the nearest available engine season, then Transfermarkt's specific position and finally a mapping of Wikidata labels. The last fallback is coarse; the model document explains the "wing half" rule.
 

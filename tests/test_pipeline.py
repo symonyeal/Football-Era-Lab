@@ -58,6 +58,36 @@ class Evidence(unittest.TestCase):
         self.assertTrue(pd.isna(q.y))
         self.assertEqual(q.yn, 91.0)
 
+    def test_other_club_ea_snapshot_inside_a_long_spell_is_nearby(self):
+        Q = pd.DataFrame([dict(p="Q1", qid="old", D=2010, s0=2010, s1=2019)])
+        q = ratings.engine_y(Q, self.P, {"Q1": 1}, pd.DataFrame([_E(o=80.0, q="new")]), pd.DataFrame()).iloc[0]
+        self.assertTrue(pd.isna(q.y))
+        self.assertEqual(q.yn, 80.0)
+
+    def test_other_club_cm_snapshot_inside_a_long_spell_is_nearby(self):
+        Q = pd.DataFrame([dict(p="Q1", qid="old", D=2010, s0=2010, s1=2019)])
+        R = pd.DataFrame([dict(p="Q1", s=2014, q="new", r=84.0, sr=SR, a6=None, g6=None, pos=["ST"])])
+        q = ratings.engine_y(Q, self.P, {"Q1": 1}, pd.DataFrame([_E(s=2000)]), R).iloc[0]
+        self.assertTrue(pd.isna(q.yc))
+        self.assertEqual(q.ym, 84.0)
+
+    def test_snapshot_inside_the_spell_precedes_a_nearby_outside_snapshot(self):
+        Q = pd.DataFrame([dict(p="Q1", qid="old", D=2010, s0=2010, s1=2019)])
+        E = pd.DataFrame([_E(s=2009, o=90.0, q="new"), _E(o=80.0, q="new")])
+        q = ratings.engine_y(Q, self.P, {"Q1": 1}, E, pd.DataFrame()).iloc[0]
+        self.assertEqual(q.yn, 80.0)
+        self.assertEqual(q.pn["o"], 80.0)
+
+    def test_nearby_snapshots_stop_at_two_seasons_outside_the_spell(self):
+        for s, want in [(2012, 80.8), (2017, 80.0), (2011, None), (2018, None)]:
+            with self.subTest(season=s):
+                q = self.run_([_E(s=s, o=80.0, q="new")], [])
+                if want is None:
+                    self.assertTrue(pd.isna(q.yn))
+                    self.assertIsNone(q.pn)
+                else:
+                    self.assertAlmostEqual(q.yn, want)
+
     def test_cm_same_club_rates_when_ea_is_absent(self):
         R = [dict(p="Q1", s=2014, q="old", o=84.0, sr=SR, a6=None, g6=None, pos=["ST"], gk=False)]
         q = self.run_([_E(o=80.0, q="new", s=2010)], [dict(r, r=r.pop("o")) for r in R])

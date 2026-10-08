@@ -6,6 +6,7 @@ import * as E from '../../app/engine/index.js';
 import * as Dr from '../../app/draft.js';
 import * as Rn from '../../app/run.js';
 import { fields } from '../../app/data.js';
+import { club } from './fixtures.mjs';
 
 const G = JSON.parse(readFileSync(new URL('../../data/game.json', import.meta.url), 'utf8'));
 if (G.params) E.cfg(G.params);
@@ -65,19 +66,23 @@ test('every club and decade can be drawn, and ten clubs per decade do not crowd 
   assert.equal(Object.keys(Dn).length, 8, 'every decade can still be drawn');
 });
 
-test('the run plays segments, deals rewards, then the boss, and replays identically', () => {
+function step(s) {
+  if (s.ph === 'rd') return Rn.runRound(G, F, s);
+  if (s.ph === 'boss') return Rn.runPlayBoss(G, F, s);
+  if (s.ph === 'repo') return Rn.nextAct(s);
+  if (s.ph === 'hop') return Rn.hop(G, s, { old: [0, 1], neu: [0, 1], out: [11, 12, 13, 14] });
+  const O = Rn.offers(G, F, s), rest = O.findIndex(o => o.kind === 'rest');
+  const j = rest >= 0 ? rest : O.findIndex(o => o.kind === 'dev' && o.cost < s.pat);
+  return Rn.take(G, F, s, j);
+}
+
+test('four rounds each require a reward before the boss tie and replay identically', () => {
   const d = draft(11, 1970);
   const go = () => {
-    let s = Rn.runNew(11, d);
+    let s = { ...Rn.runNew(11, d), pat: 20 };
     const out = [];
-    for (let k = 0; k < 12 && !['done', 'fired'].includes(s.ph); k++) {
-      if (s.ph === 'seg') s = Rn.runSegment(G, F, s);
-      else if (s.ph === 'reward') {
-        const O = Rn.offers(G, F, s);
-        assert.ok(O.length >= 2 && O.length <= 3);
-        assert.equal(O.at(-1).kind, 'rest', 'rest is always on offer');
-        s = Rn.take(G, F, s, O.length - 1);
-      } else s = Rn.runPlayBoss(G, F, s);
+    for (let k = 0; k < 9; k++) {
+      s = step(s);
       out.push([s.ph, s.act, s.pat]);
       assert.ok(s.pat >= 0 && s.pat <= Rn.PAT_MAX);
     }
@@ -86,31 +91,69 @@ test('the run plays segments, deals rewards, then the boss, and replays identica
   const [a, ta] = go(), [b, tb] = go();
   assert.deepEqual(ta, tb);
   assert.deepEqual(a.slots, b.slots);
-  assert.ok(a.log.some(e => e.t === 'seg') && a.log.some(e => e.t === 'boss'));
+  assert.deepEqual(ta.slice(0, 8).map(x => x[0]), ['node', 'rd', 'node', 'rd', 'node', 'rd', 'node', 'boss']);
+  assert.equal(a.log.filter(e => e.t === 'seg').length, 4);
+  assert.equal(a.log.filter(e => e.t === 'boss').length, 1);
 });
 
-test('a boss loss costs patience and keeps the act; a win moves to the next decade', () => {
-  const d = draft(5, 1990);
-  let s = { ...Rn.runNew(5, d), ph: 'boss' };
-  for (let i = 0; i < 30 && s.act === 0 && s.ph === 'boss'; i++) {
-    const p = s.pat, t = Rn.runPlayBoss(G, F, s), e = t.log.at(-1);
-    if (e.won) { assert.equal(t.act, 1); assert.equal(t.ph, 'seg'); assert.equal(t.pat, Math.min(Rn.PAT_MAX, p + Rn.B_WIN)); }
-    else { assert.equal(t.act, 0); assert.equal(t.pat, Math.max(0, p - Rn.B_LOSS(e.n))); assert.ok(['boss', 'fired'].includes(t.ph)); }
-    s = t.ph === 'fired' ? { ...t, pat: 8, ph: 'boss' } : t;
-  }
+test('a lost boss tie restarts the act against another boss and charges run-wide loss costs', () => {
+  const s = { ...Rn.runNew(5, draft(5, 1990)), ph: 'boss', rd: 4, pat: 20 };
+  const H = { ...F, 1960: F[1960].map((c, i) => i < 3 ? club(`strong${i}`, 150, 1960) : c) };
+  const t = Rn.runPlayBoss(G, H, s), e = t.log.at(-1);
+  assert.equal(e.won, false);
+  assert.equal(t.act, 0);
+  assert.equal(t.pat, 16);
+  assert.equal(t.ph, 'rd');
+  assert.equal(t.rd, 0);
+  assert.notEqual(t.boss, s.boss);
+  assert.equal(e.legs.length, 2);
+  assert.deepEqual(e.agg, [e.legs[0][0] + e.legs[1][1], e.legs[0][1] + e.legs[1][0]]);
+  assert.equal(t.mv[e.lvp], -1);
+  const u = Rn.runPlayBoss(G, H, { ...t, ph: 'boss', rd: 4 });
+  assert.equal(u.log.at(-1).won, false);
+  assert.equal(u.pat, 10);
+  assert.equal(u.lost, 2);
+});
+
+test('a won boss tie opens four free transfers before the next decade and the last boss ends the map', () => {
+  const s = { ...Rn.runNew(5, draft(5, 1990)), ph: 'boss', rd: 4, pat: 8 };
+  const H = Object.fromEntries(Object.entries(F).map(([D, Q]) => [D, Q.map((c, i) => i < 3 ? club(`weak${i}`, 20, Number(D)) : c)]));
+  const t = Rn.runPlayBoss(G, H, s), e = t.log.at(-1);
+  assert.equal(e.won, true);
+  assert.equal(t.act, 0);
+  assert.equal(t.ph, 'hop');
+  assert.equal(t.pat, 12);
+  assert.equal(t.mv[e.mvp], 1);
+  const P = Rn.hopPools(G, t);
+  assert.equal(P.old.length, 5);
+  assert.equal(P.neu.length, 5);
+  assert.equal(new Set([...P.old, ...P.neu].map(c => c.p)).size, 10);
+  assert.throws(() => Rn.hop(G, t, { old: [0], neu: [0, 1], out: [11, 12, 13] }), /Sign 2/);
+  const u = Rn.hop(G, t, { old: [0, 1], neu: [0, 1], out: [11, 12, 13, 14] });
+  assert.equal(u.ph, 'repo');
+  assert.equal(u.pat, 12);
+  const v = Rn.nextAct(Rn.runSwap(u, 0, 11));
+  assert.equal(v.act, 1);
+  assert.equal(Rn.D_of(v), 1990);
+  assert.equal(v.ph, 'rd');
+  assert.equal(v.rd, 0);
+  assert.equal(v.slots[0].p, P.old[0].p);
+  const done = Rn.runPlayBoss(G, H, { ...v, act: 2, ph: 'boss', rd: 4 });
+  assert.equal(done.ph, 'done');
+  assert.equal(Rn.runBoss(H, done), null);
 });
 
 test('a boost card upgrades the same person to his best version and charges the tier cost', () => {
   const d = draft(3, 2010);
-  let s = { ...Rn.runNew(3, d), ph: 'reward', pat: 20, seg: 1 };
+  let s = { ...Rn.runNew(3, d), ph: 'node', pat: 20, rd: 0 };
   let found = null;
   for (let t = 0; t < 40 && !found; t++) {
     const O = Rn.offers(G, F, { ...s, tries: s.tries.map((x, i) => (i === 0 ? t : x)) });
-    const j = O.findIndex(o => o.kind === 'boost');
+    const j = O.findIndex(o => o.id === 'upg');
     if (j >= 0) found = { O, j, s: { ...s, tries: s.tries.map((x, i) => (i === 0 ? t : x)) } };
   }
   assert.ok(found, 'no boost card was dealt in forty reward phases');
-  const o = found.O[found.j], t = Rn.take(G, F, found.s, found.j);
+  const o = found.O[found.j].list[0], t = Rn.take(G, F, found.s, found.j);
   assert.equal(t.slots[o.i].p, o.from.p);
   assert.equal(t.slots[o.i].k, Rn.versions(G, o.from.p)[0].k);
   assert.equal(t.pat, 20 - o.cost);
@@ -120,11 +163,18 @@ test('a boost card upgrades the same person to his best version and charges the 
 
 test('rewards never spend the last point of patience', () => {
   const d = draft(9, 1980);
-  const s = { ...Rn.runNew(9, d), ph: 'reward', pat: 2, seg: 1 };
+  const s = { ...Rn.runNew(9, d), ph: 'node', pat: 2, rd: 0 };
   const O = Rn.offers(G, F, s);
   O.forEach((o, j) => {
-    if (o.cost >= 2) assert.throws(() => Rn.take(G, F, s, j, { pick: 0, slot: 14 }), /patience/);
+    if (o.kind === 'dev' && o.cost >= 2) assert.throws(() => Rn.take(G, F, s, j, { pick: 0, slot: 14 }), /patience/);
   });
+  assert.ok(O.some(o => o.kind === 'dev' && o.cost >= 2), 'the unaffordable branch was exercised');
+  const j = O.findIndex(o => o.kind === 'desp');
+  assert.ok(j >= 0);
+  const o = O[j].list[0], slot = s.slots.findIndex((_, i) => !s.cap || Rn.TI(Dr.hydrate(G, s.slots[i]).r) === Rn.TI(o.r));
+  const t = Rn.take(G, F, s, j, { slot });
+  assert.equal(t.pat, 2);
+  assert.equal(t.slots[slot].p, o.p);
 });
 
 test('saved Gauntlets reject malformed fields before a mode can use them', () => {
@@ -133,7 +183,9 @@ test('saved Gauntlets reject malformed fields before a mode can use them', () =>
     { m: null }, { m: { ...r.m, f: 'missing' } }, { v: 99 }, { seed: -1 },
     { tags: null }, { tags: [] }, { tags: { [r.slots[0].p]: { tal: '<img>' } } },
     { up: null }, { up: { [r.slots[0].p]: 'missing' } }, { tries: [] }, { tries: [-1, ...r.tries.slice(1)] },
-    { seg: 99 }, { rest: -1 }, { ph: 'boss', seg: 0 }, { log: [null] },
+    { map: 'missing' }, { rd: 99 }, { rest: -1 }, { ph: 'boss', rd: 0 }, { ph: 'hop', rd: 0 },
+    { ph: 'repo', rd: 0 }, { boss: 3 }, { lost: -1 }, { mv: null }, { neg: { [r.slots[0].p]: 'A' } },
+    { badge: { glue: 2, mgr: 0 } }, { prem: 1, fa: 0 }, { log: [null] },
     { log: [{ t: 'seg', pts: '<img>', res: [] }] }, { log: [{ t: 'unknown' }] },
   ];
   assert.deepEqual(Dr.valid(G, { ...d, mode: { run: r } }).mode.run, r);
@@ -141,16 +193,69 @@ test('saved Gauntlets reject malformed fields before a mode can use them', () =>
     /saved Gauntlet/i, `accepted malformed fields ${JSON.stringify(patch)}`);
 });
 
-test('saved Gauntlets resume actual segments, rewards, boss attempts and the final state', () => {
+test('saved Gauntlets resume rounds, rewards, transfers and the final state', () => {
   const d = { ...draft(11, 1970), phase: 'results' };
   let s = Rn.runNew(11, d);
-  for (let k = 0; k < 80; k++) {
+  for (let k = 0; k < 300; k++) {
     const restored = Dr.valid(G, { ...d, mode: { run: JSON.parse(JSON.stringify(s)) } }).mode.run;
     assert.deepEqual(restored, s);
     assert.deepEqual(Rn.runTeam(G, restored), Rn.runTeam(G, s));
     if (['done', 'fired'].includes(s.ph)) return;
-    s = s.ph === 'seg' ? Rn.runSegment(G, F, s) : s.ph === 'boss' ? Rn.runPlayBoss(G, F, s)
-      : Rn.take(G, F, s, Rn.offers(G, F, s).length - 1);
+    s = step(s);
   }
   assert.fail('the run never reached a final state');
+});
+
+test('v1 saves migrate to the eight-decade map without accepting malformed legacy fields', () => {
+  const d = { ...draft(11, 1970), phase: 'results' }, r = Rn.runNew(11, d);
+  const old = { v: 1, seed: 11, cap: false, m: r.m, slots: r.slots, act: 2, seg: 1, ph: 'reward',
+    pat: 9, rest: 1, tries: [0, 0, 1, 0, 0, 0, 0, 0], tags: { [r.slots[0].p]: { rock: 2 } }, up: {},
+    log: [{ t: 'boss', D: 1970, act: 2, op: 'Legacy boss', n: 1, won: false, gx: 0, gy: 1, et: false, pw: null, dp: -4 }] };
+  const t = Dr.valid(G, { ...d, mode: { run: old } }).mode.run;
+  assert.equal(t.v, 2);
+  assert.equal(t.map, 'odyssey');
+  assert.equal(t.act, 2);
+  assert.equal(t.rd, 0);
+  assert.equal(t.ph, 'rd');
+  assert.equal(t.pat, 9);
+  assert.equal(t.lost, 1);
+  assert.deepEqual(t.tags, old.tags);
+  assert.deepEqual(t.log, old.log);
+  const b = Dr.valid(G, { ...d, mode: { run: { ...old, seg: 2, ph: 'boss' } } }).mode.run;
+  assert.equal(b.ph, 'boss');
+  assert.equal(b.rd, 4);
+  const done = Dr.valid(G, { ...d, mode: { run: { ...old, act: 7, seg: 0, ph: 'done' } } }).mode.run;
+  assert.equal(done.ph, 'done');
+  assert.equal(done.rd, 4);
+  for (const patch of [{ seg: 99 }, { seg: 0, ph: 'reward' }, { seg: 1, ph: 'boss' }, { ph: 'hop' }, { cap: 'false' }]) {
+    assert.throws(() => Dr.valid(G, { ...d, mode: { run: { ...old, ...patch } } }), /saved Gauntlet/i);
+  }
+});
+
+test('persistent boss points remain loadable beyond twenty attempts', () => {
+  const d = { ...draft(11, 1970), phase: 'results' }, r = Rn.runNew(11, d);
+  const s = { ...r, mv: { [r.slots[0].p]: -21, [r.slots[1].p]: 21 } };
+  assert.deepEqual(Dr.valid(G, { ...d, mode: { run: s } }).mode.run.mv, s.mv);
+});
+
+test('successive rounds climb the field and exclude its three bosses', () => {
+  const s = Rn.runNew(11, draft(11, 1970));
+  for (const [rd, a, b] of [[0, 13, 19], [1, 9, 15], [2, 6, 12], [3, 3, 9]]) {
+    const O = Rn.roundOps(F, { ...s, rd });
+    assert.equal(O.length, 6);
+    assert.deepEqual(O.map(c => c.id).sort(), F[1960].slice(a, b).map(c => c.id).sort());
+  }
+});
+
+test('round points apply every patience boundary before a purchase', () => {
+  for (const [pts, dp] of [[0, -5], [1, -5], [2, -4], [3, -4], [4, -3], [6, -3], [7, -2], [8, -2],
+    [9, 0], [11, 0], [12, 1], [13, 2], [17, 2], [18, 3]]) assert.equal(Rn.dP(pts), dp, `${pts} points`);
+});
+
+test('run score penalizes act retries and rewards capped clean runs', () => {
+  const sg = { t: 'seg', w: 4, d: 1, l: 1 }, a = { t: 'boss', act: 0, won: true }, b = { t: 'boss', act: 1, won: true };
+  const s = { cap: true, pat: 10, log: [sg, a, sg, { t: 'boss', act: 1, won: false }, b] };
+  assert.equal(Rn.score(s).score, 36.09);
+  assert.equal(Rn.score({ ...s, log: [sg, a, sg, b] }).score, 58.59);
+  assert.equal(Rn.score({ ...s, log: [sg] }).score, 0);
 });

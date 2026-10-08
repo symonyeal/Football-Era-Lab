@@ -54,13 +54,13 @@ Recorded goals, assists and expected goals also help choose who receives a simul
 
 ## The Gauntlet develops the team you drafted
 
-After the season, the Era Gauntlet takes your fifteen through all eight decades, starting in the 1950s. Each decade has two six-match segments, followed by a single knockout match against its highest-rated club in the selected opposition field.
+After the season, choose one of four Gauntlet routes. The default Original Gauntlet visits the 1960s, 1990s and 2010s; Back in Time reverses that route. The Full Odyssey visits all eight decades from the 1950s to the 2020s, and Odyssey in Reverse travels the other way. Each decade has four six-match rounds against rising opposition, with a reward after every round, then a two-legged boss tie against one of its three strongest clubs.
 
-The board starts with 8 patience, with a maximum of 20. Good segments can earn more; poor segments and lost boss matches cost it. You can retry a lost boss while patience remains. The run ends when patience reaches zero or you beat the final boss of the 2020s.
+The board starts with 8 patience, with a maximum of 20. Good rounds earn more; poor rounds cost it. Winning a boss restores 4 patience. The first boss loss in the run costs 4, and every later loss costs 6. Surviving a loss restarts all four rounds of that decade against a different boss. The run ends at zero patience or when the route's last boss falls.
 
-After each completed segment you choose a reward. A boost upgrades an existing player to that same person's highest-rated card in the archive. A free-agent offer lets you sign one player and release another. Development adds a playing tag, such as Talisman, Maestro or Rock. Rest recovers patience, although repeated rests pay less. Upgrades and signings spend patience, so a stronger squad can leave you with less room to survive the next loss.
+Rewards offer free agents, player or team development, and rest. A prime-card boost upgrades an existing player to that same person's highest-rated card in the archive. Development can improve the manager, strengthen teammate links, reduce position or era losses, or train a player's role. Ordinary prices rise as the run advances; below 5 patience, cut-price stars may offer a way back. Rest recovers 2 patience, then 1, then none when repeated.
 
-A capped team keeps Eraball's Gauntlet cap: at most two S-tier and four A-tier players at once. A boosted player keeps his original tier for the cap, so an earned upgrade never breaks it. This follows the reward and board-patience loop of Eraball, adapted to six-match football segments. The full reward costs, squad limits and patience rules are in [MODEL.md](docs/MODEL.md#era-gauntlet).
+After each boss win before the final decade, a free transfer window offers players from the decade you leave and the one you enter. Sign two from each, release four different squad members, then rearrange the lineup before continuing. A capped run allows at most two S-tier and four A-tier charges across the fifteen; a boosted player keeps his original tier charge. The final score rewards cleared decades, round results and remaining patience, with a 1.5 multiplier under the cap. [MODEL.md](docs/MODEL.md#era-gauntlet) gives the prices, development catalogue, negotiation terms and score calculation.
 
 ## Take the same squad into other competitions
 
@@ -104,7 +104,7 @@ The [notebook settings reference](docs/MODEL.md#notebook-settings) explains how 
 To run the game locally, serve this repository folder and open [127.0.0.1:8765](http://127.0.0.1:8765/):
 
 ```text
-python -m http.server 8765 --bind 127.0.0.1
+py -3.14 -m http.server 8765 --bind 127.0.0.1
 ```
 
 There is no frontend build step. A static host needs `index.html`, `app/` and `data/game.json`. GitHub Pages serves this repository from `main` at `/ (root)` using **Deploy from a branch** in Settings → Pages.
@@ -112,19 +112,20 @@ There is no frontend build step. A static host needs `index.html`, `app/` and `d
 For the notebook, install Node 20 or later and Python 3.11 or later, then run:
 
 ```text
-python -m pip install -r requirements.txt
-python -m jupyterlab "Football Era Lab.ipynb"
+py -3.14 -m pip install -r requirements.txt
+py -3.14 -m jupyterlab "Football Era Lab.ipynb"
 ```
 
-Set `NODE` in the notebook's setup cell if Node is not on PATH. On the Windows development machine, use `C:\Python314\python.exe` instead of `python`.
+These commands use the Windows development machine's system Python 3.14. Elsewhere, replace `py -3.14` with your Python command. Set `NODE` in the notebook's setup cell if Node is not on PATH.
 
 To check an edited copy:
 
 ```text
 node --test tests/engine/*.test.mjs
-python -m pip install -r requirements-analytics.txt
-python -m unittest discover -s tests -p test_pipeline.py -v
-python -m pytest tests/test_calibration.py -q -p no:cacheprovider
+py -3.14 -m pip install -r requirements-analytics.txt
+py -3.14 -m unittest discover -s tests -p test_pipeline.py -v
+py -3.14 -m unittest discover -s tests -p test_wikidata.py -v
+py -3.14 -m pytest -q
 ```
 
 GitHub's workflow also executes the notebook. Browser checks and balance commands are in [VALIDATION.md](docs/VALIDATION.md); rebuilding data is a separate task described in [DATA.md](docs/DATA.md).
