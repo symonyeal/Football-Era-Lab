@@ -31,7 +31,7 @@ The data validator reported zero failures for its structural rules. The export h
 
 ## The browser checks cover the career and extra modes
 
-The 2026-10-08 local acceptance record passed 59 checks: desktop at 1440 × 900, mobile at 390 × 844, tablet at 768 × 1024 and reduced motion. No run reported a page or console error, failed HTTP response or horizontal page overflow. Its data fingerprint matches the current league-enabled bundle.
+The final 2026-10-08 local acceptance record passed 60 checks in bundled Chromium: desktop at 1440 × 900, mobile at 390 × 844, tablet at 768 × 1024 and reduced motion. An earlier Microsoft Edge run passed 59 checks. Neither report recorded a page or console error, failed HTTP response or horizontal page overflow, and both fingerprints match the current league-enabled bundle.
 
 Desktop and mobile completed manager selection, five squad draws, fifteen placements, a swap and reload under the default salary cap. The finished draft held 2 S, 4 A, 4 B, 3 C and 2 D players from five clubs, with visible reasons for blocked cards. Each played a real club season to winter, took a reward, resumed with the exact saved state, changed the lineup, played the run-in and inspected tables, fixtures, cups and season history. Whole-decade continuation is also exercised by the engine and balance harness.
 
@@ -41,7 +41,9 @@ More modes played four Gauntlet rounds, rewards and a two-legged boss, including
 
 Both playthroughs selected an unrecorded starting formation, changed formation mid-batch, applied the preview, undid and redid it, then resumed with the same cards, bench and counters. Separate regressions require resolving a preview before kick-off and allow a phone keyboard to select and place a substitute when all eleven starting places are filled. Tablet checks placed a card through its sheet without covering the pitch or bench. Reduced motion revealed a squad immediately and removed its animation.
 
-Both playthroughs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The report records the data hash. These local runs cover Microsoft Edge at three screen sizes, not every browser or every possible sequence of choices.
+The added tablet regression forces fallback fonts, checks the header width and places a player. It addresses the first CI run's header overflow: a 768-pixel viewport produced an 817-pixel page. After the header sizing fix, targeted probes in Chromium and Edge both measured 768 pixels with no overflowing elements. The final Chromium playthrough includes this fallback-font case.
+
+Both playthroughs rejected corrupt saves and invalid replay files. They rejected a malformed Gauntlet import without replacing browser storage, downloaded the replay and result PNG, and restored the downloaded replay with exactly the same placements. The reports record the data hash. These local runs cover bundled Chromium and Microsoft Edge at three screen sizes, plus the targeted Edge header check after the fix. They do not cover every browser or every possible sequence of choices.
 
 To reproduce them, serve the repository root, install Playwright and Chromium, and run:
 

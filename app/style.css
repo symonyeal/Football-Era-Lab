@@ -500,6 +500,9 @@ tbody tr:last-child td{border-bottom:0}
 }
 /* Tablet only: the dashboard is a one-line strip (team, grades, cap); the bench is 2 × 2 */
 @media (min-width:768px) and (max-width:1279px){
+  .bar{gap:12px;padding-left:16px;padding-right:16px}
+  .brand{min-width:0}.brand span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .bar-tools{flex-shrink:0}
   .dash .tm{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;padding:10px 14px!important}
   .dash .tm .lbl,.dash .tm .row .small{display:none}
   .dash .tm-nm{font-size:20px;margin:0}

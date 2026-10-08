@@ -22,7 +22,15 @@ const st = p => p.evaluate(k => JSON.parse(localStorage.getItem(k)), KEY);
 const settle = p => p.waitForFunction(() => document.body.getAttribute('aria-busy') !== 'true' && !document.querySelector('.loading'));
 // A sound screen: no horizontal scroll and no repeated element id.
 const sound = async (p, n) => {
-  assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true, `${n}: page wider than the viewport`);
+  const layout = await p.evaluate(() => {
+    const width = document.documentElement.clientWidth, scrollWidth = document.documentElement.scrollWidth;
+    const nodes = scrollWidth > width ? [...document.querySelectorAll('body *')].flatMap(e => {
+      const r = e.getBoundingClientRect();
+      return r.width && r.right > width + 1 ? [{ tag: e.tagName, id: e.id, class: String(e.className), right: r.right }] : [];
+    }) : [];
+    return { width, scrollWidth, nodes };
+  });
+  assert.equal(layout.scrollWidth <= layout.width, true, `${n}: page wider than the viewport: ${JSON.stringify(layout)}`);
   assert.equal(await p.evaluate(() => { const I = [...document.querySelectorAll('[id]')].map(e => e.id); return I.length === new Set(I).size; }), true, `${n}: repeated element id`);
 };
 const inView = (p, sel) => p.evaluate(s => [...document.querySelectorAll(s)].every(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.bottom <= innerHeight + 1 && r.left >= 0 && r.right <= innerWidth + 1; }), sel);
@@ -427,9 +435,10 @@ async function full(kind) {
 }
 
 // Tablet: roster and pitch side by side; the inspector sheet never covers a place on the pitch or bench.
-async function tablet() {
+async function tablet(fallback = false) {
   const { b, p } = await page('tablet');
   try {
+    if (fallback) await p.addStyleTag({ content: ':root{--fd:sans-serif;--fu:sans-serif}' });
     await p.click('[data-era="2000"]'); await p.fill('#seed', '447'); await p.click('#start-form button[type=submit]'); await settle(p);
     await p.click('[data-manager="0"]'); await settle(p); await p.click('#squad-spin'); await settle(p);
     const r = p.locator('#roster-list .pr:not([aria-disabled])').first(), id = await r.getAttribute('data-player');
@@ -437,10 +446,12 @@ async function tablet() {
     assert.equal(await p.locator('#sheet').isVisible(), true);
     const clash = await p.evaluate(() => { const s = document.querySelector('#sheet').getBoundingClientRect(); return [...document.querySelectorAll('.lineup [data-slot]')].some(e => { const r = e.getBoundingClientRect(); return r.left < s.right && r.right > s.left && r.top < s.bottom && r.bottom > s.top; }); });
     assert.equal(clash, false, 'the sheet must not cover a place');
+    await p.screenshot({ path: path.join(out, `tablet${fallback ? '-fallback' : ''}-sheet.png`), fullPage: true });
     await sound(p, 'tablet sheet');
+    assert.equal(await inView(p, '.bar-tools button:not([hidden])'), true, 'tablet header controls stay visible');
     await p.click('#sheet-best'); await settle(p);
     assert.equal((await st(p)).slots.filter(Boolean)[0].p, id);
-    ok('tablet: roster and pitch side by side, and the sheet places a player without covering a place');
+    ok(`tablet${fallback ? ' with fallback fonts' : ''}: roster and pitch side by side, and the sheet places a player without covering a place`);
   } finally { await b.close(); }
 }
 
@@ -578,7 +589,7 @@ async function benchKeyboard() {
 
 (async () => {
   let failure = null;
-  try { await pendingFormation(); await benchKeyboard(); await full('desktop'); await full('mobile'); await careerControls(); await tablet(); await motion(); assert.deepEqual(errors, [], 'console or page errors'); }
+  try { await pendingFormation(); await benchKeyboard(); await full('desktop'); await full('mobile'); await careerControls(); await tablet(); await tablet(true); await motion(); assert.deepEqual(errors, [], 'console or page errors'); }
   catch (e) { failure = String(e.stack || e); }
   const rep = { passed: !failure && !errors.length, url: base, data_build: G.meta.v,
     data_sha256: createHash('sha256').update(raw).digest('hex'), checks, errors, failure };
