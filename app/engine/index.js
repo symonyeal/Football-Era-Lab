@@ -7,3 +7,4 @@ export * from './xi.js';
 export * from './match.js';
 export * from './season.js';
 export * from './modes.js';
+export * from './comp.js';

@@ -6,7 +6,7 @@ import { validRun } from './run.js';
 // k club-decade key; S formation slots; xi starting eleven; bn four bench cards;
 // s.manager the seeded team {nm, q, a}: manager, club QID, first season of the spell; s.f formation in use.
 
-export const VERSION = 3;
+export const VERSION = 4;
 export const STORE = 'football-era-lab-v2';
 export const DECADES = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
 
@@ -26,15 +26,34 @@ export function start(s, d, cap = false) {
     squadReroll: 0, combo: null, slots: Array(15).fill(null), history: [], season: false };
 }
 
-// Team options: five managers drawn uniformly (a seeded shuffle of those with a spell at an archive
-// club), then one of each one's archive spells uniformly. A spell is [club, first season, last season],
-// in season starts. The keys n:team:k never meet the squad draws (n:squad:...).
-export function opts(G, s) {
+// Version 3 drew from every archive spell, independently of the chosen decade. Keep the old seeded
+// pool for saved drafts, including one saved before its manager was chosen.
+export function opts3(G, s) {
   const M = sh(mk(hs(`${s.seed}:team:${s.managerRoll}`)), G.managers.filter(m => m.t?.some(([q]) => G.clubs[q])));
   if (M.length < 5) throw new Error('The manager pool needs at least five managers with a club in the archive.');
   return M.slice(0, 5).map(m => {
     const T = m.t.filter(([q]) => G.clubs[q]), [q, a, b] = T[Math.floor(mk(hs(`${s.seed}:team:${s.managerRoll}:${m.nm}`))() * T.length)];
     return { nm: m.nm, q, a, b };
+  });
+}
+
+// Career options: a manager's spell must overlap the decade at a club present in that season's real
+// top flight. ys spans the league's whole available decade; the club can take a replacement place in
+// years it was absent. The seeded manager and spell draws remain separate from every squad draw.
+export function opts(G, s) {
+  if (s.v === 2 || s.v === 3) return opts3(G, s);
+  const Y = Object.fromEntries(Object.entries(G.lg || {}).map(([lg, L]) => [lg,
+    Object.keys(L.S).map(Number).filter(y => y >= s.D && y < s.D + 10).sort((a, b) => a - b)]));
+  const spells = m => (m.t || []).filter(([q, a, b]) => {
+    const lg = G.clubs[q]?.cc, ys = Y[lg];
+    return ys?.some(y => y >= a && y <= b && G.lg[lg].S[y].some(r => r[0] === q));
+  });
+  const Q = G.managers.map(m => ({ m, T: spells(m) })).filter(x => x.T.length);
+  const M = sh(mk(hs(`${s.seed}:team:${s.managerRoll}`)), Q);
+  if (M.length < 5) throw new Error('The decade needs at least five managers with a club in its league records.');
+  return M.slice(0, 5).map(({ m, T }) => {
+    const [q, a, b] = T[Math.floor(mk(hs(`${s.seed}:team:${s.managerRoll}:${m.nm}`))() * T.length)], lg = G.clubs[q].cc;
+    return { nm: m.nm, q, a, b, lg, ys: Y[lg] };
   });
 }
 
@@ -197,11 +216,11 @@ export function preview(G, s, p, i) {
 
 // A version 2 save chose a (manager, formation) pair: it keeps the pair as a legacy team
 // {nm, q: null, a: null, f0} and plays f0.
-const up = s => (s?.v === 2 ? { ...s, v: VERSION, manager: s.manager && { nm: s.manager.nm, q: null, a: null, f0: s.manager.f }, f: s.manager?.f ?? null } : s);
+const up = s => (s?.v === 2 ? { ...s, v: 3, manager: s.manager && { nm: s.manager.nm, q: null, a: null, f0: s.manager.f }, f: s.manager?.f ?? null } : s);
 
 export function valid(G, s0) {
   const s = up(s0);
-  if (!s || s.v !== VERSION) throw new Error('This saved run uses a different game version.');
+  if (!s || ![3, VERSION].includes(s.v)) throw new Error('This saved run uses a different game version.');
   const n = seed(s.seed);
   if (s.cap !== undefined && typeof s.cap !== 'boolean') throw new Error('The saved draft cap is invalid.');
   if (!DECADES.includes(s.D) || !['manager', 'draft', 'review', 'results'].includes(s.phase)) throw new Error('The saved run has an invalid stage or decade.');
@@ -245,7 +264,7 @@ export function valid(G, s0) {
   const run = rn !== undefined ? validRun(G, rn, t, !!s.cap) : undefined;
   if ((md.ci !== undefined || rn !== undefined) && s.phase !== 'results') throw new Error('Challenge modes need a finished squad.');
   if (s.wk !== undefined && !/^\d{4}-W\d{2}$/.test(s.wk)) throw new Error('The saved weekly challenge is invalid.');
-  return { v: VERSION, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: t, f: t ? s.f : null,
+  return { v: s.v, seed: n, D: s.D, cap: !!s.cap, phase: s.phase, managerRoll: s.managerRoll, manager: t, f: t ? s.f : null,
     spin: s.spin, picked: s.picked, squadReroll: s.squadReroll, combo: s.combo,
     slots: s.slots.map(c => c ? { k: c.k, p: c.p } : null), history: s.history.slice(),
     ...(s.skip ? { skip: s.skip } : {}),

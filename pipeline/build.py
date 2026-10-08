@@ -20,8 +20,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-from . import clubs, engines, export, fifa, legends, ratings, results, squads, stats, universe, wikidata
-from .config import CACHE, CUR, K_lg
+from . import clubs, engines, export, fifa, leagues, legends, ratings, results, squads, stats, universe, wikidata
+from .config import CACHE, CUR, K_lg, OUT
 from .positions import slots
 
 B = CACHE / "build"
@@ -259,6 +259,8 @@ def s_export(frozen_cards=None):
     miss_t = sorted({(m["nm"], i) for m in M for i, t in enumerate(m["t"]) if not t[0]})
     G = export.out(Q, P, Pl, U, M, duo, md["rep"], {r.id: r.lg for r in U.itertuples()}, labels,
                    dict(duo=miss_duo, sig=miss_sig, tenure=miss_t), frozen_cards=frozen_cards)
+    leagues.add(G, load("clubs"), u["T"], results.ecup(), pd.read_csv(CUR / "ec_late.csv"))
+    (OUT / "game.json").write_text(json.dumps(G, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("export", G["meta"]["counts"], "unresolved duos", len(miss_duo), "sig", len(miss_sig), "tenures", len(miss_t))
 
 

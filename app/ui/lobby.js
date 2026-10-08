@@ -6,7 +6,7 @@
 //   sq(o)     the spell's club-decade squads: decades from the first to the last season start
 //   sig(m, o) his signature players split by whether the spell's squads hold a card of theirs
 
-import { DECADES, opts, hydrate } from '../draft.js';
+import { DECADES, opts, hydrate, shape } from '../draft.js';
 import { wk } from '../play.js';
 import { U, esc, seasons, kv, mini, pitch, vcard, ERA, nm } from './kit.js';
 
@@ -20,18 +20,18 @@ export function intro() {
     <div class="land-copy">
       <p class="eyebrow">A draft through eight decades</p>
       <h1>Build an<br>era XI.</h1>
-      <p class="lede">Choose a manager at one of his clubs. Draw five historical squads, take three players from each and set your formation as the draft unfolds. Then play a season against the best clubs of your decade.</p>
+      <p class="lede">Choose a manager at one of his clubs. Draw five historical squads, take three players from each and set your formation as the draft unfolds. Then lead your club through the decade in its real league, chasing cups and earning the board's trust.</p>
       <form id="start-form" class="start" novalidate>
-        <fieldset class="eras"><legend class="lbl">Season decade · your opponents come from here</legend>
+        <fieldset class="eras"><legend class="lbl">Career decade · your league and rivals come from here</legend>
+          <div class="era-tools"><button id="random-decade" type="button" class="btn q sm" data-era="random" aria-pressed="${D === 'random'}">Random decade</button><small class="small">${D === 'random' ? 'Your seed chooses the decade.' : 'Choose an era or let the seed decide.'}</small></div>
           <div class="tiles">${DECADES.map(d => `<button type="button" class="tile" data-era="${d}" aria-pressed="${D === d}" style="--era:var(--era-${d})"><b>${d}s</b><small>${ERA[d]}</small></button>`).join('')}</div>
-          <button type="button" class="link" data-era="random" aria-pressed="${D === 'random'}">${D === 'random' ? '✓ The seed chooses the decade' : 'Let the seed choose the decade'}</button>
         </fieldset>
         <div class="start-row">
           <fieldset class="rules"><legend class="lbl">Rules</legend>
             <label><input id="draft-cap" type="radio" name="draft-rules" value="cap" ${cap ? 'checked' : ''}><span><b>Salary cap</b><small>2 S · 4 A · 4 B · 3 C · 2 D</small></span></label>
             <label><input id="draft-classic" type="radio" name="draft-rules" value="classic" ${!cap ? 'checked' : ''}><span><b>Classic</b><small>No tier limits</small></span></label>
           </fieldset>
-          <label class="seed"><span class="lbl">Replay seed</span><input id="seed" name="seed" inputmode="numeric" autocomplete="off" value="${esc(U.seed)}" aria-describedby="seed-help"><small id="seed-help">Same seed, rules and choices give the same run.</small></label>
+          <div class="seed"><label class="lbl" for="seed">Replay seed</label><div class="seed-row"><input id="seed" name="seed" inputmode="numeric" autocomplete="off" value="${esc(U.seed)}" aria-describedby="seed-help"><button id="seed-reroll" class="btn q sm" type="button" aria-label="Re-roll the replay seed">Re-roll seed</button></div><small id="seed-help">Same seed, rules and choices give the same run.</small></div>
           <button class="btn big" type="submit">Enter the draft →</button>
         </div>
       </form>
@@ -44,7 +44,7 @@ export function intro() {
   <ol class="how" aria-label="How a draft works"><li><b>Team</b><span>A manager at one of his clubs sets grades and signature players.</span></li>
     <li><b>Five squads</b><span>Three players from each historical club squad, inside the salary cap.</span></li>
     <li><b>Lineup</b><span>Any formation, any placement; ratings follow each player's position fit.</span></li>
-    <li><b>Season</b><span>A 38-match league and a 16-club European Cup, then the Era Gauntlet.</span></li></ol>
+    <li><b>Career</b><span>Real league seasons and cup races across the decade, with transfer windows between halves.</span></li></ol>
   <p class="replay"><label>Have a saved replay? <input id="import-replay" type="file" accept="application/json,.json"></label></p>`;
 }
 
@@ -54,13 +54,14 @@ function sig(m, o) {
   return { here: m.sig.filter(p => H.has(p)).map(nm), away: m.sig.filter(p => !H.has(p)).map(nm) };
 }
 const spells = (m, o) => { const T = m.t.filter(([q]) => q === o.q).sort((x, y) => x[1] - y[1]); return [T.findIndex(t => t[1] === o.a) + 1, T.length]; };
+const career = o => o.ys?.length ? `${U.G.lg[o.lg].nm} top flight · ${seasons(o.ys[0], o.ys.at(-1))}` : 'Legacy draft · original team options';
 
 export function teams() {
   const { G, S } = U, O = opts(G, S), j = Math.min(U.insp, O.length - 1);
   const card = (o, i) => {
     const m = G.managers.find(m => m.nm === o.nm), c = G.clubs[o.q], [n, of] = spells(m, o), s = sig(m, o), D = sq(o);
     return `<article class="tc ${i === j ? 'on' : ''}" style="${kv(o.q)}" aria-label="${esc(`${m.nm}, ${c.nm} ${seasons(o.a, o.b)}`)}">
-      <div class="th"><p class="lbl">Option ${i + 1} · ${esc(c.cc)}</p><p class="cn">${esc(c.nm)}</p><p class="yr">${seasons(o.a, o.b)}</p></div>
+      <div class="th"><p class="lbl">Option ${i + 1} · ${esc(c.cc)}</p><p class="cn">${esc(c.nm)}</p><p class="yr">${seasons(o.a, o.b)}</p><p class="small career-context">${esc(career(o))}</p></div>
       <div class="bd"><div class="row top"><p class="mg">${esc(m.nm)}</p>${of > 1 ? `<span class="tg o">Spell ${n} of ${of}</span>` : ''}</div>
         <div class="gr"><span>Att <b>${m.ga}</b></span><span>Def <b>${m.gd}</b></span></div>
         <div><p class="lbl">Recorded formations</p><p class="fs">${m.f.map(esc).join(' · ')}</p></div>
@@ -68,17 +69,19 @@ export function teams() {
         <p class="small sq">${D.length ? `Archive squads: ${D.map(d => `${d}s (${G.cards[`${o.q}:${d}`].length})`).join(' · ')}` : `No archive squad for ${esc(c.nm)} in the ${Math.floor(o.a / 10) * 10}s`}</p>
         <div class="row"><button class="btn q sm" type="button" data-inspect="${i}" aria-pressed="${i === j}">Inspect</button><button class="btn sm" type="button" data-manager="${i}">Choose</button></div></div></article>`;
   };
-  const o = O[j], m = G.managers.find(m => m.nm === o.nm), c = G.clubs[o.q], s = sig(m, o), f0 = U.f0 && G.formations[U.f0] ? U.f0 : m.f[0];
+  const o = O[j], m = G.managers.find(m => m.nm === o.nm), c = G.clubs[o.q], s = sig(m, o);
   const rec = m.f.filter(f => G.formations[f]), rest = Object.keys(G.formations).filter(f => !rec.includes(f));
+  const f0 = U.f0 && G.formations[U.f0] ? U.f0 : rec[0];
   const D = sq(o);
   return `<section class="teams">
     <div class="head"><div><p class="eyebrow">Step 1 · your managerial context</p><h1>Choose a manager and his club</h1>
-      <p class="lede">Five managers, one club spell each. The team sets grades and signature players; the formation stays your choice until kick-off.</p></div>
+      <p class="lede">Five managers, one club spell each${S.v === 4 ? ` in the ${S.D}s` : ''}. The team sets grades and signature players; the formation stays your choice until kick-off.</p></div>
       <button class="btn q" type="button" id="manager-reroll" ${S.managerRoll >= 2 ? 'disabled' : ''}>Re-spin teams <span>${2 - S.managerRoll} left</span></button></div>
     <div class="tcs">${O.map(card).join('')}</div>
     <section class="insp-team" aria-label="${esc(`${m.nm} at ${c.nm}`)}" style="${kv(o.q)}">
       <div><p class="lbl">Start in · change any time before kick-off</p>
-        <div class="row wrap">${rec.map(f => `<span class="fm ${f === f0 ? 'on' : ''}">${mini(G, f)}<span><b>${esc(f)}</b><small>Recorded</small></span></span>`).join('')}</div>
+        <div class="shape-preview"><div class="start-shape" id="start-shape" data-formation="${esc(f0)}" aria-label="${esc(f0)} formation preview">${pitch(shape(G, f0), [], { mode: 'view', sm: true })}</div><p class="shape-caption"><b>${esc(f0)}</b><span class="small">${rec.includes(f0) ? 'Recorded formation' : 'Your formation'}</span></p></div>
+        <div class="row wrap">${rec.map(f => `<button type="button" class="fm ${f === f0 ? 'on' : ''}" data-start-form="${esc(f)}" data-key="sf:${esc(f)}" aria-pressed="${f === f0}">${mini(G, f)}<span><b>${esc(f)}</b><small>Recorded</small></span></button>`).join('')}</div>
         <label class="sel full"><span class="sr-only">Starting formation</span><select id="start-formation">${rec.map(f => `<option value="${esc(f)}" ${f === f0 ? 'selected' : ''}>${esc(f)} · recorded</option>`).join('')}<optgroup label="Other formations">${rest.map(f => `<option value="${esc(f)}" ${f === f0 ? 'selected' : ''}>${esc(f)}</option>`).join('')}</optgroup></select></label>
         <p class="small">Recorded formations come from his whole career, not only this spell. Any of the ${Object.keys(G.formations).length} catalogue formations can be played.</p></div>
       <div><p class="lbl">Grades</p><div class="gr"><span>Attack <b>${m.ga}</b></span><span>Defence <b>${m.gd}</b></span></div>
@@ -86,7 +89,7 @@ export function teams() {
       <div><p class="lbl">Signature players${D.length ? ` · ${s.here.length} in ${esc(c.nm)}'s ${D.map(d => `${d}s`).join(' and ')} squads` : ''}</p>
         <p class="small cols">${s.here.map(esc).join('<br>') || 'None in this team\'s archive squads.'}</p>
         <p class="small">${s.away.length ? `Elsewhere in his career: ${s.away.map(esc).join(', ')}.` : 'Elsewhere in his career: none.'}</p></div>
-      <div class="cta"><button class="btn big" type="button" data-choose="${j}">Choose ${esc(m.nm)} · ${esc(c.nm)}</button><span class="small">${seasons(o.a, o.b)}</span></div>
+      <div class="cta"><button class="btn big" type="button" data-choose="${j}">Choose ${esc(m.nm)} · ${esc(c.nm)}</button><span class="small">${esc(career(o))}</span><span class="small">Manager's spell: ${seasons(o.a, o.b)}</span></div>
     </section>
   </section>`;
 }

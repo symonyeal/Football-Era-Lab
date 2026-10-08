@@ -20,6 +20,7 @@ for (let q = 0; q < 6; q++) {
     return { p, r, pos: ['ST'], tg: {}, s: 'f' };
   });
 }
+G.lg = { ENG: { nm: 'England', S: { 1990: Object.keys(G.clubs).map(q => [q]) } } };
 const open = () => Dr.spin(G, Dr.choose(G, Dr.start(25, 1990, true), 0));
 const bundle = () => (bundle.G ||= JSON.parse(readFileSync(new URL('../../data/game.json', import.meta.url), 'utf8')));
 

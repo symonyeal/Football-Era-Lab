@@ -21,15 +21,39 @@ The five major leagues supply 185 of the 268 clubs: 45 English, 35 Spanish, 38 I
 | 2010s | 20 | 20 | 20 | 20 | 20 |
 | 2020s | 19 | 16 | 15 | 13 | 10 |
 
-Every shortfall below twenty comes from those two steps. The largest are in the early Spanish and French decades and in the 2020s, which the sources cover only to 2024. The missing club-decades are not filled with invented squads.
+Every shortfall below twenty comes from those two steps. The largest are in the early Spanish and French decades and in the 2020s, which the sources cover only to 2024. Missing club-decades stay out of the player draft. The career can field a labelled stand-in for a real rival missing from that archive, as described below.
 
 Wikidata's dated club records supply the players. A qualifying card needs at least ten appearances allocated to that decade. When appearance totals are missing, it can qualify through the declared notability rule: at least two covered seasons and twelve Wikipedia language links. Whole-spell appearances and league goals are spread across the covered years. They are not separately observed totals for every decade.
 
 These records can put players in the same decade squad even when they never shared one season. Missing names, wrong dates and incomplete totals can also affect membership. The roster shows every qualifying supplied card for a draw; the archive does not contain every player ever registered at the club.
 
-A squad needs at least fifteen cards and a goalkeeper to be eligible. The league opposition starts with the nineteen highest-ranked eligible club squads by domestic and European results. Their best elevens are then rated by the engine to order that selected field and identify its boss.
+A squad needs at least fifteen cards and a goalkeeper to be eligible for the draft. The nineteen highest-ranked eligible club squads by domestic and European results still supply the fictional opposition field used by the notebook, Gauntlet and circuit. Their best elevens are rated by the engine to order that field. The browser career uses the real league membership of each individual season.
 
 The pipeline excludes people explicitly labelled female by Wikidata's sex-or-gender field, P21, and records age conflicts. The exported people have no cached explicit female label. That check cannot establish complete or correct gender information in the source.
+
+## Real league seasons and the squads they can supply
+
+The career's league tables are bundled in `game.json` under `lg`, European Cup entrants under `ec`, and names of clubs outside the card archive under `xn`. A season is labelled by its start year, so `2024` means 2024/25. Every covered league has a continuous series from its first available season through 2024/25.
+
+| League | Available seasons | Season tables | Real club-season rows | Rows with a club in the card archive |
+| --- | --- | ---: | ---: | ---: |
+| England | 1950/51–2024/25 | 75 | 1,583 | 97.5% |
+| Spain | 1950/51–2024/25 | 75 | 1,388 | 90.1% |
+| France | 1950/51–2024/25 | 75 | 1,462 | 88.2% |
+| Germany | 1963/64–2024/25 | 62 | 1,114 | 94.0% |
+| Italy | 1950/51–2024/25 | 75 | 1,354 | 91.7% |
+| Netherlands | 1956/57–2024/25 | 69 | 1,234 | 87.6% |
+| Portugal | 1994/95–2024/25 | 31 | 542 | 91.7% |
+
+These percentages count whether the real club has any cards in the archive. They do not establish that it has fifteen usable players for the particular season. The tables come from engsoccerdata result aggregates. The two missing seasons, England 2022/23 and France 1994/95, use sourced final-table facts in [league_gaps.csv](../pipeline/curated/league_gaps.csv). Names for the same club within a season are merged by club ID. Partial promotion and relegation play-off records are excluded when their match count is below three quarters of the league maximum.
+
+The stored order uses wins and draws to recompute period-rule points, then goal difference and goals scored. Historical point deductions, administrative title awards and every league's particular tie-break rules are outside that calculation. The career's history comparison uses those derived records.
+
+For each rival, [app/club.js](../app/club.js) first takes cards whose dated spell covers the season. If the squad is short or has no goalkeeper, it adds players from the same club's nearest spell years, at most three years away, checking adjacent decades where needed. Person IDs are deduplicated, and your current players are removed from every rival.
+
+If fewer than fifteen players or no goalkeeper remain, the rival uses fifteen generated players labelled as a stand-in. Its strength is estimated from the real win-and-draw record, normalized to three points per win, using the relation between points per game and rated squads in that league-season. A sparse fit uses a declared slope of six rating points per point per game, and the result stays between 55 and 90. An outside European entrant with no usable league record receives the declared default of 74. Generated players are excluded from the draft and transfer market.
+
+European Cup records cover complete entrant fields through 2015/16; 2016/17 records only the final, and the later curated seasons record the last eight. Qualification fills those incomplete fields using previous league finishes and available archive clubs. Domestic cup holders and complete worldwide tournament fields are not supplied. The [competition rules](MODEL.md#club-career) explain how these gaps affect the career.
 
 ## The source label explains what rated a card
 
@@ -94,7 +118,8 @@ These are the dataset declarations recorded for the release. They describe diffe
 | [Cody Tipton, Understat player stats per game](https://www.kaggle.com/datasets/codytipton/player-stats-per-game-understat) | xG, xA and minutes, top five leagues and Russia, 2014 onwards. | MIT declaration. |
 | [Championship Manager 01/02 Starter Kit](https://github.com/JonBetts/CM0102-Starter-Kit) | Sports Interactive's original and community season databases: ability, positions and attributes. | No stated database licence; raw files are not redistributed. |
 | [Lucas Silva, FIFA 23 Ultimate Team players database](https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database) | Base Icon/Hero reconstructions. The downloaded file dated 2024-06-07 contains FC 24 cards despite the page title. | CC0 declaration. |
-| [James Curley, engsoccerdata](https://github.com/jalapic/engsoccerdata) | Derived club rankings and scoring baselines; local real-result calibration inputs. | GPL (>= 2). |
+| [James Curley, engsoccerdata](https://github.com/jalapic/engsoccerdata) | Derived club rankings, scoring baselines, league-season tables and European Cup stages; local real-result calibration inputs. | GPL (>= 2). |
+| Wikipedia final tables: [2022/23 Premier League](https://en.wikipedia.org/wiki/2022%E2%80%9323_Premier_League) and [1994/95 French Division 1](https://en.wikipedia.org/wiki/1994%E2%80%9395_French_Division_1) | Final-table facts for the two league-seasons missing from the results source. | Facts extracted from CC BY-SA pages; only derived table records ship. |
 
 The code is MIT licensed and the data retains its source terms. Raw results, rating archives and CM databases stay in the persistent local work folder. Leaving raw files out of the repository does not resolve every obligation for derived or redistributed data. Publisher declarations do not establish rights to EA artwork or every underlying asset. No portraits, badges or card artwork are supplied. Retain the source attribution and manifest with a redistributed bundle, and consult the original terms.
 
@@ -132,6 +157,8 @@ python -m pipeline.validate
 
 The first command downloads and caches result and Wikidata records, then reads the local game-engine inputs. Calibration fits the match model using edition-specific squads and saves its report. The next export embeds those parameters; validation records the hash of that export.
 
+The full export includes the real league and European records through [pipeline/leagues.py](../pipeline/leagues.py). To add or refresh those records in an existing `game.json` from persistent caches, run `python -m pipeline.leagues`, then `python -m pipeline.validate`. The league step keeps the existing cards and other game keys; validation updates the fingerprint for the changed bundle.
+
 To resume from existing inputs and caches, name the required steps, for example `python -m pipeline.build model export`. After changing a source or rule, rebuild every affected downstream step; otherwise saved intermediate values remain in use. Run calibration again when its engine-rating rules change. Gameplay does not run this pipeline or download the raw sources.
 
 ### Widening the club pool without changing existing cards
@@ -144,7 +171,7 @@ The 2026-10-07 expansion, which raised the league selection from ten to twenty c
 
 | File | Contents |
 | --- | --- |
-| [game.json](../data/game.json) | The bundle loaded by the browser and notebook. |
+| [game.json](../data/game.json) | Cards, people, clubs, managers, match settings, real league tables and European Cup stages loaded by the browser and notebook. |
 | [manifest.json](../data/manifest.json) | Source attribution, model evaluation and unresolved curated links. |
 | [validation.json](../data/validation.json) | Coverage and the SHA-256 hash identifying the exact bundle. |
 | [calibration.json](../data/calibration.json) | The separate match-fit report, fixture coverage and parameters. |

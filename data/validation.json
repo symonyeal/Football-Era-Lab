@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "data_sha256": "4536ee541946b702821fd3d68a1e9c82b19c3bd8115580b01fa40f649fa30ef3",
+  "data_sha256": "cef6e94dc00a8cdaed54cba9f16ca914e45fe22592b8c5f6cdb24954f5d0c477",
   "data_build": "2026-10-07",
   "counts": {
     "clubs": 268,
@@ -366,6 +366,57 @@
       ]
     }
   },
+  "leagues": {
+    "ENG": {
+      "first": "1950",
+      "last": "2024",
+      "seasons": 75,
+      "rows": 1583,
+      "archive_share": 0.975
+    },
+    "ESP": {
+      "first": "1950",
+      "last": "2024",
+      "seasons": 75,
+      "rows": 1388,
+      "archive_share": 0.901
+    },
+    "FRA": {
+      "first": "1950",
+      "last": "2024",
+      "seasons": 75,
+      "rows": 1462,
+      "archive_share": 0.882
+    },
+    "GER": {
+      "first": "1963",
+      "last": "2024",
+      "seasons": 62,
+      "rows": 1114,
+      "archive_share": 0.94
+    },
+    "ITA": {
+      "first": "1950",
+      "last": "2024",
+      "seasons": 75,
+      "rows": 1354,
+      "archive_share": 0.917
+    },
+    "NED": {
+      "first": "1956",
+      "last": "2024",
+      "seasons": 69,
+      "rows": 1234,
+      "archive_share": 0.876
+    },
+    "POR": {
+      "first": "1994",
+      "last": "2024",
+      "seasons": 31,
+      "rows": 542,
+      "archive_share": 0.917
+    }
+  },
   "stars": {
     "Lionel Messi": [
       {
@@ -540,6 +591,8 @@
     "Dated Wikidata records form a partial historical archive, not a census of every registered player.",
     "Membership needs 10 apportioned league appearances, or a notable player with missing appearances and at least two seasons.",
     "Appearances and goals are apportioned across stint years, not measured separately by decade.",
-    "Cards without an EA or Championship Manager snapshot carry an estimate from a model fitted on rated cards of 1989-2025."
+    "Cards without an EA or Championship Manager snapshot carry an estimate from a model fitted on rated cards of 1989-2025.",
+    "Season tables are recomputed from match results (points, goal difference, goals scored): historical goal-average tie-breaks and points deductions are not applied.",
+    "European Cup records list every club to 2015-16, only the two finalists for 2016-17 and the last eight from 2017-18."
   ]
 }

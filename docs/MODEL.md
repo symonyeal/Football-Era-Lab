@@ -2,7 +2,7 @@
 
 A player's card supplies his starting rating. Your placement, the season decade, his teammates and the manager change what he contributes. The match engine combines those contributions into attack, midfield, defence and goalkeeper strength, then uses the difference between two teams to draw a score.
 
-This document gives the rules behind those steps. [DATA.md](DATA.md) explains where the cards come from; [VALIDATION.md](VALIDATION.md) records the checks and measurements. The browser, notebook and command-line bridge use the same JavaScript in [app/engine/](../app/engine/index.js). Python prepares the data and fits the models. Each source file includes a key to its abbreviated names.
+This document gives the rules behind those steps. [DATA.md](DATA.md) explains where the cards come from; [VALIDATION.md](VALIDATION.md) records the checks and measurements. The browser, notebook and command-line bridge share the JavaScript rating and match engine in [app/engine/](../app/engine/index.js). The browser adds the real-league club career; the existing notebook retains its fictional single-season experiment. Python prepares the data and fits the models. Each source file includes a key to its abbreviated names.
 
 ## Which version of the player gets rated
 
@@ -68,7 +68,9 @@ Timeless I applies one quarter of the ordinary loss, and Timeless II applies hal
 
 ## Teammates, formation and the manager
 
-The manager draw offers five managers, each paired with a recorded spell at a club. Choose any of the seventeen catalogue formations independently; the default is the manager's first recorded formation. During the draft and lineup review, a formation change previews the new placement before applying it. Applying keeps every card, the four bench places, the cap charges and the seeded draws. Undo and redo restore the formation and placement together. Kick-off requires applying or cancelling the preview and locks the formation for the season.
+The manager draw offers five managers, each paired with a recorded spell at a club. For new version 4 drafts, that spell must overlap the chosen decade and include a year in which the club appears in its real top-flight records. Version 3 saves keep the earlier all-era manager pool; version 2 saves retain their original manager and formation pair. Both older draft versions continue the fictional season and their saved extra modes. New drafts enter the career. Choose any catalogue formation independently; the default is the manager's first available recorded formation. The lobby previews the selected formation even when the manager never recorded it, and recorded chips can be clicked.
+
+During the draft and lineup review, a formation change previews the new placement before applying it. Applying keeps every card, the four bench places, the cap charges and the seeded draws. Undo and redo restore the formation and placement together. Kick-off requires applying or cancelling the preview and locks the formation during play. The career opens further lineup changes in its transfer windows.
 
 Each starter's contribution begins with:
 
@@ -144,11 +146,83 @@ Assists follow the same 450-minute threshold and 900-minute blend, using expecte
 
 About 72% of simulated goals receive an assist. Poacher and Maestro tags can multiply scorer and assister weights by up to 1.5 and 1.4. These weights choose who gets a goal or assist after the score is drawn. The team's expected total has already been calculated from its line strengths.
 
-## League, Cup and awards
+## Club career
 
-The league consists of your team and nineteen eligible club squads from the season decade. Domestic and European result ranks select that field. Each opponent fields its best eleven in its manager's formation. A double round robin produces 38 matches for every club and 380 in total. Wins earn 3 points and draws 1. Ranking uses points, goal difference and then goals scored.
+The drafted fifteen take the manager's club into its domestic top flight for every available season of the selected decade. [app/club.js](../app/club.js) supplies the league and competitions; [app/career.js](../app/career.js) carries the squad, patience, rewards and season history. The club keeps its place where the real league table contains it. In a year outside that top flight it replaces the last club in the derived historical order. The career stays in that league and does not simulate promotion or relegation through lower divisions.
 
-The European Cup uses your squad and the fifteen strongest teams by engine rating within that field. The top eight are seeded against the rest. Ties have two legs through the semi-finals and one neutral final, without away goals. Scorer, assist and clean-sheet awards use the recorded simulated events. Player of the season scores `4 × goals + 3 × assists + 3 × clean sheets + 0.1 × appearances`.
+Each year's field and size come from the bundled real league membership. Every club plays home and away against every other club; odd-sized leagues have byes. Wins earn two points until the league's recorded transition to three, with one point for a draw. The transition season starts are England 1981, France and Italy 1994, and Germany, Spain, Netherlands and Portugal 1995. Simulated ranking uses points, goal difference, goals scored and club ID. Historical administrative deductions and league-specific tie-breaks are outside the model.
+
+Rival squads first use people whose club spell covers the season, adding same-club players from spell years within three years when needed for fifteen players and a goalkeeper. Your current people are excluded. A club the archive cannot field receives a labelled fifteen-player stand-in rated from its real win-and-draw record; an outside European club with no league record uses a declared rating of 74. [DATA.md](DATA.md#real-league-seasons-and-the-squads-they-can-supply) gives the fallback and coverage limits. A curated manager is used when his spell covers the season, except that your chosen manager cannot also manage a rival; otherwise the club uses neutral staff and a period formation.
+
+### Competition formats and qualification
+
+Domestic cups include only the clubs in that season's top flight. They use single ties, byes for the strongest seeds based on the previous season and a neutral final. The English League Cup has two-legged semi-finals. Italy's domestic cup starts in the model in 1958/59. League cups appear in England from 1960/61, Spain from 1982/83 to 1985/86, Germany from 1997/98 to 2007/08, France from 1994/95 to 2019/20 and Portugal from 2007/08. Domestic super cups appear only during the periods declared in the competition catalogue.
+
+European places use the previous season's finishing order and known simulated cup winners. The opening season uses the real previous league table and available European Cup records. The European Cup holder also receives a place. Historical cup holders are missing, so an unfilled Cup Winners' Cup place goes to the highest-placed club not already qualified. The first season omits domestic and UEFA super cups; later seasons use the simulated holders. The UEFA Super Cup pairs the European Cup winner with the Cup Winners' Cup winner through the 1999/2000 edition, then the UEFA Cup/Europa League winner.
+
+These are declared qualification shortcuts: one European Cup place per league through 1996/97, two through 1998/99, then four for England, Spain and Italy, three for France, two for Netherlands and Portugal, and three for Germany until four from 2009/10. The next three league places enter the UEFA competition for England, Spain, Italy and Germany; the other leagues receive two. Cup holders can alter which teams fill those places. The English League Cup winner receives a UEFA place from 1975/76. The Heysel ban excludes English clubs from 1985/86 through 1989/90, with Liverpool also excluded in 1990/91; a barred club's place is lost rather than passed down.
+
+| European competition | Seasons and declared format |
+| --- | --- |
+| European Cup / Champions League | Starts 1955/56; sixteen-club two-legged knockout through 1990/91. Groups of four start in 1991/92 with sixteen entrants, expanding to thirty-two from 1999/2000; the top two in each group advance. A neutral final decides the title. The Champions League name starts in 1992/93. |
+| Cup Winners' Cup | 1960/61–1998/99; sixteen-club two-legged knockout, neutral final. |
+| Fairs Cup / UEFA Cup / Europa League | Starts with the model's 1960/61 Fairs Cup; UEFA Cup name from 1971/72 and Europa League from 2009/10. Sixteen entrants through 1965/66, then up to thirty-two, all in two-legged knockout. Finals have two legs through 1996/97, then one neutral match. |
+| UEFA Super Cup | From 1973/74 where both simulated holders exist; two legs through 1997/98, then one neutral match. |
+
+Fields use the real European Cup entrants where the records are complete, previous table places where they are partial, and available archive clubs from other countries to fill gaps. They are reduced to the strongest available entrants while retaining your club when it qualifies. A club cannot enter two European tournaments in the same season. Draws try to avoid same-country ties in the early rounds and same-group rematches in the first knockout round. Every level tie uses extra time and penalties; away goals are never applied. There are no Intercontinental or Club World Cup tournaments. These competitions reproduce broad era differences, not every historical entry list, preliminary round, regulation or calendar.
+
+Scorer, assist and clean-sheet awards use the simulated match events. The ordinary player award scores `4 × goals + 3 × assists + 3 × clean sheets + 0.1 × appearances`; career objective rewards use the season records described below.
+
+### Board expectations, rewards and transfers
+
+Patience starts at 8 and is capped at 20. Zero ends the career. Each season has two playable halves. The board's league objective is set at the start from the squad's projected rank against that year's rivals: win the league, top two, top four, top six, top half, or avoid the bottom two in leagues of sixteen or fewer and bottom three in larger leagues. This is a game objective based on the match model, not the real club's historical board policy.
+
+Before each half, the model calculates expected points for your current squad against the scheduled rivals, using independent Poisson goals with no random absences. Let `p` be points earned, `e` expected points and `m` the maximum available. The declared scale maps zero to zero, expectation to 10.5 and a perfect half to 18:
+
+```text
+At or below expectation: scaled points = 10.5 × p / e
+Above expectation:       scaled points = 10.5 + 7.5 × (p - e) / (m - e)
+```
+
+The scaled value stays between zero and eighteen. A zero-point expectation uses the neutral value at zero points. The eight steps adapted from Eraball are applied to this expectation scale, so a strong squad needs more actual points than a weaker squad to earn the same response.
+
+| Scaled points | Patience change |
+| --- | ---: |
+| 18 | +3 |
+| 13 to below 18 | +2 |
+| 12 to below 13 | +1 |
+| 9 to below 12 | 0 |
+| 7 to below 9 | -2 |
+| 4 to below 7 | -3 |
+| 2 to below 4 | -4 |
+| Below 2 | -5 |
+
+At season end, reaching the objective earns another 4 patience and gives the current squad's best player by season award score a persistent +1 rating. Missing the objective costs 4 on the first failed season and 6 on every later failure. The highest-rated current outfielder with neither a recorded season goal nor assist receives −1 where such a player exists. An objective reward cannot rescue patience that has already fallen to zero. A surviving missed objective advances to the next season; seasons are not replayed as Gauntlet boss acts are.
+
+Each half opens one ordinary reward pick. Every trophy won in that half adds a free pick taken before the ordinary reward; a league title is awarded in summer. The menu offers up to three free agents at C tier or better, one development, and rest. At 20 patience, a second development replaces rest. Rest recovers 2, then 1, then zero when repeated; another reward resets the rest sequence. Free trophy picks omit rest. The final season still resolves its rewards before the career ends.
+
+The base free-agent prices are 1 patience for C or B, 2 for A and 3 for S. Sign one player and release one. An S signing costs 1 less when placed in the starting eleven; an A or S player without European Cup experience costs 1 less when five squad players have it. The negotiated base price stays at least 1. An S market signing loses 3 rating points on the bench, while a C signing gains 3 when starting. One scouting re-spin per pick costs 1, or 5 for an A/S-only premium market. Ordinary prices add `floor(completed seasons / 2)`, so the third season adds 1, the fifth adds 2 and so on. A purchase must leave at least 1 patience.
+
+Same-player upgrades offer the highest-rated available card, priced at 1 within a tier, 2 for one tier gained, 3 for two and 4 for more; add 1 when entering S and cap the base price at 4. The upgrade keeps the player's original cap charge. In a capped career, the squad allows at most two S-tier and four A-tier charges across starters and substitutes; lower tiers become unrestricted after the initial draft. Releasing and signing a player again establishes a fresh charge. Classic stays uncapped.
+
+The career uses the ten Gauntlet developments listed [below](#era-gauntlet), plus four:
+
+| Additional development | Levels | Base price | Effect |
+| --- | ---: | ---: | --- |
+| First-touch Training | 2 | 3 | Add 1 rating point per level to a midfield, wide or attacking player. |
+| Composure Training | 2 | 3 | Add 1 rating point per level to any player. |
+| Team First | 1 | 3 | Multiply the squad's partnership and teammate links by a further 1.2. |
+| Player Buy-In | 1 | 2 | Add 1 rating point and clear that player's desperation disruption. |
+
+Below 5 patience, desperation offers include cut-price A or S players. They cost 1 at 3 or 4 patience, and are free at 1 or 2. While any such disruptive signing remains without Player Buy-In, squad link points are multiplied by 0.75. Release the player or apply Buy-In to remove his disruption.
+
+After winter rewards, rearrange the lineup or formation before the run-in. After summer rewards, two free pools offer up to three players each: one from next season's real league rivals whose spell covers that year, and one from the career decade. Take one from each available pool and release a different squad member for each signing; an empty pool is optional. Stand-in players never enter the market. Check the cap, then set the next season's lineup and formation. The final year has no further summer transfer pool.
+
+The career score uses the Gauntlet calculation with each met season objective as a cleared act. It sums `10 + 5 × zero-based season index` over those seasons, multiplies by `0.5 + league win rate` with draws counting as half wins, by 1.5 under the cap, and by `1 + 0.2 × patience / 20`, adding 0.15 to the last factor if every attempted objective was met. Missed seasons score no cleared-act points. Trophies are counted separately and supply free rewards; they do not directly add score points. Scores and saved games are local and unauthenticated.
+
+## The notebook's fictional season
+
+The existing notebook uses your team and nineteen eligible decade-wide club squads selected by domestic and European result ranks. Each rival fields its best eleven in its manager's formation. A double round robin produces 38 matches for each club and 380 in total, with three points for a win. The European Cup takes your squad and the fifteen strongest rivals in that field, with two legs through the semi-finals and one neutral final. There are no away goals. This experiment also supports the legacy benchmark measurements; its fixed field does not reproduce the browser career's league membership or economy.
 
 ## The salary cap limits stars across the whole squad
 
@@ -183,11 +257,11 @@ Rank 1 is the decade's strongest club. The denominators are the balance settings
 
 The seed puts every squad in a random order in which a squad's chance of coming first is proportional to its weight. The draw takes the first squad in that order that meets the rules: at least fifteen cards with a goalkeeper, a club not already drafted or re-spun away, three picks possible within your remaining places, and, where possible, a player from your best open tier. Two players on the same seed therefore meet the same squad unless their own earlier picks rule it out.
 
-The released game used `tau=3`, which gave the strongest few clubs most draws; on today's archive Real Madrid took about 14% of all spins under it. Under these settings an automatic selection policy won 23 of 320 capped seasons and 41 of 320 Classic seasons, each with one unbeaten season, while 94 and 91 different clubs appeared and no club took more than 8.6% of spins. The result varies by decade; it does not imply the same title probability in every era. The policy and results are in [VALIDATION.md](VALIDATION.md#draft-difficulty-varies-by-decade).
+The earlier release used `tau=3`, concentrating more draws on the strongest squads. [VALIDATION.md](VALIDATION.md#draft-difficulty-varies-by-decade) retains its measured comparisons against the fictional twenty-club league. Those figures concern the version 3 manager pool and earlier single-season experiment; they do not establish career title rates under the new manager rule.
 
 ## Era Gauntlet
 
-The run takes the drafted fifteen through a selected map. Original Gauntlet, the default, visits the 1960s, 1990s and 2010s; Back in Time reverses that route. The Full Odyssey visits all eight decades in order; Odyssey in Reverse starts in the 2020s and ends in the 1950s.
+More modes keeps the Gauntlet's own rules and takes the drafted fifteen through a selected map. Original Gauntlet, the default, visits the 1960s, 1990s and 2010s; Back in Time reverses that route. The Full Odyssey visits all eight decades in order; Odyssey in Reverse starts in the 2020s and ends in the 1950s.
 
 A decade is an act with four six-match rounds. The rounds draw from progressively stronger bands of the sixteen clubs below the field's three bosses. After each round, choose one reward. Then play home and away against a seeded boss from the strongest three clubs. There is no away-goals rule; extra time and penalties decide a level aggregate. A loss restarts all four rounds against a different boss. A non-final win opens the transfer window; beating the map's last boss ends the run.
 
@@ -252,7 +326,7 @@ The Weekly Challenge chooses one seed and decade for the whole ISO week, Monday 
 
 ## Notebook settings
 
-Install Node 20 or later and Python 3.11 or later, then follow the commands in the [README](../README.md#project-files-and-running-your-own-copy). Open the notebook from the repository folder and run all cells. Set `NODE` in its setup cell if Node is not on PATH. On the Windows development machine, use the system Python with `py -3.14`.
+Install Node 20 or later and Python 3.11 or later, then follow the commands in the [README](../README.md#project-files-and-running-your-own-copy). Open the notebook from the repository folder and run all cells. Set `NODE` in its setup cell if Node is not on PATH. On the Windows development machine, use the system Python with `py -3.14`. The current notebook runs the fictional single-season experiment described above; importing an exact browser lineup preserves its players and placement, not its career opponents, qualification or board state.
 
 | Setting | Meaning |
 | --- | --- |
@@ -273,4 +347,4 @@ The outputs show sources, position losses, era multipliers, teammate points, man
 
 ## What the model leaves out
 
-The model does not simulate pressing, tactical changes during a match or individual defending actions. It applies the same modern league and Cup formats to every era. The match fit covers modern club-season rosters, with random absences, fatigue, substitutions and curated bonuses excluded from that fit. Historical squads, mixed-era lineups, manager effects, links and era penalties remain outside what was validated. A result from the game is a result under these rules.
+The model does not simulate pressing, tactical changes during a match or individual defending actions. The career uses real league fields and broad era differences in its cups, with declared shortcuts for qualification, tournament size and missing squads. It does not reproduce every historical squad or competition rule. The notebook and extra modes retain their fictional formats. The match fit covers modern club-season rosters, with random absences, fatigue, substitutions and curated bonuses excluded from that fit. Historical squads, mixed-era lineups, manager effects, links and era penalties remain outside what was validated. A result from the game is a result under these rules.

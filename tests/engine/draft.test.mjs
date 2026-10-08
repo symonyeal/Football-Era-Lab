@@ -11,6 +11,7 @@ const G = { managers: Array.from({ length: 7 }, (_, i) => ({ nm: `Manager ${i}`,
   formations: { '4-4-2': { slots: S }, '4-3-3': { slots: S } }, combos: [], cards: {}, people: {}, clubs: {} };
 G.managers[6].t = [['q0', 1990, 1992], ['q0', 1996, 1998]];
 for (let q = 0; q < 6; q++) G.clubs[`q${q}`] = { nm: `Club ${q}`, cc: 'ENG' };
+G.lg = { ENG: { nm: 'England', S: Object.fromEntries([1990, 1996].map(y => [y, Object.keys(G.clubs).map(q => [q])])) } };
 for (const D of [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]) {
   for (let q = 0; q < 6; q++) {
     const k = `q${q}:${D}`; G.combos.push({ q: `q${q}`, D, n: 18 });

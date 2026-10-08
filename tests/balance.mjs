@@ -17,13 +17,14 @@ import { ct, TI, GCAP } from '../app/cap.js';
 const G = JSON.parse(readFileSync(new URL('../data/game.json', import.meta.url), 'utf8'));
 if (G.params) E.cfg(G.params);
 const F = fields(G), GR = { S: 0.04, A: 0.03, B: 0.015, C: 0, D: -0.015, F: -0.03 };
-const A = process.argv.slice(2), cap = !A.includes('classic'), free = A.includes('free');
+const A = process.argv.slice(2), cap = !A.includes('classic'), free = A.includes('free'), legacy = A.includes('legacy');
 const rules = `${cap ? 'Salary cap' : 'Classic'}${free ? ', free formation' : ''}`;
-const [mode = 'season', a1, a2, map = 'original'] = A.filter(x => !['cap', 'classic', 'free'].includes(x));
+const [mode = 'season', a1, a2, map = 'original'] = A.filter(x => !['cap', 'classic', 'free', 'legacy'].includes(x));
 const q = (a, f) => a.slice().sort((x, y) => x - y)[Math.floor(f * (a.length - 1))];
 
 function draft(seed, D) {
   const s0 = Dr.start(seed, D, cap);
+  if (legacy) s0.v = 3;
   const mo = Dr.opts(G, s0).map((o, i) => { const m = G.managers.find(m => m.nm === o.nm); return [GR[m.ga] + GR[m.gd], i]; });
   let s = Dr.choose(G, s0, mo.sort((a, b) => b[0] - a[0] || a[1] - b[1])[0][1]);
   const SH = Dr.shape(G, s.f), S = SH.map(x => x.s);

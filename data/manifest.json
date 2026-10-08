@@ -177,8 +177,13 @@
   },
   {
    "name": "engsoccerdata (James Curley)",
-   "use": "league and European Cup results: club rankings and decade goal rates (derived aggregates only)",
+   "use": "league and European Cup results: club rankings, decade goal rates, and the season tables and European Cup stages of the club career (derived aggregates only)",
    "licence": "GPL (>= 2)"
+  },
+  {
+   "name": "Wikipedia final tables: 2022-23 Premier League, 1994-95 French Division 1",
+   "use": "the two top-flight seasons missing from the result files (pipeline/curated/league_gaps.csv)",
+   "licence": "Facts only (CC BY-SA 4.0 pages)"
   }
  ]
 }

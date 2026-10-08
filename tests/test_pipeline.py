@@ -199,5 +199,53 @@ class CachedFacts(unittest.TestCase):
         self.assertEqual(requested, [{"Q2"}])
 
 
+class Leagues(unittest.TestCase):
+    """Season tables of the club career, from synthetic result rows (no files read)."""
+
+    @staticmethod
+    def T(rows):
+        return pd.DataFrame(rows, columns=["lg", "s", "club", "W", "Dr", "L", "GF", "GA"])
+
+    def test_a_club_renamed_during_a_season_is_one_club(self):
+        from pipeline import leagues
+        T = self.T([("FRA", 1981, "Stade Brest", 8, 8, 6, 30, 28), ("FRA", 1981, "Brest Armorique FC", 6, 2, 8, 20, 25),
+                    ("FRA", 1981, "Nantes", 20, 10, 8, 60, 30)])
+        S = leagues.table(T, {("Stade Brest", "FRA"): "Q1", ("Brest Armorique FC", "FRA"): "Q1"})["FRA"]["S"]["1981"]
+        self.assertEqual([r[0] for r in S], ["nm:Nantes", "Q1"])
+        self.assertEqual(S[1][2:], [38, 14, 10, 14, 50, 53])
+
+    def test_points_follow_the_season_rule_and_order_breaks_ties_by_goal_difference(self):
+        from pipeline import leagues
+        T = self.T([("ENG", 1980, "A", 20, 10, 12, 60, 40), ("ENG", 1980, "B", 20, 10, 12, 70, 40),
+                    ("ENG", 1981, "A", 20, 10, 12, 60, 40)])
+        L = leagues.table(T, {})["ENG"]
+        self.assertEqual([(r[0], r[1]) for r in L["S"]["1980"]], [("nm:B", 50), ("nm:A", 50)])
+        self.assertEqual(L["S"]["1981"][0][1], 70)
+
+    def test_curated_gap_rows_fill_a_missing_season_and_archive_names_resolve(self):
+        from pipeline import leagues
+        G0 = self.T([("ENG", 2022, "Arsenal", 26, 6, 6, 88, 43)])
+        L = leagues.table(self.T([]), {}, G0, {("arsenal", "ENG"): "Q9617"})
+        self.assertEqual(L["ENG"]["S"]["2022"], [["Q9617", 84, 38, 26, 6, 6, 88, 43]])
+
+    def test_partial_records_below_three_quarters_of_a_season_are_dropped(self):
+        from pipeline import leagues
+        T = self.T([("ITA", 1950, "A", 20, 10, 8, 60, 30), ("ITA", 1950, "B", 2, 1, 2, 5, 6)])
+        self.assertEqual([r[0] for r in leagues.table(T, {})["ITA"]["S"]["1950"]], ["nm:A"])
+
+    def test_european_cup_records_join_curated_late_seasons_and_name_outsiders(self):
+        from pipeline import leagues
+        E = pd.DataFrame([(1960, "Benfica", "POR", 6.0), (1960, "Barcelona", "ESP", 4.0), (2017, "Old", "ESP", 1.0)],
+                         columns=["s", "club", "cc", "e"])
+        late = pd.DataFrame([(2017, "Real Madrid", "Q8682", "ESP", 6)], columns=["s", "club", "qid", "cc", "e"])
+        M = {("Benfica", "POR"): "Q131499", ("Barcelona", "ESP"): "Q7156"}
+        C = leagues.cups(E, M, late)
+        self.assertEqual(C["1960"], [["Q131499", "POR", 6.0], ["Q7156", "ESP", 4.0]])
+        self.assertEqual(C["2017"], [["Q8682", "ESP", 6.0]])
+        X = leagues.names({"ESP": {"S": {"1960": [["Q7156"], ["Q99"], ["nm:Other"]]}}}, C, {"Q7156": {}},
+                          {("Rayo", "ESP"): "Q99", **M})
+        self.assertEqual(X, {"Q131499": "Benfica", "Q8682": "Q8682", "Q99": "Rayo"})
+
+
 if __name__ == "__main__":
     unittest.main()

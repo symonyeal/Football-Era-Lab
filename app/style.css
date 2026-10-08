@@ -460,6 +460,23 @@ tbody tr:last-child td{border-bottom:0}
 .challenge-card h2,.circuit h2{font:800 34px/1 var(--fd);text-transform:uppercase}
 .circuit{display:grid;gap:12px;margin-top:20px}
 
+/* Club career: board decisions remain beside the changing season, on the existing night-match palette. */
+.era-tools{display:flex;align-items:center;gap:12px;margin:10px 0}
+.seed-row{display:flex;align-items:center;gap:6px}.seed-row input{min-width:0;flex:1}.seed-row .btn{padding:0 10px;flex:none}
+.shape-preview{display:flex;align-items:center;gap:14px;margin:12px 0}.start-shape{width:150px;flex:none}.start-shape .pt{width:100%;height:auto}
+.shape-caption{display:grid;gap:4px}.shape-caption b{font:800 28px var(--fd)}
+.career-hero h1{font:800 38px/1.05 var(--fd);margin:8px 0;text-transform:uppercase;overflow-wrap:anywhere}
+.career-board{display:grid;gap:12px;margin:20px 32px;padding:20px;border:1px solid var(--l2);border-radius:14px;background:var(--n1)}
+.career-board>.btn{justify-self:start}.career-board h3{font:800 28px var(--fd)}
+.career-owner{font-size:16px;color:var(--ink);padding-left:12px;border-left:3px solid var(--warn)}
+.career-comps{display:flex;gap:10px;margin:0 32px 20px;overflow-x:auto;padding-bottom:6px}
+.career-comps article{display:grid;align-content:start;gap:8px;min-width:165px;padding:14px;border:1px solid var(--l1);border-radius:12px;background:var(--n1)}
+.career-comps b{font:700 22px/1.1 var(--fd);overflow-wrap:anywhere}.career-comps .lbl{min-height:30px}
+.career-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.career-controls .field{flex:1;min-width:180px}
+.career-bracket{margin-bottom:14px;padding:14px;background:var(--n1);border:1px solid var(--l1);border-radius:12px}
+.career-bracket summary{cursor:pointer;font:700 22px var(--fd)}.career-bracket h3{margin:16px 0 8px}
+.career-bracket .cup-tie{margin-bottom:6px}.career-board .reward{min-width:0}.career-board select{max-width:100%}
+
 /* Tablet: roster and pitch side by side; status strip above; inspector in a sheet */
 @media (max-width:1279px){
   .toast{top:calc(var(--bar) + 14px);bottom:auto}
@@ -543,6 +560,8 @@ tbody tr:last-child td{border-bottom:0}
   #result-panel{padding:16px 12px}
   .res-grid,.fixtures,.challenge-grid,.rewards,.xi,.repo,.repo .xi{grid-template-columns:1fr}
   .share-strip{padding:16px 12px 24px}
+  .career-board{margin:14px 12px;padding:16px}.career-comps{margin:0 12px 14px}.career-controls{display:grid;grid-template-columns:1fr;align-items:stretch}.career-controls .field{min-width:0}
+  .era-tools .small{font-size:12px}.seed-row .btn{min-height:44px!important}.shape-preview{gap:10px}
   .tw.league{overflow-x:auto}.league .your-row td,.league th{position:static}
   .run-head h2{font-size:32px}
 }

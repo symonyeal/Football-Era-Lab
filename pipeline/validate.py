@@ -28,6 +28,35 @@ def find(G, nm, D, club):
             for c in Q if G["people"][c["p"]]["nm"] == nm]
 
 
+def leagues(G, E):
+    """Season tables of the club career: structure, the season's points rule, finishing order, known
+    names; returns coverage per league (seasons, clubs per season, share of club-seasons in the archive)."""
+    C = {}
+    known = lambda q: q in G["clubs"] or q in G.get("xn", {}) or q.startswith("nm:")
+    for lg, v in G.get("lg", {}).items():
+        S, rows, inA = v["S"], 0, 0
+        for s, T in S.items():
+            ids = [r[0] for r in T]
+            if len(ids) != len(set(ids)) or not 16 <= len(T) <= 22:
+                E.append(f"{lg} {s}: {len(T)} clubs or a repeated club")
+            for i, r in enumerate(T):
+                q, pts, P, W, Dr, L, GF, GA = r
+                if not known(q) or P != W + Dr + L or pts != (3 if int(s) >= v["s3"] else 2) * W + Dr:
+                    E.append(f"{lg} {s}: invalid row {r}")
+                if i and (T[i - 1][1], T[i - 1][6] - T[i - 1][7], T[i - 1][6]) < (pts, GF - GA, GF):
+                    E.append(f"{lg} {s}: rows out of finishing order at {q}")
+            rows += len(T)
+            inA += sum(r[0] in G["clubs"] for r in T)
+        C[lg] = dict(first=min(S, key=int), last=max(S, key=int), seasons=len(S), rows=rows,
+                     archive_share=round(inA / max(1, rows), 3))
+    for s, Q in G.get("ec", {}).items():
+        if any(not known(r[0]) or r[2] not in (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0) for r in Q):
+            E.append(f"European Cup {s}: invalid row")
+        if sum(r[2] == 6.0 for r in Q) != 1:
+            E.append(f"European Cup {s}: needs one winner")
+    return C
+
+
 def check(G, H=None):
     C, E = {}, []
     pos = {s for _, z in R for s in z}
@@ -60,6 +89,7 @@ def check(G, H=None):
     for q, c in G["clubs"].items():
         if not (isinstance(c.get("k"), list) and len(c["k"]) == 2 and all(isinstance(x, str) and re.fullmatch(r"#[0-9A-F]{6}", x) for x in c["k"])):
             E.append(f"Invalid kit colours for {c.get('nm', q)}")
+    LC = leagues(G, E)
     for m in G["managers"]:
         if not m["f"] or any(f not in G["formations"] for f in m["f"]):
             E.append(f"Invalid formation for {m['nm']}")
@@ -79,11 +109,13 @@ def check(G, H=None):
         if z and not any(set(c["pos"]) & WIDE for _, c in z):
             E.append(f"Winger not in a wide slot: {nm}, {club}, {D}: {[c['pos'] for _, c in z]}")
     return dict(passed=not E, data_sha256=H, data_build=G["meta"]["v"], counts=G["meta"]["counts"], coverage=C,
-                stars=stars, wingers=wing, defects=E,
+                leagues=LC, stars=stars, wingers=wing, defects=E,
                 limitations=["Dated Wikidata records form a partial historical archive, not a census of every registered player.",
                              "Membership needs 10 apportioned league appearances, or a notable player with missing appearances and at least two seasons.",
                              "Appearances and goals are apportioned across stint years, not measured separately by decade.",
-                             "Cards without an EA or Championship Manager snapshot carry an estimate from a model fitted on rated cards of 1989-2025."])
+                             "Cards without an EA or Championship Manager snapshot carry an estimate from a model fitted on rated cards of 1989-2025.",
+                             "Season tables are recomputed from match results (points, goal difference, goals scored): historical goal-average tie-breaks and points deductions are not applied.",
+                             "European Cup records list every club to 2015-16, only the two finalists for 2016-17 and the last eight from 2017-18."])
 
 
 def main():

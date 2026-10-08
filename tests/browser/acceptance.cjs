@@ -10,6 +10,8 @@ const { chromium } = require(arg('--playwright') || 'playwright');
 const out = arg('--output');
 if (!out) throw new Error('Pass --output pointing to a folder for screenshots and the report.');
 fs.mkdirSync(out, { recursive: true });
+const runtime = path.join(path.resolve(out), 'runtime'); fs.mkdirSync(runtime, { recursive: true });
+process.env.TEMP = process.env.TMP = runtime;
 const base = arg('--url') || 'http://127.0.0.1:8765/';
 const raw = fs.readFileSync(path.resolve(__dirname, '../../data/game.json'));
 const G = JSON.parse(raw);
@@ -117,12 +119,13 @@ async function stageRun(p, target) {
         s = R.runRound(g, F, s);
         if (!R.offers(g, F, s).some(o => target === 'upg' ? o.id === 'upg' && o.list.some(u => u.cost < s.pat) : o.kind === 'market')) continue;
       }
-      localStorage.setItem(key, JSON.stringify(D.valid(g, { ...draft, mode: { run: s } })));
+      const { restore } = await import('./app/save.js');
+      localStorage.setItem(key, JSON.stringify(restore(g, { ...draft, mode: { ...draft.mode, run: s } })));
       return s;
     }
     throw new Error(`No real ${target} fixture found.`);
   }, { key: KEY, target });
-  await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
+  await p.reload(); await settle(p); await p.click('[data-tab="more"]'); await settle(p);
   return a;
 }
 
@@ -186,7 +189,7 @@ async function runControls(p, kind) {
   assert.equal((await st(p)).mode.run.slots[11].p, t.slots[0].p);
   await p.click('#run-next'); await settle(p);
   assert.equal((await st(p)).mode.run.act, 1); assert.equal((await st(p)).mode.run.ph, 'rd'); assert.equal((await st(p)).mode.run.f, f1);
-  await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
+  await p.reload(); await settle(p); await p.click('[data-tab="more"]'); await settle(p);
   assert.equal(await p.locator('#run-round').count(), 1);
   ok(`${kind}: four transfers, a lineup swap and the next decade survive a reload`);
 }
@@ -247,6 +250,8 @@ async function full(kind) {
     await p.click('[data-inspect="2"]'); await settle(p); await sound(p, 'teams');
     const opt = await p.evaluate(async key => { const D = await import('./app/draft.js'); const g = await (await fetch('./data/game.json')).json(); const s = JSON.parse(localStorage.getItem(key)); const o = D.opts(g, s)[2]; return { o, rest: Object.keys(g.formations).filter(f => !g.managers.find(m => m.nm === o.nm).f.includes(f)) }; }, KEY);
     await p.selectOption('#start-formation', opt.rest[0]); await settle(p);
+    assert.equal(await p.locator('#start-shape').getAttribute('data-formation'), opt.rest[0]);
+    assert.equal(await p.locator('#start-shape .tk').count(), 11, 'selected unrecorded formations redraw every pitch place');
     await p.click('[data-manager="2"]'); await settle(p);
     let s = await st(p);
     assert.deepEqual(s.manager, { nm: opt.o.nm, q: opt.o.q, a: opt.o.a }); assert.equal(s.f, opt.rest[0], 'a team can start in a formation he never recorded');
@@ -304,26 +309,46 @@ async function full(kind) {
     await view(p, kind, 'squad');
     const f0 = (await st(p)).f;
     await p.click('#simulate'); await p.waitForSelector('.result-hero'); await settle(p);
-    assert.equal(await p.locator('tbody tr').count(), 20);
+    const career0 = (await st(p)).mode.career;
+    assert.equal(await p.locator('[data-club]').count(), career0.S.ord.length);
+    assert.equal(career0.years.length, 10); assert.equal(career0.ph, 'half');
+    assert.match(await p.locator('.rh-team').innerText(), /Board objective/);
     assert.equal((await st(p)).f, f0);
-    await p.click('[data-tab="fixtures"]'); await settle(p); assert.equal(await p.locator('.fixture').count(), 38);
-    await p.click('[data-tab="cup"]'); await settle(p); assert.ok(await p.locator('.cup-tie').count() >= 15);
+    await p.click('#career-half'); await settle(p);
+    assert.equal((await st(p)).mode.career.half, 1);
+    await p.reload(); await settle(p);
+    assert.equal((await st(p)).mode.career.half, 1, 'winter resumes without replaying fixtures');
+    while ((await st(p)).mode.career.ph === 'node') {
+      const rest = p.locator('[data-career-rest]');
+      if (await rest.count()) await rest.click();
+      else await p.locator('[data-career-take]:not([disabled])').first().click();
+      await settle(p);
+    }
+    assert.equal((await st(p)).mode.career.ph, 'repo');
+    await p.click('#career-next'); await settle(p);
+    assert.equal((await st(p)).mode.career.y, 0);
+    await p.click('#career-half'); await settle(p);
+    const full = (await st(p)).mode.career;
+    assert.equal(full.half, 2); assert.equal(full.history.length, 1);
+    await p.click('[data-tab="fixtures"]'); await settle(p); assert.equal(await p.locator('.fixture[data-comp="L"]').count(), 2 * (career0.S.ord.length - 1));
+    await p.click('[data-tab="cup"]'); await settle(p); assert.ok(await p.locator('.career-bracket').count() >= 1);
     await p.click('[data-tab="stats"]'); await settle(p); await p.click('[data-tab="lineup"]'); await settle(p);
     assert.equal(await p.locator('#result-panel .tk').count(), 11);
-    ok(`${kind}: the season shows 20 clubs, 38 fixtures, the Cup and the XI on its pitch`);
+    await p.click('[data-tab="history"]'); await settle(p); assert.match(await p.locator('#result-panel').innerText(), /Season history/i);
+    ok(`${kind}: a real club season plays two halves around winter, resumes exactly, and records tables, cups, fixtures and history`);
     const replay = path.join(out, `${kind}-replay.json`);
     const [download] = await Promise.all([p.waitForEvent('download'), p.click('#download')]);
     await download.saveAs(replay);
     const saved = JSON.parse(fs.readFileSync(replay, 'utf8'));
-    assert.equal(saved.game, 'Football Era Lab'); assert.equal(saved.draft.seed, 424242); assert.equal(saved.draft.cap, true); assert.equal(saved.draft.v, 3);
-    assert.match(saved.result, /Salary cap/); assert.match(saved.result, /cap=1/); assert.match(saved.result, new RegExp(saved.draft.f));
+    assert.equal(saved.game, 'Football Era Lab'); assert.equal(saved.draft.seed, 424242); assert.equal(saved.draft.cap, true); assert.equal(saved.draft.v, 4);
+    assert.match(saved.result, /Salary cap/); assert.match(saved.result, /Season 1 \/ 10/); assert.match(saved.result, new RegExp(saved.draft.f));
     assert.deepEqual(saved.draft.slots, (await st(p)).slots);
     const [card] = await Promise.all([p.waitForEvent('download'), p.click('#result-card')]);
     const png = path.join(out, `${kind}-result-card.png`); await card.saveAs(png);
     assert.deepEqual([...fs.readFileSync(png).subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
     ok(`${kind}: replay and result image downloads contain the completed team`);
-    await sound(p, 'results'); await p.screenshot({ path: path.join(out, `${kind}-results.png`), fullPage: true });
-    await p.click('[data-tab="gauntlet"]'); await settle(p);
+    await sound(p, 'results'); await p.evaluate(() => scrollTo(0, 0)); await p.screenshot({ path: path.join(out, `${kind}-results.png`), fullPage: true });
+    await p.click('[data-tab="more"]'); await settle(p);
     assert.equal(await p.locator('#run-map option').count(), 4);
     await p.selectOption('#run-map', 'original'); await p.click('#run-start'); await settle(p);
     assert.equal((await st(p)).mode.run.map, 'original'); assert.equal((await st(p)).mode.run.f, f0);
@@ -343,7 +368,7 @@ async function full(kind) {
     const r = (await st(p)).mode.run;
     assert.equal(r.cap, true); assert.equal(await p.locator('.run [data-cap-tier]').count(), 5);
     assert.ok(r.log.some(e => e.t === 'seg') && r.log.some(e => e.t === 'boss'), 'the run must reach a boss');
-    await p.reload(); await settle(p); await p.click('[data-tab="gauntlet"]'); await settle(p);
+    await p.reload(); await settle(p); await p.click('[data-tab="more"]'); await settle(p);
     assert.deepEqual((await st(p)).mode.run.log.length, r.log.length);
     ok(`${kind}: a selected Gauntlet map plays four rounds, rewards and a two-legged boss, and survives a reload`);
     await sound(p, 'gauntlet'); await p.screenshot({ path: path.join(out, `${kind}-gauntlet.png`), fullPage: true });
@@ -381,6 +406,7 @@ async function full(kind) {
     ok(`${kind}: a malformed Gauntlet replay is rejected without changing the browser save`);
     await p.setInputFiles('#import-replay', replay); await p.waitForSelector('.result-hero'); await settle(p);
     assert.deepEqual((await st(p)).slots, saved.draft.slots);
+    assert.deepEqual((await st(p)).mode.career, saved.draft.mode.career);
     assert.equal((await st(p)).phase, 'results'); assert.equal((await st(p)).cap, true);
     ok(`${kind}: invalid replays are rejected and a downloaded replay restores exact placements`);
     const v2 = { ...saved, draft: { ...saved.draft, v: 2, manager: { nm: 'legacy' } } };
@@ -428,6 +454,70 @@ async function motion() {
     await p.click('[data-manager="0"]'); await settle(p); await p.click('#squad-spin');
     await p.waitForSelector('#roster-list', { timeout: 300 });
     ok('reduced motion: the reveal appears at once and carries no animation');
+  } finally { await b.close(); }
+}
+
+async function careerControls() {
+  const { b, p } = await page('desktop', { reducedMotion: 'reduce' });
+  try {
+    const seed = await p.locator('#seed').inputValue();
+    await p.click('#seed-reroll'); assert.notEqual(await p.locator('#seed').inputValue(), seed);
+    await p.click('#random-decade'); assert.equal(await p.locator('#random-decade').getAttribute('aria-pressed'), 'true');
+    ok('compact random-decade and seed re-roll controls update their actual settings');
+    await p.setInputFiles('#import-replay', path.join(out, 'desktop-replay.json')); await p.waitForSelector('.career-hero'); await settle(p);
+    const up = await p.evaluate(async key => {
+      const C = await import('./app/career.js'), g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.career;
+      const O = C.careerOffers(g, s), j = O.findIndex(o => o.id === 'upg');
+      if (j < 0) throw new Error('The completed desktop season must offer its free prime upgrade.');
+      return { j, pick: 0, ...O[j].list[0] };
+    }, KEY);
+    await p.selectOption(`#career-up-${up.j}`, String(up.pick)); await p.click(`[data-career-take="${up.j}"]`); await settle(p);
+    let s = (await st(p)).mode.career;
+    assert.equal(s.slots[up.i].k, up.to.k); assert.equal(s.slots[up.i].p, up.from.p); assert.equal(s.up[up.from.p], up.from.k);
+    await p.click('[data-career-respin="scout"]'); await settle(p);
+    assert.equal((await st(p)).mode.career.fa, 1); assert.equal(await p.locator('[data-career-respin]').count(), 0);
+    const deal = await p.evaluate(async key => {
+      const C = await import('./app/career.js'), { fits, GCAP } = await import('./app/cap.js');
+      const g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.career, O = C.careerOffers(g, s), j = O.findIndex(o => o.kind === 'market');
+      for (let pick = 0; pick < O[j].list.length; pick++) for (let slot = 0; slot < 15; slot++) {
+        const f = O[j].list[pick], cost = C.careerPrice(g, s, f, slot);
+        if (s.pat > cost && fits(g, C.careerBill(g, s), slot, f, GCAP)) return { j, pick, slot, cost, p: f.p };
+      }
+      throw new Error('No affordable career signing.');
+    }, KEY);
+    await p.selectOption(`#career-fa-${deal.j}`, String(deal.pick)); await p.selectOption(`#career-out-${deal.j}`, String(deal.slot));
+    assert.match(await p.locator(`#career-price-${deal.j}`).innerText(), new RegExp(`Costs ${deal.cost} patience`));
+    await p.click(`[data-career-take="${deal.j}"]`); await settle(p);
+    assert.equal((await st(p)).mode.career.slots[deal.slot].p, deal.p);
+    ok('career prime upgrades keep the person and tier charge; scouting and quoted signings apply to the chosen place');
+    s = (await st(p)).mode.career; assert.equal(s.ph, 'hop');
+    await p.click('#career-hop'); await settle(p); assert.equal((await st(p)).mode.career.ph, 'hop');
+    const transfers = await p.evaluate(async key => {
+      const C = await import('./app/career.js'), g = await (await fetch('./data/game.json')).json(), s = JSON.parse(localStorage.getItem(key)).mode.career, H = C.careerHopPools(g, s);
+      for (let old = 0; old < H.old.length; old++) for (let neu = 0; neu < H.neu.length; neu++)
+        for (let a = 0; a < 15; a++) for (let b = a + 1; b < 15; b++) {
+          const sel = { old: [old], neu: [neu], out: [a, b] };
+          try { return { ...sel, slots: C.careerHop(g, s, sel).slots }; } catch { /* another legal pair */ }
+        }
+      throw new Error('No legal summer transfer pair.');
+    }, KEY);
+    for (const [j, k] of ['old', 'neu'].entries()) {
+      const i = transfers[k][0]; await p.check(`[data-career-hop-pick="${k}"][value="${i}"]`);
+      await p.selectOption(`#career-hop-out-${k}-${i}`, String(transfers.out[j]));
+    }
+    await p.click('#career-hop'); await settle(p); s = (await st(p)).mode.career;
+    assert.equal(s.ph, 'repo'); assert.deepEqual(s.slots, transfers.slots);
+    const f = s.f === '3-5-2' ? '4-4-2' : '3-5-2';
+    await p.selectOption('#career-form', f); await p.click('#career-form-apply'); await settle(p);
+    const next = (await st(p)).mode.career; assert.equal(next.f, f); assert.deepEqual(next.slots.slice(11), s.slots.slice(11));
+    await p.selectOption('#career-swap-a', '0'); await p.selectOption('#career-swap-b', '12'); await p.click('#career-swap'); await settle(p);
+    assert.equal((await st(p)).mode.career.slots[12].p, next.slots[0].p);
+    await p.click('#career-next'); await settle(p); s = (await st(p)).mode.career;
+    assert.equal(s.y, 1); assert.equal(s.half, 0); assert.equal(s.S.s, s.years[1]);
+    await p.reload(); await settle(p); assert.deepEqual((await st(p)).mode.career, s);
+    await sound(p, 'next club season'); await p.evaluate(() => scrollTo(0, 0));
+    await p.screenshot({ path: path.join(out, 'desktop-next-season.png'), fullPage: true });
+    ok('two summer transfers, formation changes, lineup swaps and the next real club season survive a reload');
   } finally { await b.close(); }
 }
 
@@ -488,7 +578,7 @@ async function benchKeyboard() {
 
 (async () => {
   let failure = null;
-  try { await pendingFormation(); await benchKeyboard(); await full('desktop'); await full('mobile'); await tablet(); await motion(); assert.deepEqual(errors, [], 'console or page errors'); }
+  try { await pendingFormation(); await benchKeyboard(); await full('desktop'); await full('mobile'); await careerControls(); await tablet(); await motion(); assert.deepEqual(errors, [], 'console or page errors'); }
   catch (e) { failure = String(e.stack || e); }
   const rep = { passed: !failure && !errors.length, url: base, data_build: G.meta.v,
     data_sha256: createHash('sha256').update(raw).digest('hex'), checks, errors, failure };

@@ -23,6 +23,7 @@ const G = { meta: { v: 'form-test' }, clubs: { q0: { nm: 'Club 0', cc: 'ENG' } }
   managers: Array.from({ length: 5 }, (_, i) => ({ nm: `M${i}`, f: ['4-4-2'], ga: 'B', gd: 'B', sig: [], t: [['q0', 1990, 1992]] })),
   formations: { '4-4-2': { slots: F442 }, '4-3-3': { slots: F433 }, '4-2-3-1': { slots: F4231 } } };
 G.cards['q0:1990'] = P.map(([p, pos, r, x]) => { G.people[p] = { nm: p, duo: [] }; return { p, r, pos, s: 'f', tg: {}, ...(x ? { sr: x } : {}) }; });
+G.lg = { ENG: { nm: 'England', S: { 1990: [['q0']] } } };
 
 const open = () => Dr.spin(G, Dr.choose(G, Dr.start(9, 1990), 0));
 const at = (s, picks) => picks.reduce((t, [p, i]) => Dr.place(G, t, p, i), s);

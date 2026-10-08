@@ -21,13 +21,13 @@ export function season() {
 }
 const clubName = id => (id === 'your-club' ? 'Your Era XI' : U.F[U.S.D].find(c => c.id === id)?.nm || id);
 
-function xi(T, Q, Ds, label) {
+export function xi(T, Q, Ds, label) {
   const S = T.S, cells = Q.xi.map((p, i) => (p.c ? { kind: 'f', nm: p.c.nm, a: p.a, t: TI(p.c.r), q: p.c.cq, f: p.f } : null));
   return `<div class="xi"><div class="xi-pitch">${pitch(S, cells, { mode: 'view', links: links(S, Q.xi.map(p => p.c)), label })}</div>
     <div class="bn view">${Q.bn.map((p, j) => (p ? `<div class="bs f" style="${kv(p.c.cq)}"><span class="v">${Math.round(p.a)}</span><span class="t"><b>${esc(p.c.nm)}</b><small>${tier(TI(p.c.r), 'sm')} Bench ${j + 1}</small></span></div>` : '')).join('')}</div></div>`;
 }
 
-function breakdown(Q) {
+export function breakdown(Q) {
   const row = (lab, p, b) => `<tr><td>${lab}</td><td>${esc(p.c.nm)}</td><td class="k">${num(p.c.r)}</td><td class="k">${b ? '0' : Math.round(p.f * 100)}%</td><td class="k">${Math.round((1 - p.e) * 100)}%</td><td class="k">${b ? '—' : `+${p.b}`}</td><td class="k"><b>${num(p.a)}</b></td></tr>`;
   return `<details class="breakdown"><summary>Rating breakdown</summary><div class="tw"><table><thead><tr><th>Place</th><th>Player</th><th class="k">Base</th><th class="k">Fit loss</th><th class="k">Era loss</th><th class="k">Links</th><th class="k">Final</th></tr></thead>
     <tbody>${Q.xi.filter(p => p.c).map(p => row(p.s, p)).join('')}${Q.bn.filter(Boolean).map((p, i) => row(`B${i + 1}`, p, true)).join('')}</tbody></table></div>
@@ -193,14 +193,15 @@ export function more() {
 export function about() {
   const { G } = U, n = G.meta.src || {}, pc = k => Math.round(100 * (n[k] || 0) / Math.max(1, G.meta.counts.cards));
   return `<p class="eyebrow">How it works</p><h2>Make your era XI</h2>
-  <p>Choose the decade your season is played in. Draft from any decade; the further a player travels in time, the more rating he loses.</p>
+  <p>Choose your club career's decade. Draft from any decade; the further a player travels in time, the more rating he loses.</p>
   <h3>A manager at one of his clubs</h3><p>Choose one of five managers, each offered at one club spell (two re-spins). The team sets his attack and defence grades, which come from his whole career, and his signature players: drafting one raises both grades a step. His recorded formations are suggestions; you can play any of the ${Object.keys(G.formations).length} catalogue formations and change formation at any point before kick-off.</p>
   <h3>Five different clubs</h3><p>Any of the archive's clubs can be drawn; squads nearer your season and stronger squads are more likely. No club repeats across your five squads, and each squad includes a player from the best tier your fifteen have not yet filled (2 S, 4 A, 4 B, 3 C, 2 D), when any remaining club has one. Take three players from each and place them anywhere. One squad re-spin per draft, before your first pick from a squad.</p>
   <h3>A budget for all fifteen</h3><p>Salary cap is the default: 2 S-tier, 4 A-tier, 4 B-tier, 3 C-tier and 2 D-tier players, bench included. Tiers use base rating: S 90+, A 85–89.9, B 80–84.9, C 75–79.9, D below 75. Cards are blocked when their tier is full or taking them would prevent you finishing a squad's three picks; blocked cards stay listed with the reason. Classic removes these limits.</p>
   <h3>Positions and formations</h3><p>A player's rating in every slot comes from his game card where one exists: EA's per-position ratings, or Championship Manager attributes on EA's scale. Otherwise the loss grows with distance from his listed positions: one step 10%, two steps 22%, further 35%, and 75% for a keeper outfield or an outfielder in goal. The bench has no position loss. A formation change keeps every card, the bench and your cap charges; starters keep their role where the new shape has it, then take the places that cost the least rating, then move the least distance. Preview a formation before applying it, and undo lineup changes until your next pick.</p>
   <h3>Shape, links and managers</h3><p>Formation shape moves strength between attack, midfield and defence. Teammates from the same club and decade placed near each other, and famous duos, earn link points; the pitch draws those links in club colours.</p>
   <h3>Keyboard</h3><p>Arrow keys move through the squad list and around the pitch; Enter selects or places; Escape cancels; / jumps to search; Ctrl+Z undoes a lineup change and Ctrl+Shift+Z redoes it.</p>
-  <h3>The season and the modes</h3><p>A 20-club league against the decade's strongest club squads and a 16-club European Cup. Then one of four Era Gauntlet maps, a 10 to 20 event circuit, head to head with a friend's team code, and a weekly Salary cap challenge.</p>
+  <h3>A decade at your club</h3><p>Your fifteen take the chosen club's place in its real league for every available season of the decade. Rival squads use players recorded at that club in that season, nearby-season players when needed, or labelled stand-ins. Play to winter, choose a reward and set the lineup, then play the run-in. Results against expectations change board patience; meeting the season objective earns a bonus. Win cups, develop players, upgrade a player to his best card, make summer transfers and continue until the decade ends or the board sacks you. Domestic cups and European places follow the country and era, with simplified formats.</p>
+  <h3>More modes</h3><p>Four Era Gauntlet maps, a 10 to 20 event circuit and head to head with a friend's team code stay available under More modes. The weekly challenge starts a shared-seed Salary cap draft. Older version 2 and 3 saves retain their fictional league and European Cup; start a new draft to play the club career.</p>
   <div class="note"><p><b>Where the numbers come from.</b> ${pc('fifa') + pc('fifa-near')}% of cards are rated by EA FIFA/FC data (FIFA 07 to FC 26), ${pc('cm') + pc('cm-near')}% by Championship Manager 01/02 databases, ${pc('icon')}% by EA Icon/Hero cards, and ${pc('estimated')}% are estimated by a model fitted on those ratings, mostly players of the 1950s to 1970s. Squads come from dated Wikidata club records, so a decade squad can combine players who never shared a season. Club colours come from Wikidata and a curated table. Goals and results are simulated with a model fitted on real 2014-19 club results and checked on 2020-23; era losses, links and tags are game rules, not measurements.</p></div>`;
 }
 

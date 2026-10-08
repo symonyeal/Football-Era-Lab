@@ -11,16 +11,24 @@
 
 import { TI, CAP, ct } from '../cap.js';
 import * as E from '../engine/index.js';
+import { leagueOf, years, field } from '../club.js';
 import { form, team, preview, used, room, can, hydrate, shape } from '../draft.js';
 import { U, esc, num, club, kv, tier, fitText, delta, pitch, links, mini, smap, rated, share, row, capTiles, segs, spell, IC, LINE, SRC, SRT, RANGE, pct } from './kit.js';
 
 const MED = new Map();
+function opponents(D) {
+  const { G, S } = U, q = S?.manager?.q, lg = q && S.v >= 4 ? leagueOf(G, q, D) : null;
+  if (!lg) return U.F[D].slice(0, 19);
+  const T = team(G, S), me = { id: q, nm: G.clubs[q].nm, T, x: E.rate(T, D).ovr };
+  return field(G, lg, years(G, lg, D)[0], q, me, new Set(S.slots.filter(Boolean).map(r => r.p)), S.manager.nm).filter(c => c.id !== q);
+}
 export function med(D) {
-  if (!MED.has(D)) {
-    const F = U.F[D].slice(0, 19), L = F.map(c => E.rate(c.T, D)), m = k => L.map(r => r[k]).sort((a, b) => a - b)[9];
-    MED.set(D, { A: m('A'), M: m('M'), D: m('Dd'), x: F.map(c => c.x) });
+  const key = JSON.stringify([D, U.S?.v, U.S?.manager, U.S?.slots]);
+  if (!MED.has(key)) {
+    const F = opponents(D), L = F.map(c => E.rate(c.T, D)), m = k => L.map(r => r[k]).sort((a, b) => a - b)[Math.floor(L.length / 2)];
+    MED.set(key, { A: m('A'), M: m('M'), D: m('Dd'), x: F.map(c => c.x), F });
   }
-  return MED.get(D);
+  return MED.get(key);
 }
 
 export function pool() {
@@ -96,11 +104,11 @@ function review(T, Q) {
       ${ck(Q.up ? true : null, Q.up ? 'Signature bonus on' : 'No signature player', Q.up ? `${sig.map(esc).join(', ')}: grades ${m.ga}/${m.gd} → ${Q.gA}/${Q.gD}.` : `Drafting one of ${esc(m.nm)}'s signature players raises both grades.`)}
       ${ck(gap[1] >= gap[2] ? true : null, gap[1] >= gap[2] ? 'Every line at or above the field median' : `${gap[0]} below the field`, `${gap[0]} ${num(gap[1])} against a ${S.D}s median of ${num(gap[2])}.`)}
     </ul>
-    <p class="small opp">Overall ${num(Q.ovr)} ranks ${rank} of 20 in the ${S.D}s field (median ${num(M.x.slice().sort((a, b) => a - b)[9])}).</p>
-    <details class="breakdown"><summary>Your ${S.D}s opposition: 19 club squads</summary><div class="tw"><table class="opp"><thead><tr><th>Club</th><th>Shape</th><th class="k">Strength</th></tr></thead>
-      <tbody>${U.F[S.D].slice(0, 19).map(c => `<tr><td>${esc(c.nm)}</td><td>${esc(c.T.m.f || '')}</td><td class="k">${num(c.x)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="small opp">Overall ${num(Q.ovr)} ranks ${rank} of ${M.F.length + 1} in the opening season's field (median ${num(M.x.slice().sort((a, b) => a - b)[Math.floor(M.x.length / 2)])}).</p>
+    <details class="breakdown"><summary>Your opening-season opposition: ${M.F.length} club squads</summary><div class="tw"><table class="opp"><thead><tr><th>Club</th><th>Shape</th><th class="k">Strength</th></tr></thead>
+      <tbody>${M.F.map(c => `<tr><td>${esc(c.nm)}${c.si ? ' · stand-in' : c.src === 'nearby' ? ' · nearby players' : ''}</td><td>${esc(c.T.m.f || '')}</td><td class="k">${num(c.x)}</td></tr>`).join('')}</tbody></table></div>
       <p class="small">Each club plays its best eleven in its own manager's formation; your formation never changes theirs.</p></details>
-    <button class="btn big" type="button" id="simulate" ${U.busy || U.pv ? 'disabled' : ''}>${U.busy ? 'Playing the season…' : 'Kick off · locks lineup and formation'}</button></div>`;
+    <button class="btn big" type="button" id="simulate" ${U.busy || U.pv ? 'disabled' : ''}>${U.busy ? 'Opening the career…' : 'Start the career →'}</button></div>`;
 }
 
 const group = (G, f, rec) => (rec.includes(f) ? 'rec' : /^(2-3-5|WM|Catenaccio)$/.test(f) ? 'hist' : { 4: 'four', 3: 'three', 5: 'five' }[f[0]] || 'four');

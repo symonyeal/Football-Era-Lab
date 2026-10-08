@@ -180,6 +180,7 @@ def out(Q, P, Pl, U, M, duo, rep, ccode, labels, miss, frozen_cards=None):
                    dict(name="Understat player stats per game (codytipton, Kaggle)", use="xG and xA per player-season, top five leagues and Russia 2014+", licence="MIT (as declared by the publisher)"),
                    dict(name="Championship Manager 01/02 databases (freeware game since 2008; Sports Interactive original data and community seasons)", use="ability, positions and attributes for 1989-90, 1993-94, 1995-96, 1998-99, 2001-02, 2020-21 and 2021-22; read locally, only derived numbers ship", licence="No stated licence; raw files not redistributed"),
                    dict(name="FIFA 23 Ultimate Team players database (Lucas Silva, Kaggle; file of 2024-06-07 holds FC 24 cards)", use="base Icon and Hero ratings for legends (EA reconstructions)", licence="CC0 (as declared by the publisher)"),
-                   dict(name="engsoccerdata (James Curley)", use="league and European Cup results: club rankings and decade goal rates (derived aggregates only)", licence="GPL (>= 2)")])
+                   dict(name="engsoccerdata (James Curley)", use="league and European Cup results: club rankings, decade goal rates, and the season tables and European Cup stages of the club career (derived aggregates only)", licence="GPL (>= 2)"),
+                   dict(name="Wikipedia final tables: 2022-23 Premier League, 1994-95 French Division 1", use="the two top-flight seasons missing from the result files (pipeline/curated/league_gaps.csv)", licence="Facts only (CC BY-SA 4.0 pages)")])
     (OUT / "manifest.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
     return G
